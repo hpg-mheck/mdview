@@ -14,6 +14,9 @@ ANSI styling so Markdown reads naturally in the terminal.
 - Minimal runtime dependencies; packaged for Python 3.8+.
 - Graceful fallback to plain-text output if `rich` is unavailable in the
   environment.
+- Provides stateful mode-switching helpers intended for a `<META>+W` hotkey
+  that toggles word wrap against horizontal scrolling while preserving search
+  anchors.
 
 ## Installation
 ```bash
