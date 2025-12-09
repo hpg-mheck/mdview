@@ -1,0 +1,10 @@
+Tasks in Progress
+
+Record tasks that are actively being implemented here. This list should stay
+empty whenever possible. When work must span multiple sessions, add tasks marked
+with an asterisk followed by a blank line. Include brief status notes and cite
+any blockers by name, task identifier, bug link, or person responsible for
+unblocking. Remove tasks from this file as soon as they are completed or moved
+back to the backlog.
+
+No tasks are currently in progress.

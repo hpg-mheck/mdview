@@ -1,0 +1,9 @@
+Project Backlog
+
+Use this backlog to track pending tasks in priority order. The item at the top
+should be handled next, while lower items should wait accordingly. Mark each
+item with an asterisk followed by a blank line for clarity. Note when tasks are
+blocked, and specify what they are blocked on, including related tasks, bugs,
+or people. Keep descriptions concise and actionable.
+
+No tasks are currently logged in the backlog.
