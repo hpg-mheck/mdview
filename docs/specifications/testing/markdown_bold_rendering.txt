@@ -1,0 +1,69 @@
+Markdown Bold Rendering Specification
+====================================
+
+Purpose and Scope
+-----------------
+Define fixtures and expectations for rendering Markdown bold text in
+isolation. Keep coverage focused on bold emphasis markers and their
+interaction boundaries without coupling to headings, lists, or links.
+
+Assumptions
+-----------
+- Rendering uses ``rich.markdown.Markdown`` when available and falls back to
+  plain text otherwise.
+- Fixtures live under ``resources/tests/markdown/bold`` and avoid mixing bold
+  markers with unrelated Markdown constructs unless explicitly stated.
+- Assertions target bold styling cues (e.g., ANSI intensity or clear text
+  delimiters) instead of brittle full-output snapshots.
+- Output targets a monospace terminal that preserves ANSI styling sequences
+  when Rich is active.
+
+Fixtures
+--------
+- ``bold_asterisks.md``: paired ``**`` markers around single and multiple
+  words, separated by surrounding plain text to confirm boundaries are tight.
+- ``bold_underscores.md``: paired ``__`` markers covering single words and
+  phrases to verify underscore emphasis mirrors asterisk handling.
+- ``bold_adjacent_text.md``: bold spans immediately followed and preceded by
+  plain text without spaces to ensure markers do not swallow neighbors.
+- ``bold_nested_with_italic.md``: nested italic inside bold (``**_text_**``)
+  and adjacent italic after bold to confirm style containment and order.
+- ``bold_with_punctuation.md``: bold spans containing commas, periods, and
+  trailing punctuation to ensure punctuation remains inside the emphasis span.
+- ``bold_unclosed_marker.md``: a lone opening ``**`` and ``__`` to confirm
+  renderers leave unmatched markers literal instead of applying styling.
+
+Rendering Expectations
+----------------------
+- Bold spans render with clear intensity cues under Rich. The fallback
+  renderer preserves the literal text and markers so readers can infer
+  emphasis.
+- Bold styling starts immediately after the opening marker and ends before the
+  closing marker without trimming interior spaces or punctuation.
+- Adjacent plain text retains its spacing. No characters are duplicated,
+  reordered, or dropped at bold boundaries.
+- Nested italic inside bold renders both styles when Rich is active. When
+  falling back, markers remain literal but correctly scoped. Styling never
+  leaks past the closing bold marker.
+- Consecutive bold spans separated only by whitespace remain distinct and do
+  not merge into a single emphasis block.
+
+Failure and Edge Cases
+----------------------
+- Unmatched opening or closing markers render literally with no bold styling
+  applied, and they must not corrupt following text.
+- Mixed marker types (opening ``**`` with closing ``__``) are treated as
+  literal text rather than partially styled spans.
+- Inputs with mixed line endings (``\n`` and ``\r\n``) produce consistent
+  rendering cues without losing markers.
+- Rendering must remain stable under Python 3.7 environments and avoid new
+  dependencies beyond the existing project stack.
+
+Test Coverage Outline
+---------------------
+- Validate each fixture renders the expected bold cues and preserves literal
+  markers in fallback mode.
+- Assert that nested italic remains contained and that adjacent plain text is
+  untouched by bold parsing.
+- Confirm unmatched or mixed markers stay literal and do not trigger styling
+  or swallowing of neighbor characters.
