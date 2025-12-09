@@ -6,6 +6,11 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Drafted docs/specifications/markdown_inline_code_rendering.txt defining
+  fixtures, monospace styling expectations, punctuation preservation, and
+  fallback behavior for inline code spans. Recorded at
+  2025-12-09T06:15:06+00:00 by R. Talon while clearing the top backlog item.
+
 * Drafted docs/specifications/markdown_strikethrough_rendering.txt detailing
   double-tilde recognition, strike styling cues, adjacency isolation, escape
   handling, and fallback behavior. Recorded at 2025-12-09T05:59:26Z by
