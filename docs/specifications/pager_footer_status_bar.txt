@@ -1,0 +1,44 @@
+Pager footer status bar specification
+
+Purpose
+- Provide a persistent footer that surfaces navigation context similar to
+  common console pagers.
+- Keep visuals consistent with vi- and less-style cues without copying their
+  exact layouts.
+
+Display layout and content
+- Default layout: "<filename>:<line_number>  <format>  <percent>%".
+- Visual mode layout: "<filename>:(<line_number>, <column_number>)  <format>"
+  "  <percent>%  VISUAL".
+- Show the filename stem provided by the loader without truncation unless the
+  viewport cannot display the entire footer. When truncation is required, trim
+  from the left and prefix an ellipsis.
+- Show line number as the current cursor line, 1-indexed.
+- In visual mode, show the column number of the selection anchor, 1-indexed.
+- Percent represents the integer percentage of the document consumed, rounded
+  to the nearest whole number, with a trailing percent sign.
+- Format is a short label for the active renderer: "text", "markdown",
+  "html", or another concise identifier for future formats.
+
+Visual styling
+- Render the footer with inverted terminal colors (foreground and background
+  swapped) to distinguish it from the main buffer. When the terminal cannot
+  invert colors, fall back to the default color pair.
+- Keep padding minimal: one leading space and single spaces between elements,
+  matching the sample layouts above.
+
+Mode awareness
+- Normal mode omits any mode indicator.
+- Visual mode appends "VISUAL" in uppercase to the end of the footer layout.
+- Future modes should append their names in uppercase at the end while
+  preserving the existing field order.
+
+Behavior and updates
+- Update the footer whenever the cursor line, column, mode, file format, or
+  document length changes.
+- Ensure updates are flicker-free and do not scroll the main buffer.
+- When the document is empty, display line number and percent as 1 and 0,
+  respectively.
+- On truncated filenames, still show the line and percent fields in full.
+- Ensure the footer is hidden when rendering output is redirected to non-TTY
+  targets.
