@@ -6,6 +6,11 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Drafted docs/specifications/markdown_strikethrough_rendering.txt detailing
+  double-tilde recognition, strike styling cues, adjacency isolation, escape
+  handling, and fallback behavior. Recorded at 2025-12-09T05:59:26Z by
+  R. Talon while clearing the top backlog item.
+
 * Completed runtime documentation improvements for argparse help path and
   cross-platform deployment assets. Recorded at 2025-12-09T05:28:36Z by
   R. Talon. Added a parser helper with wrapped ``--help`` output, shared POSIX

@@ -1,0 +1,69 @@
+Markdown Strikethrough Rendering Specification
+=============================================
+
+Scope
+-----
+Define how mdview renders Markdown strikethrough markers so strike styling
+remains consistent across renderers and does not leak into neighboring emphasis
+markers. Cover tilde marker recognition, fixture layout, expected styling cues,
+and fallback behavior when strike styling is unavailable.
+
+Assumptions
+-----------
+- Rendering relies on ``rich.markdown.Markdown`` when available and falls back
+  to a plain-text formatter otherwise.
+- Source text order and spacing remain unchanged; renderers must not reorder
+  characters, collapse whitespace, or inject extra spacing around markers.
+- Tests use minimal fixtures stored under ``resources/tests`` and assert on
+  visible cues (e.g., ANSI strike tokens or literal marker preservation)
+  instead of brittle snapshots.
+
+Rendering Rules
+---------------
+- Recognize strikethrough when text is wrapped in paired double tildes
+  (``~~strike~~``) without interior whitespace between markers and content.
+- Apply strike styling to the enclosed content when the renderer supports it.
+  When styling is unavailable, emit the content as literal text while
+  preserving surrounding whitespace and punctuation.
+- Keep strikethrough scoped to the smallest matching marker pair. Do not cross
+  paragraph boundaries or consume adjacent emphasis markers.
+- Treat unmatched or truncated markers literally; do not infer closing tildes
+  or auto-correct malformed runs.
+- Preserve backslash escapes (``\~~escaped~~``) so escaped markers render
+  without enabling strike styling.
+
+Adjacent Emphasis and Boundary Handling
+---------------------------------------
+- Do not merge strikethrough with neighboring italic or bold markers; sequences
+  such as ``~~strike~~*italic*`` must keep styles separate without leaking
+  boundaries.
+- Maintain literal rendering for touching but distinct markers (e.g.,
+  ``~~strike~~**bold**``) while preserving original spacing and punctuation.
+- At line boundaries, keep markers and content on the same line to avoid
+  swallowing newline characters or extending strike styling across lines.
+
+Fixture Inventory
+-----------------
+- ``resources/tests/markdown/strikethrough_basic.md``: A single
+  ``~~struck~~`` token within a sentence that asserts strike cues (or literal
+  passthrough in fallback mode) without altering spacing.
+- ``resources/tests/markdown/strikethrough_adjacent_emphasis.md``: Places
+  ``~~strike~~`` beside ``*italic*`` and ``**bold**`` to confirm styling does
+  not merge and boundaries remain intact.
+- ``resources/tests/markdown/strikethrough_unterminated.md``: Contains an
+  unmatched opening marker (``~~open``) that should render literally without
+  applying strike styling.
+- ``resources/tests/markdown/strikethrough_escape.md``: Uses escaped markers
+  (``\~~escaped~~\``) to verify literal rendering and proper handling of
+  trailing backslashes.
+- ``resources/tests/markdown/strikethrough_spacing.md``: Exercises punctuation
+  and spacing around strike markers, including adjacent commas and closing
+  periods, to ensure whitespace and punctuation are preserved.
+
+Exit Criteria
+-------------
+- Each fixture above exists and aligns with the rendering and boundary rules.
+- Renderers apply strike styling when supported and fall back to literal text
+  without losing spacing or punctuation when styling is unavailable.
+- Strikethrough markers remain isolated from adjacent emphasis markers, and
+  malformed or escaped markers render literally without leaking styling.
