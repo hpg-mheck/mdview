@@ -1,5 +1,6 @@
 import importlib
 from pathlib import Path
+from typing import List
 
 import pytest
 
@@ -102,3 +103,30 @@ def test_page_text_with_shell_command_captures_output(capsys) -> None:
     # Child process output is not captured by capsys, but the command should
     # execute successfully without raising a RuntimeError.
     page_text(text, pager_command="cat")
+
+
+def test_page_text_records_prompt_toolkit_fallback(monkeypatch) -> None:
+    original_find_spec = importlib.util.find_spec
+    monkeypatch.setattr(
+        importlib.util,
+        "find_spec",
+        lambda name: None if name == "prompt_toolkit" else original_find_spec(name),
+    )
+
+    import mdview.rendering as rendering
+
+    reloaded = importlib.reload(rendering)
+    captured: List[str] = []
+
+    import pydoc
+
+    monkeypatch.setattr(pydoc, "pager", lambda text: captured.append(text))
+
+    try:
+        reloaded.page_text("sample")
+        notices = reloaded.get_fallback_notices()
+        assert any("prompt_toolkit" in notice for notice in notices)
+        assert captured == ["sample"]
+    finally:
+        monkeypatch.undo()
+        importlib.reload(rendering)
