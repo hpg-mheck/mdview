@@ -9,8 +9,9 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
 * Implement hyperlink highlighting and cyclic keyboard navigation defined in
   docs/specifications/hyperlink_navigation.txt. Deliver underline plus focus
   styling, TAB/SHIFT+TAB traversal with wraparound, and viewport alignment for
-  focused links. Blocked until we select or build a focus-aware renderer in
-  place of the current less-based paging pipeline.
+  focused links. Unblocked by docs/specifications/focus_aware_pager.txt
+  (2025-12-09T02:44:28+00:00); implement the prompt_toolkit-based pager there
+  to replace the less-based pipeline while keeping fallback paging.
 
 * Draft a focused specification for Markdown heading rendering that clarifies
   fixtures, expected styling cues, and compatibility notes. Keep it scoped to
