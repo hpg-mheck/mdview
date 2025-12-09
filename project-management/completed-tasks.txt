@@ -6,6 +6,11 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Drafted docs/specifications/csv_document_viewing.txt defining CSV-to-
+  Markdown table rendering, alignment options, alternating row styling, and
+  fallbacks. Recorded at 2025-12-09T05:02:42Z by R. Talon. Documented
+  parsing rules, error handling, and test coverage for CSV fixtures.
+
 * Implemented Markdown table rendering support following
   docs/specifications/markdown_table_rendering.txt. Recorded at
   2025-12-09T03:32:49Z by R. Talon. Added pipe-table alignment formatting for
