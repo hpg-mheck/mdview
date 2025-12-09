@@ -35,6 +35,7 @@ Build Strategy
     Community edition of Visual Studio, WiX Toolset, or MSIX packaging
     utilities. This avoids cross-compilation gaps and ensures native SDKs and
     redistributables are present.
+
 - Packaging Format
   - Prefer ``PyInstaller`` for a self-contained ``.exe`` that vendors the
     Python runtime and ``mdview`` entrypoint. Configure ``--onefile`` to
