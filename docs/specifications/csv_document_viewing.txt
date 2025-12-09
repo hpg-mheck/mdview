@@ -1,0 +1,80 @@
+CSV Document Viewing Specification
+=================================
+
+Scope
+-----
+Define how mdview loads CSV documents and renders them as Markdown tables.
+Keep comma-separated data readable in Rich and plain-text fallbacks. The
+rules stress conservative parsing, predictable column alignment, and reuse of
+existing Markdown table rendering instead of bespoke CSV layouts.
+
+Assumptions
+-----------
+- CSV files follow RFC 4180: comma delimiters and double-quoted fields for
+  embedded commas, plus ``""`` escapes for literal quotes.
+- Files may include a UTF-8 byte order mark; loaders strip it before parsing.
+- The first non-empty line supplies the header row unless the caller passes
+  an explicit ``--no-header`` flag, in which case numbered column headers are
+  synthesized (``Column 1``, ``Column 2``, and so on).
+- Rendering uses the Markdown table formatter defined in
+  ``docs/specifications/markdown_table_rendering.txt`` so padding and
+  alignment stay consistent across CSV and Markdown sources.
+
+Input Handling
+--------------
+- Read CSV content line by line, skipping leading blank lines while
+  preserving blank lines that appear after the header and before the first
+  data row.
+- Parse rows with the standard library ``csv`` module using ``quotechar='"'``
+  and ``escapechar=None``. Reject rows containing unbalanced quotes with a
+  user-facing error that identifies the offending line number.
+- Trim trailing carriage returns before parsing to tolerate CRLF inputs.
+- Normalize row lengths by padding missing trailing cells with empty strings
+  and leaving extra cells intact; never drop columns.
+
+Table Construction
+------------------
+- Treat the first parsed row as the header unless ``--no-header`` was
+  provided. When synthesizing headers, number them in the order columns
+  appear and retain empty header cells as ``Column N`` placeholders.
+- Apply Markdown alignment markers based on optional ``--align`` values of
+  ``left``, ``center``, or ``right``. Default to left alignment for all
+  columns when alignment is unspecified.
+- Preserve literal cell text, including interior commas, quotes, and spacing,
+  as parsed by the CSV reader. Do not strip interior whitespace.
+- Generate the Markdown table string with leading and trailing pipes on every
+  row so plain-text renderers keep column boundaries visible.
+
+Rendering Behavior
+------------------
+- Hand the generated Markdown table string to the Markdown renderer
+  unchanged so Rich can apply table styling while padded text stays legible
+  in terminals that lack color support.
+- When Rich table rendering is available, alternate row styling between a
+  base row and a subtle ``even-row`` emphasis to improve scanability. Keep
+  the header styled per the Markdown table rules and exclude it from the
+  alternating pattern.
+- When Rich is unavailable, rely on the padded Markdown table text for
+  readability without attempting color cues or ASCII art embellishments.
+
+Fallback Behavior
+-----------------
+- If CSV parsing fails, emit a clear error that names the line number and
+  exit with a non-zero status rather than emitting partial output.
+- When Rich is missing, skip alternating row color styling but still render
+  the Markdown table text so columns remain aligned.
+- When optional pagination backends are absent, print the rendered table to
+  stdout after applying any fallback formatting documented for Markdown
+  tables.
+
+Test Coverage
+-------------
+- Add fixtures under ``resources/tests`` for CSV files with headers,
+  synthesized headers, embedded commas, quoted quotes, empty cells, and
+  CRLF line endings.
+- Verify that Markdown output matches alignment and padding rules from the
+  table specification and that alternating row styling appears only when
+  Rich is available.
+- Assert that malformed quote pairs trigger user-facing errors with
+  accurate line numbers and that empty rows between the header and data are
+  preserved in the rendered output.
