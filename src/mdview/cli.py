@@ -1,16 +1,15 @@
 """Command-line interface for mdview."""
 
-from __future__ import annotations
-
 import argparse
 import sys
 from pathlib import Path
+from typing import Optional, Sequence
 
 from mdview import __version__
 from mdview.rendering import is_markdown_file, page_text, read_text, render_to_ansi
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     """Parse command-line arguments.
 
     Args:
@@ -41,7 +40,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[Sequence[str]] = None) -> int:
     """Entry point for the ``mdview`` CLI."""
 
     args = parse_args(argv)

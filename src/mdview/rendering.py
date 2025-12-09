@@ -5,41 +5,55 @@ extension point for overriding the pager command. All public functions are
 covered by unit tests to ensure reliable behavior.
 """
 
-from __future__ import annotations
-
+import importlib.util
 import os
 import shlex
 import subprocess
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, List, Optional, Tuple, Type
 
-try:  # pragma: no cover - import resolution differs by environment
-    from rich.console import Console
-    from rich.markdown import Markdown
 
-    HAS_RICH = True
-except ImportError:  # pragma: no cover - exercised implicitly when Rich is absent
-    HAS_RICH = False
+class _PlainMarkdown:
+    """Minimal stub to allow rendering without Rich installed."""
 
-    class Markdown:  # type: ignore[override]
-        """Minimal stub to allow rendering without Rich installed."""
+    def __init__(self, text: str, code_theme: Optional[str] = None) -> None:
+        self.text = text
+        self.code_theme = code_theme
 
-        def __init__(self, text: str, code_theme: str | None = None) -> None:
-            self.text = text
-            self.code_theme = code_theme
 
-    class Console:  # type: ignore[override]
-        """Simplified Console replacement used only when Rich is missing."""
+class _PlainConsole:
+    """Simplified Console replacement used only when Rich is missing."""
 
-        def __init__(self, record: bool = False) -> None:
-            self._buffer: list[str] = []
+    def __init__(self, record: bool = False) -> None:
+        self._buffer: List[str] = []
 
-        def print(self, content: object) -> None:
-            text = getattr(content, "text", content)
-            self._buffer.append(str(text))
+    def print(self, content: object) -> None:
+        text = getattr(content, "text", content)
+        self._buffer.append(str(text))
 
-        def export_text(self, styles: bool = True) -> str:
-            return "\n".join(self._buffer)
+    def export_text(self, styles: bool = True) -> str:
+        return "\n".join(self._buffer)
+
+
+def _select_rendering_backend() -> Tuple[Type[object], Type[object], bool]:
+    """Determine whether Rich is available and return rendering primitives.
+
+    Returns:
+        A tuple of (Console class, Markdown class, has_rich flag). The
+        returned classes always satisfy the minimal interface used by
+        ``render_to_ansi`` regardless of whether Rich is installed.
+    """
+
+    if importlib.util.find_spec("rich") is None:
+        return _PlainConsole, _PlainMarkdown, False
+
+    from rich.console import Console  # type: ignore
+    from rich.markdown import Markdown  # type: ignore
+
+    return Console, Markdown, True
+
+
+Console, Markdown, HAS_RICH = _select_rendering_backend()
 
 
 # Type alias for pager callables used in tests and potential future hooks.
@@ -82,7 +96,8 @@ def render_to_ansi(content: str, markdown: bool) -> str:
     When ``markdown`` is true, the content is parsed through ``rich``'s
     ``Markdown`` renderer; otherwise the text is printed verbatim. ``Console``
     is run in record mode so that the emitted ANSI escape sequences can be
-    exported for paging.
+    exported for paging. When Rich is unavailable, the fallback console and
+    markdown stubs record plain text output without styling.
 
     Args:
         content: The document content to render.

@@ -1,0 +1,30 @@
+Title: Rendering Backend Detection
+Status: Draft
+
+Overview:
+- Replace exception-driven optional dependency loading with explicit module
+  detection that complies with the "no try/except around imports" guidance.
+- Preserve graceful Markdown rendering when Rich is installed while keeping a
+  reliable plain-text fallback when Rich is absent.
+
+Detection Rules:
+- Use importlib.util.find_spec("rich") to decide whether to load Rich at
+  import time.
+- When Rich is available, import rich.console.Console and
+  rich.markdown.Markdown directly without suppressing ImportError.
+- When Rich is unavailable, register lightweight fallback Console and Markdown
+  implementations that buffer and emit plain text output.
+
+Functional Requirements:
+- Expose a HAS_RICH boolean that reflects whether Rich was detected during
+  module initialization.
+- Ensure render_to_ansi works consistently in both Rich-present and fallback
+  scenarios, always returning a UTF-8-compatible string.
+- Keep pager-related utilities unchanged so paging behavior remains
+  predictable across environments.
+
+Testing Guidance (post-spec):
+- Add regression coverage that reloads the rendering module with Rich detection
+  disabled and verifies the fallback path produces unstyled but intact output.
+- Retain existing Markdown formatting tests for Rich-enabled environments to
+  confirm the code path remains stable.

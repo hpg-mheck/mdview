@@ -1,3 +1,4 @@
+import importlib
 from pathlib import Path
 
 import pytest
@@ -62,6 +63,22 @@ def test_render_to_ansi_preserves_five_line_plain_text() -> None:
     if HAS_RICH:
         # Rich should not inject Markdown styling when plain text is requested.
         assert "\x1b" not in "".join(rendered_lines[:5])
+
+
+def test_rendering_module_handles_absent_rich(monkeypatch) -> None:
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+
+    import mdview.rendering as rendering
+
+    reloaded = importlib.reload(rendering)
+    try:
+        ansi = reloaded.render_to_ansi("fallback only", markdown=False)
+
+        assert reloaded.HAS_RICH is False
+        assert "fallback only" in ansi
+    finally:
+        monkeypatch.undo()
+        importlib.reload(rendering)
 
 
 def test_page_text_uses_custom_pager() -> None:
