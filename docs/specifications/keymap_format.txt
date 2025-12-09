@@ -37,3 +37,17 @@ Usage Guidance:
   bindings only when accessibility or platform conventions demand it.
 - Document any platform-specific deviations in the release notes and the
   keymap file comments if supported.
+
+Default Skeleton:
+- Publish a stock template at ``resources/stock-config/mdview-keymap.conf``
+  using the JSON structure above.
+- Include bindings for the core viewer commands: quitting, line and page
+  navigation, search forward/backward, top/bottom jumps, and wrap toggling.
+
+Change Management:
+- Update the stock keymap whenever commands are added, renamed, or
+  deprecated so the template remains a trustworthy reference.
+- Specifications, feature proposals, and bugfix proposals must explicitly
+  capture any expected additions or changes to
+  ``mdview-keymap.conf``. Implementations must apply those updates to the
+  stock template in ``resources/stock-config/``.

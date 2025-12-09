@@ -5,6 +5,7 @@ This script installs system dependencies, provisions a virtual environment, and
 installs the project with development extras. It supports Rocky Linux 9.6,
 Fedora 43, Ubuntu 24.x, Linux Mint, Debian, and modern macOS versions.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -76,7 +77,9 @@ def detect_os_info() -> OSInfo:
     return OSInfo(system, "", system)
 
 
-def select_package_manager(os_info: OSInfo, available: Optional[Iterable[str]] = None) -> Optional[str]:
+def select_package_manager(
+    os_info: OSInfo, available: Optional[Iterable[str]] = None
+) -> Optional[str]:
     """Choose the best-fit package manager for the detected platform."""
 
     preferred: List[str] = []
@@ -173,7 +176,18 @@ def ensure_virtualenv(
 
 
 def upgrade_pip_tooling(python_executable: str, runner: CommandRunner) -> None:
-    runner.run([python_executable, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"])
+    runner.run(
+        [
+            python_executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "pip",
+            "setuptools",
+            "wheel",
+        ]
+    )
 
 
 def install_project(python_executable: str, dev: bool, runner: CommandRunner) -> None:
@@ -201,10 +215,24 @@ def validate_platform(os_info: OSInfo) -> None:
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Install mdview prerequisites.")
-    parser.add_argument("--venv", default=str(Path(__file__).resolve().parent.parent / ".venv"), help="Virtual environment path.")
-    parser.add_argument("--python", default=sys.executable, help="Python interpreter used to create virtualenvs.")
-    parser.add_argument("--production", action="store_true", help="Install only runtime dependencies (skip dev extras).")
-    parser.add_argument("--dry-run", action="store_true", help="Print commands without executing them.")
+    parser.add_argument(
+        "--venv",
+        default=str(Path(__file__).resolve().parent.parent / ".venv"),
+        help="Virtual environment path.",
+    )
+    parser.add_argument(
+        "--python",
+        default=sys.executable,
+        help="Python interpreter used to create virtualenvs.",
+    )
+    parser.add_argument(
+        "--production",
+        action="store_true",
+        help="Install only runtime dependencies (skip dev extras).",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print commands without executing them."
+    )
     return parser.parse_args(argv)
 
 
@@ -222,7 +250,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     packages = system_packages_for(manager)
     use_sudo = should_use_sudo()
     commands = build_install_commands(manager, packages, use_sudo)
-    print(f"Detected platform: {os_info.pretty_name} ({os_info.platform_id} {os_info.version_id})")
+    print(
+        f"Detected platform: {os_info.pretty_name} ({os_info.platform_id} {os_info.version_id})"
+    )
     execute_commands(commands, runner)
 
     venv_path = Path(args.venv).resolve()
