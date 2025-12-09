@@ -1,0 +1,52 @@
+Title: Mode Switching Hotkey
+Status: Draft
+
+Overview:
+- Define user interaction for toggling between horizontal scrolling mode
+  and word-wrap mode.
+- Specify state management, visual feedback, and interaction with
+  existing navigation features when the mode changes via hotkey.
+
+Hotkey Behavior:
+- Provide a dedicated toggle command that switches between horizontal and
+  word-wrap modes in real time without reopening documents.
+- Default binding: <META>+W. A second binding MAY map to
+  <SHIFT>+<META>+W for accessibility; both invoke the same command.
+- Hotkey invocation is idempotent: the command flips the mode and
+  persists the new state for the current view.
+
+State Persistence:
+- Mode state persists per-document view and survives window resizes or
+  theme changes.
+- Application preferences may define a default mode; the hotkey overrides
+  the default for the active session but does not change the stored
+  default unless explicitly saved.
+
+Visual and Audible Feedback:
+- On toggle, display a transient status message (e.g., toast) indicating
+  the new mode and its key behaviors (wrap on/off, horizontal scroll
+  available).
+- Screen readers announce the new mode and whether horizontal scrolling
+  is expected.
+
+Interaction with Scrolling and Search:
+- Switching to horizontal mode preserves the current top logical line and
+  sets the horizontal offset to the left edge unless a previous offset
+  exists for that view; if present, restore that offset.
+- Switching to wrap mode clears horizontal offsets and reflows text,
+  keeping the same top logical line visible.
+- Active search highlights remain; the viewport adjusts to keep the
+  active match visible in the new mode, re-centering only when needed to
+  show the match start.
+
+Edge Cases:
+- During continuous scroll or kinetic gestures, ignore mode toggle
+  requests until the gesture completes to avoid conflicting offsets.
+- If a document format disallows wrapping (e.g., binary previews), the
+  toggle command is disabled and should announce the restriction.
+
+Testing Guidance (post-spec):
+- Verify that toggling repeatedly swaps modes without losing scroll
+  position beyond the expected offset resets described above.
+- Confirm that search highlights remain visible after toggling.
+- Validate that disabled contexts block the toggle and provide feedback.

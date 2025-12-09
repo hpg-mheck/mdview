@@ -1,0 +1,24 @@
+{
+  "bindings": [
+    {
+      "sequence": "W",
+      "command": "VIEW_MODE_TOGGLE"
+    },
+    {
+      "sequence": "<META>+W",
+      "command": "VIEW_MODE_TOGGLE"
+    },
+    {
+      "sequence": "<SHIFT>+<META>+W",
+      "command": "VIEW_MODE_TOGGLE"
+    },
+    {
+      "sequence": "<META>+H",
+      "command": "VIEW_MODE_HORIZONTAL_ENABLE"
+    },
+    {
+      "sequence": "<META>+L",
+      "command": "VIEW_MODE_WRAP_ENABLE"
+    }
+  ]
+}
