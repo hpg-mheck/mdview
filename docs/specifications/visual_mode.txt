@@ -1,0 +1,56 @@
+Title: Visual Mode Selection
+Status: Draft
+
+Overview:
+- Define a visual selection mode inspired by vi/vim to mark on-screen text
+  ranges without leaving the viewer context.
+- Describe keybindings, cursor presentation, selection lifecycle, and
+  clipboard interactions.
+
+Entry and Exit:
+- Default binding: pressing `V` enters visual mode from normal viewing state.
+- Visual mode displays a visible cursor aligned to the current viewport
+  position; the cursor remains constrained to visible text.
+- Pressing `Esc` exits visual mode without changing selection state or
+  clipboard contents.
+- Pressing `Enter` copies the active selection to all available system
+  clipboards and then exits visual mode.
+
+Cursor Movement:
+- While in visual mode, arrow keys move the visible cursor within the current
+  viewport, respecting document boundaries.
+- Movement updates the potential selection endpoint but does not modify
+  selection state until toggled via the spacebar.
+
+Selection Lifecycle:
+- The first spacebar press marks the selection start at the cursor position.
+- The next spacebar press marks the end position if the cursor is later in the
+  document. If the cursor precedes or equals the start, treat the previous
+  start as the end and assign the new cursor position as the start.
+- A third consecutive spacebar press clears the selection entirely and leaves
+  the cursor in place, ready for a new start marker.
+- Selections must remain visible on screen; if movement would hide either
+  marker, adjust scrolling to keep both endpoints in view when possible.
+
+Copying Behavior:
+- Pressing `Enter` while a selection exists copies the selected text range to
+  all detected system clipboards (primary, secondary, and clipboard buffers
+  where supported) before exiting visual mode.
+- If no selection is active, pressing `Enter` has no effect beyond exiting
+  visual mode.
+
+Feedback and Constraints:
+- Show the selection region with a distinct highlight between start and end
+  markers. Distinguish the active cursor from the highlighted region.
+- Provide transient status text when entering visual mode, toggling selection
+  points, clearing selection, and copying to clipboards.
+- Ignore selection toggles if the underlying document is read-only or lacks
+  a copyable representation; present an accessibility-friendly notice instead.
+
+Post-Implementation Tests (future):
+- Verify spacebar toggling cycles start, end, and clear states in order while
+  keeping markers visible.
+- Confirm `Enter` copies selection contents to all supported clipboards and
+  exits visual mode.
+- Ensure `Esc` exits without altering clipboard contents or residual
+  selection state.

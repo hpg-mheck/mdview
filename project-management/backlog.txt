@@ -132,3 +132,7 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
 * Build pytest coverage for inline HTML passthrough per the specification.
   Confirm inline HTML text remains intact and coexists with surrounding
   Markdown elements.
+
+* Draft a specification for vi-style visual mode selection covering V entry,
+  arrow-key navigation, spacebar toggling for start/end/clear, Enter-based
+  multi-clipboard copy and exit, and Escape exit. Added 2025-12-09T03:13:26Z.
