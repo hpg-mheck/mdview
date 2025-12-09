@@ -15,6 +15,51 @@ from mdview.rendering import (
 )
 
 
+def build_parser() -> argparse.ArgumentParser:
+    """Build the mdview argument parser with predictable ``--help`` output."""
+
+    formatter = lambda prog: argparse.ArgumentDefaultsHelpFormatter(  # noqa: E731
+        prog,
+        max_help_position=28,
+        width=78,
+    )
+    parser = argparse.ArgumentParser(
+        prog="mdview",
+        description="Render Markdown in the terminal with less-like navigation.",
+        formatter_class=formatter,
+        add_help=True,
+        allow_abbrev=False,
+    )
+    parser.add_argument(
+        "path",
+        type=Path,
+        help="Path to a Markdown or text file to view.",
+    )
+    parser.add_argument(
+        "--pager",
+        dest="pager_command",
+        metavar="COMMAND",
+        help=(
+            "Optional pager command to override the default less/pydoc pager "
+            "(e.g., 'less -R')."
+        ),
+    )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"mdview {__version__}",
+        help="Show the mdview version and exit.",
+    )
+    return parser
+
+
+def format_help() -> str:
+    """Return the formatted ``--help`` text for reuse in documentation."""
+
+    return build_parser().format_help()
+
+
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     """Parse command-line arguments.
 
@@ -25,24 +70,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         A populated :class:`argparse.Namespace` instance.
     """
 
-    parser = argparse.ArgumentParser(
-        prog="mdview",
-        description="Render Markdown in the terminal with less-like navigation.",
-    )
-    parser.add_argument(
-        "path", type=Path, help="Path to a Markdown or text file to view."
-    )
-    parser.add_argument(
-        "--pager",
-        dest="pager_command",
-        help="Optional pager command to override the default less/pydoc pager (e.g., 'less -R').",
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"mdview {__version__}",
-        help="Show the mdview version and exit.",
-    )
+    parser = build_parser()
     return parser.parse_args(argv)
 
 

@@ -1,0 +1,40 @@
+." mdview manual page for Linux
+.TH MDVIEW 1 "2025-12-09" "mdview 0.1.0" "User Commands"
+.SH NAME
+mdview \- render Markdown in the terminal with less-like navigation
+.SH SYNOPSIS
+.B mdview
+.RI [ \-h ]
+.RI [ \-\-pager
+.I COMMAND
+.RI ]
+.RI [ \-V ]
+.I path
+.SH DESCRIPTION
+mdview renders Markdown and plain text with ANSI styling and pipes the output
+to pagers such as
+.BR less (1)
+for comfortable navigation. The program falls back to standard-library paging
+when Rich or a pager is unavailable.
+.SH OPTIONS
+.TP
+.B path
+Path to a Markdown or text file to view.
+.TP
+.BR \-h , " \-\-help"
+Show the help message and exit.
+.TP
+.BR \-\-pager " " COMMAND
+Optional pager command to override the default less/pydoc pager (for example,
+.BR "less \-R" ).
+.TP
+.BR \-V , " \-\-version"
+Show the mdview version and exit.
+.SH FILES
+.TP
+.B posix/mdview-help.txt
+The shared POSIX help text derived from the argparse configuration. Keep this
+file in sync with the parser when packaging the Linux man page.
+.SH SEE ALSO
+.BR less (1),
+.BR pydoc (1)

@@ -1,0 +1,51 @@
+Runtime documentation and deployment layout
+===========================================
+
+Summary
+-------
+We need runtime-facing documentation that aligns with argparse best practices
+and can be reused across platforms. The CLI must expose a complete ``--help``
+experience, and deployment assets should be organized by platform with shared
+POSIX content where appropriate.
+
+Goals
+-----
+- Use argparse patterns that disable abbreviation, surface defaults, and offer
+  consistent help formatting for mdview.
+- Provide programmatic access to the CLI help text so packaging workflows can
+  embed it into release artifacts and documentation.
+- Create deployment directories for Windows, macOS, and Linux. Linux and macOS
+  require man pages; Windows needs analogous command-line references.
+- Keep POSIX-shared assets in a ``posix`` meta-target directory for reuse
+  across Linux and macOS without duplication.
+
+Non-goals
+---------
+- Introducing new CLI flags beyond what mdview already supports.
+- Changing paging behavior or rendering logic.
+- Adding platform installers or binary distribution pipelines.
+
+Implementation sketch
+---------------------
+- Add a parser-construction helper in ``mdview.cli`` that enforces argparse
+  best practices, including explicit ``prog`` naming, disabled abbreviation,
+  and a
+  formatter that reveals defaults in ``--help`` output. Provide a helper to
+  return the formatted help text for reuse.
+- Document the help path and usage notes in a short README within a
+  cross-platform deployment layout:
+  - ``docs/deployment/windows/`` with command-line help and paging notes.
+  - ``docs/deployment/macos/`` with a man page and platform-specific
+    installation notes.
+  - ``docs/deployment/linux/`` with a man page and POSIX pager expectations.
+  - ``docs/deployment/posix/`` with shared assets referenced by Linux and
+    macOS.
+- Keep documentation wrapped to 78 columns and align tone with the Chicago
+  Manual of Style.
+
+Validation
+----------
+- Unit tests cover the parser helper, verifying that abbreviation is disabled
+  and help text is available for reuse.
+- Documentation updates link the deployment directories together so release
+  engineers can find the correct assets per platform.
