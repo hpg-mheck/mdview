@@ -30,8 +30,12 @@ Goals and Non-Goals
 Build Strategy
 --------------
 - Build Host
-  - Execute the builder on Windows (e.g., GitHub Actions ``windows-latest``)
-    to avoid cross-compilation issues and to access WiX or MSIX tooling.
+  - Execute the builder on Windows hosts only (e.g., GitHub Actions
+    ``windows-latest``), assuming access to common tooling such as the
+    Community edition of Visual Studio, WiX Toolset, or MSIX packaging
+    utilities. This avoids cross-compilation gaps and ensures native SDKs and
+    redistributables are present.
+
 - Packaging Format
   - Prefer ``PyInstaller`` for a self-contained ``.exe`` that vendors the
     Python runtime and ``mdview`` entrypoint. Configure ``--onefile`` to
