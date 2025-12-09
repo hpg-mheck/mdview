@@ -1,0 +1,55 @@
+Installation strategy
+=====================
+
+Use `scripts/install_prerequisites.sh` as the canonical bootstrap entry point.
+The shell wrapper locates or installs Python 3, provisions `.venv` at the
+repository root, upgrades packaging tools, and delegates system and Python
+package installation to `scripts/install_prerequisites.py`.
+
+Quick start
+-----------
+
+From the repository root:
+
+```
+./scripts/install_prerequisites.sh
+```
+
+The script defaults to installing mdview in editable mode with development
+extras. Pass `--production` through to the Python installer when you want to
+skip developer dependencies:
+
+```
+./scripts/install_prerequisites.sh -- --production
+```
+
+The `--` separator ensures arguments reach the Python installer unchanged.
+
+Supported platforms
+-------------------
+
+- Rocky Linux 9.6 (dnf/yum)
+- Fedora 43 (dnf)
+- Ubuntu 24.x (apt)
+- Linux Mint (apt)
+- Debian stable/testing (apt)
+- Modern macOS releases (Homebrew)
+
+What the installer does
+-----------------------
+
+- Detects the platform and chooses an available package manager.
+- Installs `python3`, `venv` tooling, `less`, and `git` using the native
+  package manager (with `sudo` when required).
+- Creates `.venv` if missing and upgrades `pip`, `setuptools`, and `wheel`.
+- Installs the project in editable mode with optional developer extras.
+
+Notes and expectations
+----------------------
+
+- Run the installer from the repository root to ensure relative paths resolve
+  correctly.
+- If the host lacks `sudo`, run the script as a privileged user or install the
+  required system packages manually.
+- The Python logic supports a dry run for validation: `python scripts/
+  install_prerequisites.py --dry-run`.
