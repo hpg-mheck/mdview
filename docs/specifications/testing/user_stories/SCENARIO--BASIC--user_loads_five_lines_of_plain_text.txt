@@ -1,0 +1,28 @@
+Title: Automated minimal-training user loads five lines of plain text
+
+Context:
+- An automated test harness assumes the role of a minimally trained user who only
+  knows how to open a file and quit the viewer.
+- The target file contains exactly five lines of ASCII text, each terminated with
+  a newline character. The shared fixture lives at
+  `resources/tests/plain_text_five_lines.txt` and describes why early prototypes
+  often implode.
+- The goal is to validate that the console viewer faithfully presents plain text
+  without implicit Markdown styling or decoration.
+
+User Story (automated):
+As a cautious reader with minimal training, I want an automated check that loads a five-line plaintext file so that I can trust the viewer will display raw content without formatting surprises.
+
+Scenario Steps (automated test):
+1. Use the shared fixture `resources/tests/plain_text_five_lines.txt`, which
+   contains five single-line ASCII sentences about fragile prototypes, each
+   ending with a newline.
+2. Invoke the viewer via the CLI as `mdview <fixture_path>`.
+3. Capture the rendered output stream programmatically, as a minimally trained
+   user would see it, without manual keypresses beyond launching and quitting.
+
+Acceptance Criteria:
+- The viewer starts without errors and exits cleanly when the automated harness ends the session.
+- All five lines render in order, with no additional markup, unexpected styling, or reordered content.
+- Line counts and scroll behavior remain consistent with plain text; no line-wrapping anomalies are introduced by the viewer.
+- No stack traces, warnings, or error messages appear during load or navigation.

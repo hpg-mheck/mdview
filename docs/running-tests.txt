@@ -1,0 +1,28 @@
+Running Tests
+============
+
+Prerequisites
+-------------
+- Python 3.7 or newer available on your PATH.
+- Project dependencies installed in an isolated environment.
+
+Standard test run
+-----------------
+- Execute the full suite from the repository root:
+  - `python -m pytest`
+- For sanity checks before commits, also run:
+  - `python -m black .`
+  - `python -m ruff check .`
+  - `python -m compileall src tests`
+
+Focused execution
+-----------------
+- To target specific tests while iterating, use `-k` to match a substring:
+  - `python -m pytest -k plain_text`
+- To rerun a single file or test function:
+  - `python -m pytest tests/test_rendering.py::test_render_to_ansi_preserves_five_line_plain_text`
+
+Environment notes
+-----------------
+- Tests rely on static fixtures stored under `resources/tests/`. Keep these files in sync with their user stories.
+- Use UTF-8 when reading fixture files to preserve ASCII compatibility guarantees.

@@ -29,7 +29,9 @@ def test_render_to_ansi_formats_markdown() -> None:
     assert "Title" in ansi
     assert "Bold" in ansi
     if HAS_RICH:
-        assert "\x1b" in ansi  # ANSI styling codes should be present when Rich is available
+        assert (
+            "\x1b" in ansi
+        )  # ANSI styling codes should be present when Rich is available
 
 
 def test_render_to_ansi_passes_plain_text_through() -> None:
@@ -39,6 +41,27 @@ def test_render_to_ansi_passes_plain_text_through() -> None:
     assert content in ansi
     # Plain text should have minimal or no ANSI sequences
     assert ansi.strip().endswith("text")
+
+
+def test_render_to_ansi_preserves_five_line_plain_text() -> None:
+    """Automate the basic five-line plain-text user story using a static fixture."""
+
+    fixture = (
+        Path(__file__).resolve().parent.parent
+        / "resources"
+        / "tests"
+        / "plain_text_five_lines.txt"
+    )
+    lines = fixture.read_text(encoding="utf-8").splitlines()
+
+    rendered = render_to_ansi("\n".join(lines) + "\n", markdown=False)
+    rendered_lines = [line.rstrip("\r") for line in rendered.splitlines()]
+
+    assert rendered_lines[:5] == lines
+    assert all(part.isascii() for part in rendered_lines[:5])
+    if HAS_RICH:
+        # Rich should not inject Markdown styling when plain text is requested.
+        assert "\x1b" not in "".join(rendered_lines[:5])
 
 
 def test_page_text_uses_custom_pager() -> None:
