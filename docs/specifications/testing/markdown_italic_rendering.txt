@@ -1,0 +1,69 @@
+Markdown Italic Rendering Specification
+======================================
+
+Purpose and Scope
+-----------------
+Define fixtures and expectations for rendering Markdown italic text in
+isolation. Keep coverage focused on italic emphasis markers and their boundary
+rules so styling does not leak into neighboring content or reorder text.
+
+Assumptions
+-----------
+- Rendering uses ``rich.markdown.Markdown`` when available and falls back to
+  literal text otherwise.
+- Fixtures live under ``resources/tests/markdown/italic`` and avoid mixing
+  italics with unrelated Markdown constructs unless explicitly stated.
+- Assertions target italic styling cues (ANSI italics or clear delimiters)
+  instead of brittle full-output snapshots.
+- Output targets a monospace terminal that preserves ANSI styling sequences
+  when Rich is active.
+
+Fixtures
+--------
+- ``italic_asterisks.md``: paired ``*`` markers around single words and
+  phrases with surrounding plain text to verify tight boundaries.
+- ``italic_underscores.md``: paired ``_`` markers covering single words and
+  phrases to confirm underscore emphasis matches asterisk handling.
+- ``italic_adjacent_text.md``: italic spans touching plain text without
+  interior spaces to ensure markers do not consume neighbor characters.
+- ``italic_with_punctuation.md``: italic spans that include commas, periods,
+  and trailing punctuation so punctuation stays inside the emphasis span.
+- ``italic_nested_with_bold.md``: bold inside italic (``*_text_*``) and
+  italic followed by bold to confirm style containment and ordering.
+- ``italic_unclosed_marker.md``: lone opening ``*`` and ``_`` to confirm
+  renderers leave unmatched markers literal instead of applying styling.
+
+Rendering Expectations
+----------------------
+- Italic spans render with clear slant cues under Rich. The fallback renderer
+  preserves literal markers so readers can infer intent when styling is
+  unavailable.
+- Styling begins immediately after an opening marker and ends before the
+  closing marker without trimming interior spaces or punctuation.
+- Adjacent plain text keeps its spacing, and no characters are duplicated,
+  dropped, or reordered at italic boundaries.
+- Nested bold inside italic renders both styles when Rich is active. When
+  falling back, markers remain literal but correctly scoped. Styling never
+  spills past the closing italic marker.
+- Consecutive italic spans separated only by whitespace stay distinct and do
+  not merge into a single emphasis block.
+
+Failure and Edge Cases
+----------------------
+- Unmatched opening or closing markers render literally with no italic
+  styling applied, and they must not corrupt following text.
+- Mixed marker types (opening ``*`` with closing ``_``) render as literal text
+  rather than partially styled spans.
+- Inputs with mixed line endings (``\n`` and ``\r\n``) produce consistent
+  rendering cues without losing markers.
+- Rendering must remain stable under Python 3.7 environments and avoid new
+  dependencies beyond the existing project stack.
+
+Test Coverage Outline
+---------------------
+- Validate each fixture renders the expected italic cues and preserves literal
+  markers in fallback mode.
+- Assert that nested bold remains contained and that adjacent plain text is
+  untouched by italic parsing.
+- Confirm unmatched or mixed markers stay literal and do not trigger styling
+  or swallowing of neighbor characters.
