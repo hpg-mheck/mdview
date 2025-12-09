@@ -1,0 +1,36 @@
+AI sandbox configuration
+========================
+
+The Codex sandbox runs in a constrained, non-interactive environment. Use the
+prerequisite installer to standardize local tooling and avoid manual package
+management during automated runs.
+
+Sandbox checklist
+-----------------
+
+- Start in the repository root and run `./scripts/install_prerequisites.sh`.
+- Allow the shell wrapper to create `.venv`; it upgrades packaging tools and
+  calls the Python installer for system and pip dependencies.
+- Keep the working directory clean: the installer avoids global changes and
+  prefers the project-local virtual environment.
+- Use `--dry-run` with the Python installer when validating changes in
+  CI-style smoke tests. Example:
+  `python scripts/install_prerequisites.py --dry-run`.
+
+Platform notes
+--------------
+
+- Rocky Linux/Fedora: installer uses `dnf` or `yum` with `sudo` when
+  available.
+- Ubuntu/Debian/Mint: installer runs `apt-get update` followed by package
+  installation with `-y` for unattended runs.
+- macOS: installer expects Homebrew; ensure `brew` is on `PATH` before
+  running in the sandbox.
+
+Failure handling
+----------------
+
+- When `sudo` is unavailable, run the script as a privileged user or install
+  the prerequisites manually, then rerun the installer.
+- If the platform is unsupported, the Python script exits with a clear error.
+  CI jobs can fail fast.
