@@ -6,9 +6,6 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
-* Draft a specification for Markdown italic rendering that details fixtures,
-  styling expectations, and avoidance of spillover into surrounding text.
-
 * Draft a specification for combined bold+italic Markdown rendering that
   defines fixture composition, expected dual-style cues, and boundary handling
   rules.
