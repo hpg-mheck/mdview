@@ -1,9 +1,14 @@
 Completed Tasks
 
-Track finished tasks here with the most recently completed item at the top and
-older items below. Mark each entry with an asterisk followed by a blank line.
-When closing out work, include brief context such as dates, responsible
-contributors, and any follow-up notes. If a task was blocked, summarize how the
-blocker was resolved.
+Track finished tasks here with the most recently completed item at the
+top and older items below. Mark each entry with an asterisk followed by a
+blank line. When closing out work, include brief context such as dates,
+responsible contributors, and any follow-up notes. If a task was blocked,
+summarize how the blocker was resolved.
 
-No tasks have been completed yet.
+* Implemented the user preferences loader specified in
+  docs/specifications/user_preferences_format.txt. Recorded at
+  2025-12-09T02:33:53+00:00 by R. Talon. Delivered configuration parsing, user
+  config creation from the stock skeleton, and pytest coverage for merge
+  precedence and validation.
+

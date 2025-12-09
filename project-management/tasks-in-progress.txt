@@ -1,16 +1,10 @@
 Tasks in Progress
 
 Record tasks that are actively being implemented here. This list should stay
-empty whenever possible. When work must span multiple sessions, add tasks marked
-with an asterisk followed by a blank line. Include brief status notes and cite
-any blockers by name, task identifier, bug link, or person responsible for
-unblocking. Remove tasks from this file as soon as they are completed or moved
-back to the backlog.
+empty whenever possible. When work must span multiple sessions, add tasks
+marked with an asterisk followed by a blank line. Include brief status notes
+and cite any blockers by name, task identifier, bug link, or person
+responsible for unblocking. Remove tasks from this file as soon as they are
+completed or moved back to the backlog.
 
-
-* Implement the user preferences loader specified in
-  docs/specifications/user_preferences_format.txt. Started work at
-  2025-12-09T02:28:20+00:00. Status: reviewing the specification to outline
-  the loader interface and configuration precedence. Next: draft the loader
-  API and capture merge-order notes before coding.
 
