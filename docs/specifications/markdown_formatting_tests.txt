@@ -1,0 +1,83 @@
+Markdown Formatting Test Specifications
+======================================
+
+Scope
+-----
+Outline narrowly scoped unit tests that validate rendering of common Markdown
+formatting elements in the terminal output. Tests must stay simple, rely on
+minimal fixtures, and avoid snapshot brittleness by asserting on targeted
+textual cues or ANSI markers.
+
+Assumptions
+-----------
+- Rendering uses ``rich.markdown.Markdown`` when available and falls back to
+  plain text otherwise.
+- Test fixtures live in ``resources/tests`` and focus on isolated elements
+  rather than multi-feature documents.
+- Expected outputs check for presence of rendered tokens (e.g., ANSI stylings
+  or structural markers) rather than full-frame snapshots.
+
+Test Inventory
+--------------
+- Headings
+  - Render level-1 and level-2 headings with distinct styling; confirm heading
+    text appears and is separated by newlines.
+  - Verify deeper headings (levels 3–6) retain hierarchy cues without
+    swallowing adjacent text.
+- Emphasis
+  - Bold: ``**bold**`` renders with the bold style token and preserves word
+    boundaries.
+  - Italic: ``*italic*`` renders with the italic style token without leaking
+    to surrounding text.
+  - Bold+Italic: ``***combo***`` applies both styles and keeps characters in
+    order.
+  - Strikethrough: ``~~gone~~`` renders with strike styling and leaves other
+    words untouched.
+- Inline Code
+  - Single backtick spans render monospace styling while keeping surrounding
+    prose intact.
+  - Inline code preserves backtick-delimited content, including punctuation
+    and spacing.
+- Code Blocks
+  - Fenced blocks retain internal whitespace and render as a discrete block
+    with monospace styling.
+  - Language hint (e.g., `````python``) passes through without causing errors
+    when syntax highlighting is unavailable.
+- Blockquotes
+  - Lines starting with ``>`` render with quote styling and do not strip
+    interior emphasis markers.
+  - Nested quotes retain indentation or prefix cues without merging levels.
+- Lists
+  - Bulleted lists using ``-`` and ``*`` render as separate list items with
+    maintained order and spacing.
+  - Ordered lists render numeric prefixes correctly and continue numbering
+    across multiple lines.
+  - Nested lists preserve indentation and do not conflate parent and child
+    items.
+- Horizontal Rules
+  - ``---`` and ``***`` render as horizontal separators without emitting extra
+    text.
+- Links and Images
+  - Inline links show link text and include the target URL in rendered output
+    or metadata, depending on renderer support.
+  - Images display alt text when images cannot render; ensure URLs remain
+    visible or safely ignored per renderer behavior.
+- Tables
+  - Simple pipe tables render with aligned columns or clear column separation
+    markers.
+  - Headers remain distinct from body rows, and cell content preserves
+    spacing.
+- Escaping and Literal Text
+  - Backslash-escaped Markdown characters render literally and do not trigger
+    formatting.
+  - Inline HTML segments pass through untouched without breaking Markdown
+    parsing.
+
+Exit Criteria
+-------------
+- Each bullet in the test inventory maps to at least one future test case with
+  clear inputs and assertions.
+- Fixtures and assertions avoid brittle snapshots while still detecting
+  missing or malformed styling.
+- Specifications remain compatible with Python 3.7 environments and rely only
+  on existing project dependencies.
