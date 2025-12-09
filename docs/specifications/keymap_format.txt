@@ -1,0 +1,39 @@
+Title: Keymap Format
+Status: Draft
+
+Purpose:
+- Define naming and formatting standards for specifying key sequences and
+  mapping them to formal command codes.
+
+Key Sequence Naming:
+- Simple keys are uppercase single characters without quotes (e.g., W,
+  J). Whitespace-only sequences are forbidden.
+- Modifier syntax uses angle brackets and plus signs with uppercase
+  names, ordered CTRL, SHIFT, ALT, META, CMD when combined (e.g.,
+  <SHIFT>+<META>+W).
+- Printable keys within modifiers use uppercase characters without extra
+  quoting; avoid platform-specific symbols when a portable name exists.
+
+File Format Rules:
+- Keymaps are expressed as JSON objects with a top-level "bindings"
+  array. Each binding contains a "sequence" string and a "command"
+  string referencing a formal command code.
+- Files must use UTF-8 encoding, Unix newlines, and two-space indentation
+  for JSON structures.
+- Lines must wrap at or before 78 characters for readability in version
+  control and terminals.
+
+Validation Expectations:
+- Reject duplicate sequences that target different commands; if a
+  duplicate appears, the configuration loader must fail fast with a
+  clear error.
+- Unknown command codes should raise validation errors before runtime
+  binding occurs.
+- Accept sequences only when they adhere to the modifier ordering rules
+  listed above.
+
+Usage Guidance:
+- Keep default bindings minimal and discoverable; provide multiple
+  bindings only when accessibility or platform conventions demand it.
+- Document any platform-specific deviations in the release notes and the
+  keymap file comments if supported.

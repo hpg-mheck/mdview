@@ -1,0 +1,21 @@
+Title: Formal Command Codes
+Status: Draft
+
+Purpose:
+- Track stable identifiers for commands referenced by key bindings and
+  mode-switching workflows.
+
+Command Codes:
+- VIEW_MODE_TOGGLE: Toggle between horizontal scrolling and word-wrap
+  modes without reopening content.
+- VIEW_MODE_HORIZONTAL_ENABLE: Force horizontal scrolling mode with
+  wrap disabled and restore any stored horizontal offset.
+- VIEW_MODE_WRAP_ENABLE: Force word-wrap mode and clear horizontal
+  offsets while preserving vertical anchors.
+
+Usage Notes:
+- Command codes are stable API surfaces for configuration files and
+  automated tests; avoid renaming once released.
+- Each code maps to exactly one handler; handler logic decides whether
+  the command is currently available and should communicate when
+  disabled.

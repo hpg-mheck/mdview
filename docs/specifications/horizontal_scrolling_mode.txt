@@ -1,0 +1,63 @@
+Title: Horizontal Scrolling Mode (No Word Wrap)
+Status: Draft
+
+Overview:
+- Define viewport behavior when long lines extend horizontally and word
+  wrapping is disabled.
+- Apply to reading, navigation, and layout recalculation whenever the
+  application enters or remains in horizontal scrolling mode.
+
+Default Layout:
+- Lines render without breaking; horizontal overflow is accessible via
+  horizontal scroll.
+- The viewport preserves both vertical and horizontal offsets across
+  navigation, search, and resize actions.
+- A ruler or gutter alignment must remain vertically locked so that line
+  numbers and annotations track the original line starts.
+
+Scrolling Behavior:
+- Vertical scrolling moves along document lines; horizontal offsets
+  remain unchanged unless user explicitly scrolls horizontally.
+- Horizontal scrolling is available via mouse wheel modifiers, trackpad
+  gestures, or keyboard panning commands.
+- Inertial or paged horizontal scrolls must stop at content bounds and
+  respect configured scroll increment settings.
+- When both axes change simultaneously (e.g., touchpad diagonal), apply
+  movement independently per axis without coupling offsets.
+
+Search and Jump Behavior:
+- After search results or go-to-line/page actions, position the target
+  line at the top of the viewport when possible, retaining the prior
+  horizontal offset unless the match lies beyond the visible column
+  range.
+- If the match exceeds the current horizontal view, auto-adjust the
+  horizontal offset just enough to reveal the earliest character of the
+  match while preserving left margin context.
+- For repeated find-next/find-previous, maintain the chosen horizontal
+  offset unless the new match requires re-centering; do not reset to the
+  left edge between results.
+
+Anchoring and Resizing:
+- On window resize, recalc visible columns but keep the top-left anchor
+  stable when feasible. If the previous anchor column no longer exists
+  (e.g., window shrinks), clamp the horizontal offset to the maximum
+  valid column while keeping the same line at the top.
+- When the window expands, retain the prior offset and reveal additional
+  columns to the right without shifting content left.
+- Zoom-level changes act like resizes: preserve line and column anchors
+  and clamp only when necessary.
+
+Accessibility and Indicators:
+- Provide a horizontal scroll indicator (e.g., a minimap or scrollbar)
+  that reflects current column offset and range.
+- Ensure keyboard focus follows scroll adjustments so that focused
+  elements remain reachable by tabbing and screen readers announce the
+  current line and column after jumps.
+
+Testing Guidance (post-spec):
+- Verify simultaneous vertical and horizontal scroll gestures preserve
+  independent offsets.
+- Confirm search result navigation reveals matches beyond the current
+  column without snapping to column zero.
+- Validate that resizing wider does not shift content left and resizing
+  narrower clamps offsets while keeping the same top line visible.

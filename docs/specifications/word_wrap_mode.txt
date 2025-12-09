@@ -1,0 +1,57 @@
+Title: Word-Wrap Mode
+Status: Draft
+
+Overview:
+- Define viewport behavior when long lines wrap within the available
+  width.
+- Apply to reading, navigation, and layout recalculation whenever word
+  wrap is enabled.
+
+Default Layout:
+- Lines wrap at word boundaries by default; fallback to character wrap
+  when a single token exceeds the available width.
+- Wrapped segments preserve logical line identity for numbering,
+  annotations, and selection operations.
+- Viewport uses vertical-only scrolling; horizontal scrollbars remain
+  hidden unless explicitly enabled for accessibility.
+
+Scrolling Behavior:
+- Vertical scrolling follows wrapped visual lines while maintaining the
+  association with the underlying logical line numbers.
+- Keyboard paging moves by visible rows, not by logical lines; page-size
+  calculations account for wrap depth.
+- When line wrapping changes due to resize or zoom, reflow text and keep
+  the first fully visible logical line at the top of the viewport.
+
+Search and Jump Behavior:
+- After search results or go-to actions, place the target logical line at
+  the top of the viewport when feasible, adjusting scroll so the match
+  begins on-screen.
+- For find-next/find-previous, preserve current horizontal alignment (the
+  left edge) and avoid horizontal offsets that would reveal empty space.
+- Selection and caret movement across wrapped segments must respect
+  logical line order; jumps never split selections across unrelated
+  logical lines.
+
+Anchoring and Resizing:
+- On window resize or zoom, recompute wrapping and preserve the logical
+  line that previously anchored the top of the viewport; reflow so that
+  the first visible wrapped segment of that line remains visible.
+- If shrinkage would push part of the anchor line off-screen, adjust the
+  vertical offset to keep the earliest wrapped segment visible.
+- Expanding the window widens wrap columns without altering the anchor
+  line position; newly visible width fills to the right.
+
+Accessibility and Indicators:
+- Provide a visual indicator when wrapping is active (e.g., a status bar
+  tag) and ensure screen readers announce wrapping state on toggle.
+- Maintain consistent focus order across wrapped segments; focusable
+  elements within a logical line must follow reading order after reflow.
+
+Testing Guidance (post-spec):
+- Validate that resizing narrower reflows text without losing the
+  anchored logical line.
+- Confirm that search navigation lands with matches visible and without
+  horizontal scroll.
+- Verify paging counts visible wrapped rows and keeps logical line
+  numbering consistent during selection.
