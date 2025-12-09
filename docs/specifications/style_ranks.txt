@@ -1,0 +1,20 @@
+Markdown Style Ranks
+====================
+
+Methodology
+-----------
+Ranks use unique multiples of 100 to keep space for future additions while
+staying sortable. Lower numbers carry higher priority, so conflicts drop
+styles with larger ranks first. Keep the list sorted by rank and avoid
+duplicate values to preserve predictable resolution.
+
+Rank | Style | Rationale
+---- | ----- | ---------
+100 | Inline code | Literal content must survive styling conflicts
+200 | Code block | Block-level fidelity outranks inline emphasis
+300 | Link text | Clickability and target visibility matter before emphasis
+400 | Bold+Italic | Combined emphasis is more semantic than single emphasis
+500 | Bold | Strong emphasis is retained ahead of lighter cues
+600 | Italic | Lighter emphasis yields to higher-ranked styling
+700 | Strikethrough | Visual deletion can yield to preserve readability
+800 | Underline | TBD; currently lowest priority
