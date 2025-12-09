@@ -6,12 +6,6 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
-* Implement the user preferences loader specified in
-  docs/specifications/user_preferences_format.txt. Read system and user config
-  files with the documented precedence, fall back to built-in defaults, and
-  ship a commented skeleton under resources/stock-config. Add permission-aware
-  creation logic plus pytest coverage for merge behavior and failure modes.
-
 * Add the mode-switching hotkey that toggles word-wrap and horizontal scroll
   modes per docs/specifications/mode_switching_hotkey.txt. Preserve scroll
   anchors and search highlights across toggles, emit transient status
