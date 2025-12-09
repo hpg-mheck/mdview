@@ -1,0 +1,82 @@
+Title: Codex build log introspection for iteration feedback
+Date: 2024-06-06
+Author: R. Talon (Matt "Breakpoint" Heck)
+
+Goal
+* Provide an on-demand, Codex-UI-triggered analysis of OpenAI Codex build
+  logs to surface actionable iteration improvements without automatic data
+  collection.
+* Enter each iteration with a reusable, standard loop so the analyzer does
+  not re-derive how to parse, test, and summarize common patterns.
+
+Scope
+* Applies to Codex build logs exported manually by the user from the Codex UI
+  and supplied to the analysis workflow.
+* Produces human-readable findings and lightweight machine-readable signals
+  (JSON) to guide iteration planning.
+
+Inputs
+* Required: a full Codex build log file (text) uploaded through the Codex UI
+  or placed at `resources/tests/codex-logs/latest.log` before invocation.
+* Optional: a short prompt describing the suspected issue or desired focus
+  area (performance, flakiness, dependency drift, etc.).
+
+Trigger and execution
+* Invoked manually from the Codex UI via an "Analyze build log" action.
+* The UI submits the provided log (or reads the staging path) and any user
+  hints to the analyzer service.
+* The analyzer runs in a dry-run-friendly mode; no network calls or side
+  effects beyond producing reports.
+
+Processing steps
+* Validate input: reject logs older than 30 days or larger than 10 MB; flag
+  redactions or truncation warnings.
+* Parse phases: extract timestamps, targets, environment metadata, warnings,
+  errors, retries, cache hits/misses, test outcomes, and durations.
+* Apply heuristics:
+  - Detect slow hotspots (top N phases and tests by wall-clock time).
+  - Detect retry loops, flake signatures, and non-deterministic failures.
+  - Spot dependency drift (pip/conda/npm changes) and tool version skew.
+  - Flag missing cache primes or low cache hit ratios.
+  - Identify lint/format/test failures that recur across builds.
+  - Highlight environment mismatches between build and local dev hints.
+* Classify findings by severity (blocker, warning, info) and by category
+  (infra, tests, deps, tooling, caching, config).
+
+Baseline iteration loop (do not re-invent per run)
+* Standard checklist that always runs, even when the user provides a focus
+  prompt:
+  - Ingest and normalize log metadata (build ID, branch, commit, executor,
+    timestamps) to anchor comparisons.
+  - Apply the canonical heuristics table in order of severity, capturing the
+    first N matched snippets per heuristic for repeatability.
+  - Run the golden-sample regression tests against the parser and the
+    heuristic classifier using the fixtures under
+    `resources/tests/codex-logs/` before rendering output.
+  - Emit the machine-readable JSON payload alongside the human-readable
+    summary so downstream scripts can chain off the same data without
+    recomputation.
+* Store the checklist and heuristics table in version control next to this
+  specification; do not require the operator to restate them in the UI.
+* Cache the most recent JSON outputs for the last three analyses in the
+  Codex UI session so re-renders (for example, after wording tweaks) avoid
+  re-running parsing or heuristics unless the log changes.
+
+Outputs
+* Human-readable summary for the Codex UI with: top findings, suggested next
+  steps, and links to documentation or runbooks.
+* Machine-readable JSON artifact containing structured findings, severity,
+  categories, and supporting snippets to enable future automation.
+* Optional: timeline chart data (phase durations and bottlenecks) for UI
+  visualization.
+
+Operational notes
+* Privacy: the analyzer treats logs as ephemeral; no data is persisted after
+  the report is returned to the UI.
+* Extensibility: heuristics are table-driven so new patterns can be added
+  without code changes to the parser.
+* Testing: store sample logs in `resources/tests/codex-logs/` and validate
+  parsing, heuristic coverage, and report formatting via unit tests.
+* Discipline: do not analyze Codex logs outside the explicit "Analyze the
+  latest Codex logs" directive; this workflow exists solely to improve Codex
+  iteration and testing throughput.

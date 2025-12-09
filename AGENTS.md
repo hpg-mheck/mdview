@@ -106,3 +106,8 @@ commit messages.
   are introduced.
 - Standing order: extend this section with concise bullets for every new
   fallback so expectations stay visible to contributors.
+
+## Codex Log Handling Orders
+- Do not inspect or process Codex build logs except when explicitly directed
+  to "Analyze the latest Codex logs" for Codex-iteration optimization. Treat
+  any other examination as out of scope.
