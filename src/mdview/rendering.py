@@ -16,6 +16,7 @@ from typing import Callable, Optional
 try:  # pragma: no cover - import resolution differs by environment
     from rich.console import Console
     from rich.markdown import Markdown
+
     HAS_RICH = True
 except ImportError:  # pragma: no cover - exercised implicitly when Rich is absent
     HAS_RICH = False
@@ -39,6 +40,7 @@ except ImportError:  # pragma: no cover - exercised implicitly when Rich is abse
 
         def export_text(self, styles: bool = True) -> str:
             return "\n".join(self._buffer)
+
 
 # Type alias for pager callables used in tests and potential future hooks.
 Pager = Callable[[str], None]
@@ -152,7 +154,9 @@ def _pipe_to_command(text: str, command: str) -> None:
             process.stdin.close()
             return_code = process.wait()
     except OSError as error:
-        raise RuntimeError(f"Failed to execute pager command '{command}': {error}") from error
+        raise RuntimeError(
+            f"Failed to execute pager command '{command}': {error}"
+        ) from error
 
     if return_code != 0:
         raise RuntimeError(

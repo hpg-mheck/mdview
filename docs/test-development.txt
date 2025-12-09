@@ -1,0 +1,30 @@
+Test Development Standards
+==========================
+
+Purpose
+-------
+This note guides contributors who design and maintain tests for **mdview**. It distills the repository’s testing philosophy—pessimistic, automated, and user-story-driven—into concrete steps that keep coverage reliable and repeatable.
+
+Principles
+----------
+- Treat every test as an executable user story. Encode the intent and acceptance criteria from the corresponding scenario in `docs/specifications/testing/user_stories/`.
+- Default to defense in depth. Exercise error paths, boundary conditions, and regression risks—not just happy paths.
+- Keep fixtures deterministic. Prefer static assets to inlined strings when the input needs to be shared across tests.
+
+Static fixtures
+---------------
+- Place reusable fixture files under `resources/tests/`. Keep filenames descriptive and limited to ASCII for portability.
+- Reference fixtures from tests using `Path(__file__).resolve().parent.parent / "resources" / "tests" / <filename>`. This keeps lookups stable even when tests run from different working directories.
+- Document fixture intent in the user story or docstring so future changes preserve behavior.
+
+Implementing new tests
+----------------------
+1. Draft or update the relevant user story under `docs/specifications/testing/user_stories/`.
+2. Add or revise fixtures in `resources/tests/` if the test depends on shared input.
+3. Write the test, keeping setup explicit and pessimistic. Include assertions for ordering, encoding, and absence of unintended side effects.
+4. Run `python -m pytest` (or a focused subset while iterating) and address regressions immediately.
+
+Version control etiquette
+-------------------------
+- Commit tests alongside the code they validate.
+- When refactoring tests, keep historical intent intact and note any scope changes in the commit message.

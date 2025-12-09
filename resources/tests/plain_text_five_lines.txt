@@ -1,0 +1,5 @@
+Early prototypes wobble like newborn foals, collapsing under trivial loads.
+Even when they boot, they leak secrets, crash consoles, and confuse operators.
+Documentation often lags, forcing testers to reverse-engineer unstable behaviors.
+Every ill-timed keypress reveals another edge case that monitoring overlooked.
+Only ruthless iteration turns those disasters into tools anyone should trust.
