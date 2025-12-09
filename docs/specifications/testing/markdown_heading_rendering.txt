@@ -1,0 +1,71 @@
+Markdown Heading Rendering Specification
+=======================================
+
+Purpose and Scope
+-----------------
+Define fixtures and expectations for rendering Markdown headings in isolation.
+Keep coverage limited to heading syntax (``#`` through ``######``) without
+combining with other Markdown elements. Apply these rules to terminal output
+produced by the default renderer and its plain-text fallback.
+
+Assumptions
+-----------
+- Rendering uses ``rich.markdown.Markdown`` when available and falls back to
+  plain text otherwise.
+- Fixtures live under ``resources/tests/markdown/headings`` and avoid mixing
+  headings with unrelated formatting.
+- Assertions focus on structural and styling cues rather than full snapshot
+  comparisons.
+- Output targets a monospace terminal that preserves ANSI styling sequences
+  when Rich is active.
+
+Fixtures
+--------
+- ``h1_and_h2.md``: level-1 and level-2 headings with surrounding blank lines
+  to verify separation and hierarchy cues.
+- ``h3_through_h6.md``: consecutive headings from level 3 through level 6 to
+  confirm distinct prefixes and non-collapsing ordering.
+- ``heading_with_inline_punctuation.md``: a single heading containing commas,
+  periods, and a trailing colon to ensure punctuation remains verbatim.
+- ``heading_adjacent_text.md``: a heading followed immediately by body text on
+  the next line to confirm the renderer does not swallow or merge content.
+- ``heading_with_inline_formatting.md``: a heading that includes emphasis
+  markers inside the heading text to ensure inner styling does not escape the
+  heading boundary.
+
+Rendering Expectations
+----------------------
+- All headings emit a trailing newline after the heading block so that
+  following text begins on a new line.
+- Level 1 and level 2 headings render with stronger visual cues (e.g., bold or
+  underline tokens) than deeper levels. When Rich is unavailable, prefixes and
+  spacing still signal hierarchy.
+- Levels 3 through 6 retain their ``#``-derived hierarchy cues without losing
+  characters or collapsing into one another.
+- Inline punctuation and spacing inside headings render exactly as provided
+  and do not strip colons, commas, or periods.
+- Inline emphasis markers inside headings render as styled text when Rich is
+  active and remain literal when the fallback renderer is in use. Styling does
+  not leak into subsequent lines.
+- Adjacent body text begins after the heading's terminating newline. No
+  heading consumes the first character of the following paragraph.
+
+Compatibility and Edge Cases
+----------------------------
+- Inputs with mixed line endings (``\n`` and ``\r\n``) must parse consistently
+  and produce the same rendered output cues.
+- Leading or trailing spaces before the ``#`` prefix are treated as literal
+  text rather than heading markers to match standard Markdown behavior.
+- Empty headings (``#\n``) render as blank lines without emitting stray style
+  markers.
+- Rendering must remain stable under Python 3.7 environments and avoid
+  dependencies beyond the existing project stack.
+
+Test Coverage Outline
+---------------------
+- Validate that each fixture produces the expected heading hierarchy cues and
+  trailing newlines without snapshot brittleness.
+- Assert that inline formatting stays contained within the heading span and
+  does not alter surrounding content.
+- Confirm fallback behavior still surfaces heading structure through prefixes
+  or spacing when styling is unavailable.
