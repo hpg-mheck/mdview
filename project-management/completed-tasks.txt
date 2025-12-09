@@ -1,0 +1,9 @@
+Completed Tasks
+
+Track finished tasks here with the most recently completed item at the top and
+older items below. Mark each entry with an asterisk followed by a blank line.
+When closing out work, include brief context such as dates, responsible
+contributors, and any follow-up notes. If a task was blocked, summarize how the
+blocker was resolved.
+
+No tasks have been completed yet.
