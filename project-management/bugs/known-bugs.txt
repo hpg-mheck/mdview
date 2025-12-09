@@ -1,0 +1,7 @@
+# Known bugs
+# ----------
+#
+# Keep confirmed bugs awaiting work in this file. Use an asterisk followed by
+# a blank line for each entry, mirroring `/project-management/backlog.txt`.
+# Include a concise summary, reproduction notes when available, the ISO 8601
+# timestamp for when the bug was logged, and any blockers or owners.

@@ -1,0 +1,31 @@
+AI backlog iteration cycle
+==========================
+
+Use this process when instructed to "Iterate the backlog" or simply
+"iterate" without further qualifiers. Follow the steps once per cycle for a
+single backlog entry so the backlog remains the ordered source of truth.
+
+1. Identify the top backlog item in `/project-management/backlog.txt` and read
+   any status notes, blockers, and timestamps documenting when it was added.
+2. Confirm scope and assumptions. Ask clarifying questions only when
+   absolutely necessary to move forward.
+3. Choose the smallest next action that meaningfully advances the item toward
+   completion. Keep the action aligned with existing specifications and
+   quality bars.
+4. Update `/project-management/tasks-in-progress.txt` if you pick up work.
+   Stamp the entry with the current ISO 8601 timestamp to mark when the item
+   entered active effort. Leave the backlog entry in place until the work is
+   complete or explicitly removed.
+5. Execute the chosen action with tests and documentation as required. Make
+   defensive, reversible changes and favor clarity over cleverness.
+6. When a concrete outcome is achieved, update the backlog entry with a brief
+   note or move it to `/project-management/completed-tasks.txt`, adding an ISO
+   8601 timestamp showing when the change was recorded. If work continues,
+   refresh the status in `tasks-in-progress` instead.
+7. Reassess the backlog ordering if new information appears. Leave a timestamp
+   whenever an item is added to or moved between the backlog and progress
+   lists to preserve accountability.
+
+Repeat this cycle only when directed. For bug lists, follow the analogous bug
+iteration guidance noted in `AGENTS.md` and the bug-tracking files instead of
+this backlog-specific process.
