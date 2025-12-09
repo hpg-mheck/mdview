@@ -6,7 +6,13 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from mdview import __version__
-from mdview.rendering import is_markdown_file, page_text, read_text, render_to_ansi
+from mdview.rendering import (
+    get_fallback_notices,
+    is_markdown_file,
+    page_text,
+    read_text,
+    render_to_ansi,
+)
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -40,20 +46,37 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _emit_fallback_notices() -> None:
+    """Print fallback notices, if any, to standard error before exiting."""
+
+    notices = get_fallback_notices()
+    if not notices:
+        return
+
+    print("mdview: fallback notices:", file=sys.stderr)
+    for notice in notices:
+        print(f"  - {notice}", file=sys.stderr)
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """Entry point for the ``mdview`` CLI."""
 
     args = parse_args(argv)
+    exit_code = 0
     path: Path = args.path
     if not path.exists() or not path.is_file():
         print(f"mdview: path does not exist or is not a file: {path}", file=sys.stderr)
-        return 2
+        exit_code = 2
+        _emit_fallback_notices()
+        return exit_code
 
     try:
         content = read_text(path)
     except (OSError, UnicodeDecodeError) as error:
         print(f"mdview: failed to read '{path}': {error}", file=sys.stderr)
-        return 3
+        exit_code = 3
+        _emit_fallback_notices()
+        return exit_code
 
     ansi_text = render_to_ansi(content, markdown=is_markdown_file(path))
 
@@ -61,9 +84,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         page_text(ansi_text, pager_command=args.pager_command)
     except RuntimeError as error:
         print(f"mdview: pager error: {error}", file=sys.stderr)
-        return 4
-
-    return 0
+        exit_code = 4
+    _emit_fallback_notices()
+    return exit_code
 
 
 if __name__ == "__main__":

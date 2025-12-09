@@ -35,6 +35,9 @@ class _PlainConsole:
         return "\n".join(self._buffer)
 
 
+_FALLBACK_NOTICES: List[str] = []
+
+
 def _select_rendering_backend() -> Tuple[Type[object], Type[object], bool]:
     """Determine whether Rich is available and return rendering primitives.
 
@@ -45,6 +48,10 @@ def _select_rendering_backend() -> Tuple[Type[object], Type[object], bool]:
     """
 
     if importlib.util.find_spec("rich") is None:
+        _FALLBACK_NOTICES.append(
+            "Rich not available: using plain-text rendering. Install 'rich' for "
+            "styled output."
+        )
         return _PlainConsole, _PlainMarkdown, False
 
     from rich.console import Console  # type: ignore
@@ -58,6 +65,12 @@ Console, Markdown, HAS_RICH = _select_rendering_backend()
 
 # Type alias for pager callables used in tests and potential future hooks.
 Pager = Callable[[str], None]
+
+
+def get_fallback_notices() -> List[str]:
+    """Return human-readable notices describing active fallback behavior."""
+
+    return list(_FALLBACK_NOTICES)
 
 
 def is_markdown_file(path: Path) -> bool:
