@@ -1,8 +1,6 @@
 import sys
 from pathlib import Path
 
-import pytest
-
 from scripts.install_prerequisites import (
     CommandRunner,
     OSInfo,

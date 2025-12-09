@@ -1,0 +1,30 @@
+Stock Configuration Standing Orders
+==================================
+
+Scope
+-----
+These orders cover the stock configuration artifacts stored under
+``resources/stock-config/``: ``mdview.conf`` and ``mdview-keymap.conf``.
+They apply to specifications, feature proposals, bugfix proposals, and the
+implementation work that follows them.
+
+Documentation requirements
+--------------------------
+- Every specification, feature proposal, and bugfix proposal must describe
+  any expected additions or modifications to the stock ``mdview.conf`` and
+  ``mdview-keymap.conf`` files. This includes new options, default value
+  shifts, binding changes, and deprecations.
+- Proposals must call out whether defaults change at the system level,
+  user level, or both so reviewers can audit the impact on existing
+  installations.
+
+Implementation requirements
+---------------------------
+- When implementing an approved specification or proposal, apply the
+  documented changes directly to the stock files in
+  ``resources/stock-config/``.
+- Keep the configuration skeletons synchronized with documentation and
+  release notes; never leave the stock files lagging behind the expected
+  behavior.
+- Note deviations in commit messages when emergent fixes require
+  configuration adjustments beyond the original proposal.

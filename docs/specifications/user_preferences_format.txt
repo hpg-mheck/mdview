@@ -85,10 +85,15 @@ commented out. This mirrors the style of ``/etc/default`` files and
 
 Change Management
 -----------------
-- Place the skeleton under ``resources/`` for packaging and ship the same
-  content to ``/etc/mdview/mdview.conf``. User-level copies should be
-  created lazily when a user first requests customization.
+- Place the skeleton under ``resources/stock-config/`` for packaging and
+  ship the same content to ``/etc/mdview/mdview.conf``. User-level copies
+  should be created lazily when a user first requests customization.
 - Future options must be added to both the "Recognized Sections and
   Keys" list and the skeleton, maintaining commented defaults.
 - When deprecating an option, retain it in the skeleton marked with a
   ``# deprecated:`` note until the next major release.
+- Specifications, feature proposals, and bugfix proposals must explicitly
+  describe any new options or default changes expected in the stock
+  ``mdview.conf``. Implementations must keep
+  ``resources/stock-config/mdview.conf`` synchronized with those
+  directions.
