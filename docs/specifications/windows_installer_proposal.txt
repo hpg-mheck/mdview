@@ -1,0 +1,105 @@
+Windows Installer Proposal for mdview
+====================================
+
+Purpose
+-------
+Create a reproducible process for building signed or unsigned Windows
+installers that deliver the mdview CLI without requiring a pre-installed
+Python runtime. The process must emit architecture-specific artifacts that
+can be hosted with release assets and consumed by enterprise deployment
+pipelines.
+
+Goals and Non-Goals
+-------------------
+- Goals
+  - Produce standalone ``.exe`` and ``.msi`` installers for ``x86_64`` and
+    ``arm32``/``arm64`` Windows targets.
+  - Build installers via ``scripts/build/build-windows-installer.py`` so CI
+    can emit artifacts under ``/artifacts/installers/Windows`` with the
+    pattern ``mdview-win-<arch>.<exe|msi>``.
+  - Bundle required runtime components so mdview runs without system Python.
+  - Provide hooks for code-signing where credentials are available.
+  - Document testing, verification, and rollback guidance suitable for
+    automated release pipelines.
+- Non-Goals
+  - Shipping Windows-specific feature deviations in mdview itself.
+  - Supporting legacy 32-bit Intel targets beyond ``x86_64``.
+  - Building installers from non-Windows hosts when native toolchains are
+    unavailable.
+
+Build Strategy
+--------------
+- Build Host
+  - Execute the builder on Windows hosts only (e.g., GitHub Actions
+    ``windows-latest``), assuming access to common tooling such as the
+    Community edition of Visual Studio, WiX Toolset, or MSIX packaging
+    utilities. This avoids cross-compilation gaps and ensures native SDKs and
+    redistributables are present.
+- Packaging Format
+  - Prefer ``PyInstaller`` for a self-contained ``.exe`` that vendors the
+    Python runtime and ``mdview`` entrypoint. Configure ``--onefile`` to
+    simplify distribution while allowing ``--onedir`` if startup latency is
+    unacceptable.
+  - Generate ``.msi`` via WiX Toolset (``candle`` + ``light``) using the
+    PyInstaller payload as the application binaries. Provide a fallback to
+    ``msix-packaging`` if WiX is unavailable on the agent.
+- Architecture Handling
+  - Build separate virtual environments per target architecture. On
+    ``windows-latest`` runners, use ``--target-arch`` in PyInstaller to
+    emit ``x86_64`` and ``arm64`` payloads; for ``arm32`` rely on native
+    builders where available. Fail fast with actionable errors when the
+    toolchain cannot emit the requested arch.
+- Versioning and Naming
+  - Derive version from ``mdview --version`` (or ``pyproject.toml``) and
+    embed it in installer metadata. Name artifacts
+    ``mdview-win-<arch>.exe`` and ``mdview-win-<arch>.msi`` under
+    ``/artifacts/installers/Windows``.
+- Signing Hooks
+  - Provide optional arguments for certificate path, timestamp server, and
+    signing tool (``signtool``). Skip signing when inputs are absent while
+    logging a warning.
+- Dependencies and Assets
+  - Cache ``rich`` and other dependencies in the build venv. Include README
+    and LICENSE in installer resources, and surface an uninstall entry via
+    WiX so mdview appears in "Apps & features".
+
+scripts/build/build-windows-installer.py Scope
+----------------------------------------------
+- Inputs
+  - Target architecture flag, output directory, signing options, and a flag
+    choosing ``exe`` vs ``msi`` (default: build both).
+- Steps
+  - Create a clean virtual environment and install the project from source
+    or wheel.
+  - Run PyInstaller with a stable spec file that pins console entrypoint
+    metadata and icon assets.
+  - For MSI: stage the PyInstaller output into a WiX directory structure,
+    generate a ``.wxs`` manifest with product name, upgrade code, version,
+    and shortcuts, then invoke ``candle`` and ``light``.
+  - Emit logs and manifest summaries into ``/artifacts/installers/Windows``
+    alongside the binaries for auditability.
+  - Exit non-zero on warnings that could yield broken installers (missing
+    dependencies, signing failure, WiX absence).
+
+Testing and Validation
+----------------------
+- Automated Verification
+  - Run ``mdview --version`` from the installed binary to confirm the
+    embedded runtime works.
+  - Smoke-test rendering a sample Markdown file to validate pager
+    invocation and ANSI output behavior.
+  - Verify uninstall succeeds and removes binaries and registry entries.
+  - Run ``signtool verify /pa`` when signing is enabled.
+- CI Integration
+  - Add a Windows CI job that invokes the builder for each architecture,
+    uploads artifacts, and publishes build logs. Cache Python wheels to keep
+    cycle time reasonable.
+
+Risks and Mitigations
+---------------------
+- WiX availability: detect early and fall back to MSIX or emit guidance to
+  install WiX Toolset 3.x. Document required PATH updates.
+- Startup latency for ``--onefile`` bundles: profile and switch to
+  ``--onedir`` when startup exceeds acceptable thresholds.
+- Arm builders availability: gate arm targets behind feature flags until a
+  stable runner exists. Document manual build steps for ad hoc arm testing.
