@@ -8,6 +8,18 @@ This project follows pragmatic Python best practices with an emphasis on portabi
 - Maintain compatibility with Python 3.7 constructs and standard library features unless explicitly justified otherwise.
 - Comment sparingly but meaningfully: explain *why* rather than *what* when intent is non-obvious.
 
+# Contribution Guidelines
+- Write feature specifications **before** implementing tests or
+  production code.
+- Store all specifications as plain text under `docs/specifications/`.
+- Follow existing documentation style and keep specs concise, actionable,
+  and testable.
+- Wrap user documentation and project specification text files to 78
+  columns. This applies to all text files except those under
+  `resources/tests` or `resources/testing` that are used for test data.
+- After modifying any text files outside `resources/tests` or
+  `resources/testing`, verify they comply with the 78-column wrap rule.
+
 ## Testing Expectations
 - Default to extensive, paranoid, pessimistic unit tests. Cover edge cases, error handling, and failure modes alongside happy paths.
 - Derive tests from user stories and scenarios; keep them executable and reproducible.

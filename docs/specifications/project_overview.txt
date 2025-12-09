@@ -1,59 +1,79 @@
 mdview: Console Markdown Viewer Specification
-=============================================
+============================================
 
 Purpose
 -------
-mdview renders Markdown and plain-text documents directly in a terminal while delegating navigation to the familiar ``less`` pager. The tool preserves semantic formatting (headings, emphasis, code blocks, lists) using ANSI styling while keeping the interaction model intentionally minimal and consistent with ``less``.
+mdview renders Markdown and plain-text documents directly in a terminal
+while delegating navigation to the familiar ``less`` pager. The tool
+preserves semantic formatting (headings, emphasis, code blocks, lists)
+using ANSI styling while keeping the interaction model intentionally
+minimal and consistent with ``less``.
 
 Goals and Non-Goals
 -------------------
 - Goals
   - Provide a readable, styled Markdown rendering in terminals.
-  - Offer familiar ``less`` navigation: line/page scrolling, search, jump to start/end, and quit.
-  - Remain lightweight with minimal dependencies (Python 3.8+, ``rich`` for formatting, standard library for paging and CLI).
+  - Offer familiar ``less`` navigation: line/page scrolling, search, jump
+    to start/end, and quit.
+  - Remain lightweight with minimal dependencies (Python 3.8+, ``rich``
+    for formatting, standard library for paging and CLI).
 - Non-Goals
   - Editing or annotating documents.
   - Implementing a custom curses pager beyond basic output piping.
-  - Supporting formats beyond ``.md``, ``.markdown``, and ``.txt`` in the initial release.
+  - Supporting formats beyond ``.md``, ``.markdown``, and ``.txt`` in the
+    initial release.
 
 User Workflow
 -------------
 1. Invoke ``mdview <path>``.
 2. mdview determines if the file is Markdown or plain text.
-3. mdview renders the content with ``rich`` (Markdown markup or plain text as-is).
-4. The rendered ANSI text is piped to ``less -R`` (via ``pydoc.pager``) for navigation and search.
+3. mdview renders the content with ``rich`` (Markdown markup or plain
+   text as-is).
+4. The rendered ANSI text is piped to ``less -R`` (via ``pydoc.pager``)
+   for navigation and search.
 
 Functional Requirements
 -----------------------
 - File Handling
-  - Accepts files with ``.md`` or ``.markdown`` as Markdown; treats ``.txt`` and other extensions as plain text.
+  - Accepts files with ``.md`` or ``.markdown`` as Markdown; treats
+    ``.txt`` and other extensions as plain text.
   - Reads content using UTF-8 with graceful error messaging on failure.
 - Rendering
   - Markdown files: rendered using ``rich.markdown.Markdown``.
-  - Plain text: passed through unmodified except for safe handling of control characters.
+  - Plain text: passed through unmodified except for safe handling of
+    control characters.
 - Paging
-  - Uses the ``less`` pager (``LESS=-R``) to preserve ANSI styling and allow search navigation.
-  - Falls back to the default ``pydoc.pager`` behavior if ``less`` is unavailable on the host.
+  - Uses the ``less`` pager (``LESS=-R``) to preserve ANSI styling and
+    allow search navigation.
+  - Falls back to the default ``pydoc.pager`` behavior if ``less`` is
+    unavailable on the host.
 - CLI
   - Command: ``mdview <path>``.
-  - Options: ``--version`` for program version; ``--pager`` to override the pager command (optional future hook).
+  - Options: ``--version`` for program version; ``--pager`` to override
+    the pager command (optional future hook).
 
 Quality Attributes
 ------------------
-- Reliability: Clear error messages for missing files, unreadable files, or rendering issues.
-- Usability: Output should be immediately legible; headings and emphasis must stand out, and navigation mirrors ``less``.
-- Portability: Works on Unix-like systems with Python 3.8+; degrades gracefully if ``less`` is missing.
-- Testability: Core formatting and content-loading logic covered by unit tests (pytest). CLI behavior validated via smoke tests where feasible.
+- Reliability: Clear error messages for missing files, unreadable files,
+  or rendering issues.
+- Usability: Output should be immediately legible; headings and emphasis
+  must stand out, and navigation mirrors ``less``.
+- Portability: Works on Unix-like systems with Python 3.8+; degrades
+  gracefully if ``less`` is missing.
+- Testability: Core formatting and content-loading logic covered by unit
+  tests (pytest). CLI behavior validated via smoke tests where feasible.
 
 Dependencies
 ------------
 - Runtime: ``rich`` for Markdown rendering.
-- Standard library: ``argparse``, ``pathlib``, ``pydoc``, ``subprocess``, and ``typing``.
+- Standard library: ``argparse``, ``pathlib``, ``pydoc``, ``subprocess``,
+  and ``typing``.
 - Dev/Test: ``pytest`` for unit tests.
 
 Future Enhancements (Out of Scope for Initial Scaffold)
--------------------------------------------------------
+------------------------------------------------------
 - Optional themes or custom styling for different terminal backgrounds.
 - Syntax highlighting for fenced code blocks using Pygments.
-- Inline link rendering improvements (e.g., hiding raw URLs behind link text).
+- Inline link rendering improvements (e.g., hiding raw URLs behind link
+  text).
 - Basic HTML input support by translating HTML tags to terminal styling.

@@ -1,0 +1,54 @@
+Title: Hyperlink Highlighting and Cyclic Keyboard Navigation
+Status: Draft
+
+Overview:
+- Define how hyperlinks are visually denoted in loaded documents and how
+  keyboard navigation cycles through them.
+- Applies to all rendered document views that surface clickable
+  hyperlinks.
+
+Visual Denotation:
+- Hyperlinks must be visibly distinct from surrounding text with
+  underlining as the default indicator.
+- When a hyperlink has keyboard focus, display a focused style (e.g.,
+  underline plus highlight) that meets accessibility contrast targets.
+- Non-focused hyperlinks remain underlined but without the focus
+  highlight.
+- Visual styles must be preserved regardless of theme; focus indication
+  may adapt colors but must remain visible.
+
+Keyboard Navigation:
+- TAB moves focus to the next hyperlink; SHIFT+TAB moves focus to the
+  previous hyperlink.
+- Navigation target is determined relative to the current hyperlink
+  focus if at least one hyperlink is visible.
+- If no hyperlink is currently focused or visible, navigation starts
+  relative to the center of the current viewable content window.
+- Cycling is fully cyclic: invoking PREVIOUS-LINK from the first
+  hyperlink or from a pre-first visible center moves focus to the last
+  hyperlink; invoking NEXT-LINK from the last hyperlink or from a
+  post-last visible center moves focus to the first hyperlink.
+- Navigation must skip non-visible hyperlinks (e.g., scrolled out or
+  collapsed) when determining next/previous targets.
+
+State and Focus Rules:
+- Only one hyperlink may be focused at a time during keyboard
+  navigation.
+- The focused hyperlink must be scrolled into view if it is outside the
+  viewport after navigation.
+- Navigation must honor document order when determining next/previous
+  targets, with cyclic wrap-around.
+
+Error Handling and Edge Cases:
+- If a document contains no hyperlinks, TAB/SHIFT+TAB behavior reverts
+  to default focus movement without custom handling.
+- If hyperlinks are present but none are visible (e.g., all collapsed),
+  navigation waits until at least one hyperlink becomes visible; focus
+  state remains unchanged.
+
+Testing Guidance (post-spec):
+- Verify visual distinction and focus styling under multiple themes.
+- Confirm cyclic TAB/SHIFT+TAB traversal with hyperlinks at start,
+  middle, and end of documents.
+- Validate behavior when hyperlinks enter or leave the viewport due to
+  scrolling or visibility changes.
