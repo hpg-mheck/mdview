@@ -24,7 +24,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="mdview",
         description="Render Markdown in the terminal with less-like navigation.",
     )
-    parser.add_argument("path", type=Path, help="Path to a Markdown or text file to view.")
+    parser.add_argument(
+        "path", type=Path, help="Path to a Markdown or text file to view."
+    )
     parser.add_argument(
         "--pager",
         dest="pager_command",
