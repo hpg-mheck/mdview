@@ -6,6 +6,11 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Drafted docs/specifications/testing/markdown_bold_rendering.txt covering
+  fixtures, rendering expectations, and edge cases for Markdown bold emphasis.
+  Recorded at 2025-12-09T03:15:33+00:00 by R. Talon. Captured Rich and
+  fallback behaviors plus Python 3.7 constraints.
+
 * Drafted docs/specifications/testing/markdown_heading_rendering.txt for
   isolated Markdown heading rendering. Recorded at 2025-12-09T03:10:59+00:00
   by R. Talon. Captured fixtures, rendering cues, fallback expectations, and
