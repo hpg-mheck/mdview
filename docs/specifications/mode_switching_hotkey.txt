@@ -1,5 +1,5 @@
 Title: Mode Switching Hotkey
-Status: Draft
+Status: Implemented
 
 Overview:
 - Define user interaction for toggling between horizontal scrolling mode

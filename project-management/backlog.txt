@@ -6,12 +6,6 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
-* Add the mode-switching hotkey that toggles word-wrap and horizontal scroll
-  modes per docs/specifications/mode_switching_hotkey.txt. Preserve scroll
-  anchors and search highlights across toggles, emit transient status
-  notifications, and persist per-view state. Cover offsets, accessibility
-  announcements, and disabled-context handling with focused unit tests.
-
 * Implement hyperlink highlighting and cyclic keyboard navigation defined in
   docs/specifications/hyperlink_navigation.txt. Deliver underline plus focus
   styling, TAB/SHIFT+TAB traversal with wraparound, and viewport alignment for
