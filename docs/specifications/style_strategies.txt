@@ -1,0 +1,46 @@
+Markdown Style Rendering Strategies
+==================================
+
+Scope
+-----
+Define how mdview maps common Markdown styles to rendered output and outline
+fallback behavior when styles overlap or the renderer lacks full styling
+support. The table covers major inline formatting features and notes current
+handling expectations. Additional rules for conflicts appear in the second
+section.
+
+Rendering Summary Table
+-----------------------
+Feature | Primary Rendering | Fallback Rendering | Notes
+------- | ---------------- | ----------------- | -----
+Italic | Italic span or ANSI slant cues | Keep markers if styling fails |
+Emphasis remains ordered
+Bold | Bold span or ANSI weight cues | Keep markers if styling fails |
+Preserve surrounding spacing
+Bold+Italic | Combined emphasis when available | Favor bold if only one style
+fits; otherwise render literal | Mirrors triple markers
+Strikethrough | Overlay or ANSI strike cues | Pass through markers when strike
+is unsupported | May be dropped first during conflicts
+Inline code | Monospace literal characters | Show backticks if styling fails |
+Highest fidelity required
+Code block | Monospace block with kept spacing | Show fences and spacing as
+entered | Ignore inline styles inside the block
+Links | Underlined or colored anchor text with active target | Show link text
+and URL inline; drop styling if needed | Keep clickability before emphasis
+Underline | Underlined span when renderer supports it | TBD | Lower priority
+than emphasis
+
+Overlapping Style Strategies
+----------------------------
+- Apply style ranks from ``docs/specifications/style_ranks.txt``. Lower ranks
+  take precedence when a renderer cannot compose all requested styles.
+- Prefer merging styles when the renderer supports it (e.g., bold+italic),
+  rather than discarding formatting outright.
+- When composition is impossible, drop the highest-numbered (least important)
+  styles first, keeping semantic clarity and readability stable.
+- Inline code and fenced blocks override other inline styles inside their
+  spans; ignore emphasis markers within code payloads.
+- For links, keep clickability first, then apply emphasis if compatible; if
+  conflicts arise, drop the emphasis before link styling.
+- Document any renderer-specific exceptions in future revisions; items marked
+  TBD should be clarified before enabling the related styling paths.
