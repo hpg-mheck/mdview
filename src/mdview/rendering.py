@@ -55,6 +55,173 @@ def _add_fallback_notice(message: str) -> None:
         _FALLBACK_NOTICES.append(message)
 
 
+def _split_table_row(line: str) -> List[str]:
+    """Return a list of cell contents for a pipe-delimited table row."""
+
+    stripped = line.strip()
+    if stripped.startswith("|"):
+        stripped = stripped[1:]
+    if stripped.endswith("|"):
+        stripped = stripped[:-1]
+    return [cell.strip() for cell in stripped.split("|")]
+
+
+def _alignment_from_divider(cell: str) -> str:
+    """Map a divider cell to a text alignment rule."""
+
+    trimmed = cell.strip()
+    left = trimmed.startswith(":")
+    right = trimmed.endswith(":")
+    if left and right:
+        return "center"
+    if right:
+        return "right"
+    return "left"
+
+
+def _is_divider_row(line: str) -> bool:
+    """Return True when the line represents a Markdown table divider row."""
+
+    cells = _split_table_row(line)
+    if not cells:
+        return False
+
+    for cell in cells:
+        trimmed = cell.strip()
+        if not trimmed:
+            return False
+        if set(trimmed) - {"-", ":"}:
+            return False
+        if trimmed.count("-") < 3:
+            return False
+    return True
+
+
+def _format_table_block(lines: Sequence[str], start: int) -> Tuple[List[str], int]:
+    """Return formatted table rows and the index after the table block.
+
+    Args:
+        lines: Full document lines.
+        start: Index pointing to the header row.
+
+    Returns:
+        A tuple containing the formatted table lines and the index after the
+        final table row.
+    """
+
+    if start + 1 >= len(lines):
+        return [], start
+
+    header_cells = _split_table_row(lines[start])
+    divider_line = lines[start + 1]
+    if not _is_divider_row(divider_line):
+        return [], start
+
+    divider_cells = _split_table_row(divider_line)
+    alignments = [_alignment_from_divider(cell) for cell in divider_cells]
+
+    rows: List[List[str]] = [header_cells]
+    index = start + 2
+    while index < len(lines):
+        candidate = lines[index]
+        if not candidate.strip():
+            break
+        if "|" not in candidate:
+            break
+        row_cells = _split_table_row(candidate)
+        if len(row_cells) < 2:
+            break
+        rows.append(row_cells)
+        index += 1
+
+    column_count = max(len(row) for row in rows + [alignments])
+    widths: List[int] = []
+    for column in range(column_count):
+        width = 0
+        for row in rows:
+            if column < len(row):
+                width = max(width, len(row[column].strip()))
+        if column < len(divider_cells):
+            width = max(width, len(divider_cells[column].strip(" :")))
+        widths.append(width)
+
+    def _format_row(row: Sequence[str]) -> str:
+        padded_cells: List[str] = []
+        for column, width in enumerate(widths):
+            text = row[column].strip() if column < len(row) else ""
+            alignment = alignments[column] if column < len(alignments) else "left"
+            if alignment == "center":
+                padded = text.center(width)
+            elif alignment == "right":
+                padded = text.rjust(width)
+            else:
+                padded = text.ljust(width)
+            padded_cells.append(padded)
+        return "| " + " | ".join(padded_cells) + " |"
+
+    def _format_divider() -> str:
+        divider_cells: List[str] = []
+        for column, width in enumerate(widths):
+            alignment = alignments[column] if column < len(alignments) else "left"
+            dash_width = max(width, 3)
+            if alignment == "center":
+                cell = ":" + "-" * max(dash_width - 2, 1) + ":"
+            elif alignment == "right":
+                cell = "-" * max(dash_width - 1, 2) + ":"
+            else:
+                cell = ":" + "-" * max(dash_width - 1, 2)
+            divider_cells.append(cell)
+        return "| " + " | ".join(divider_cells) + " |"
+
+    formatted_lines: List[str] = [_format_row(rows[0]), _format_divider()]
+    for row in rows[1:]:
+        formatted_lines.append(_format_row(row))
+
+    return formatted_lines, index
+
+
+def _format_pipe_tables(text: str) -> str:
+    """Return content with pipe tables aligned for plain-text readability."""
+
+    lines = text.splitlines()
+    output: List[str] = []
+    index = 0
+    in_fence = False
+    fence_marker: Optional[str] = None
+
+    while index < len(lines):
+        line = lines[index]
+        stripped = line.lstrip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            marker = stripped[:3]
+            if not in_fence:
+                in_fence = True
+                fence_marker = marker
+            elif fence_marker and stripped.startswith(fence_marker):
+                in_fence = False
+                fence_marker = None
+            output.append(line)
+            index += 1
+            continue
+
+        if in_fence:
+            output.append(line)
+            index += 1
+            continue
+
+        if "|" in line and index + 1 < len(lines) and _is_divider_row(lines[index + 1]):
+            formatted, next_index = _format_table_block(lines, index)
+            if formatted:
+                output.extend(formatted)
+                index = next_index
+                continue
+
+        output.append(line)
+        index += 1
+
+    return "\n".join(output)
+
+
 def _select_rendering_backend() -> Tuple[Type[object], Type[object], bool]:
     """Determine whether Rich is available and return rendering primitives.
 
@@ -139,7 +306,8 @@ def render_to_ansi(content: str, markdown: bool) -> str:
 
     console = Console(record=True)
     if markdown:
-        console.print(Markdown(content, code_theme="ansi_dark"))
+        formatted = _format_pipe_tables(content)
+        console.print(Markdown(formatted, code_theme="ansi_dark"))
     else:
         console.print(content)
     return console.export_text(styles=True)

@@ -1,0 +1,55 @@
+Markdown Table Rendering Specification
+=====================================
+
+Scope
+-----
+Define how mdview parses and renders pipe-delimited Markdown tables so that
+column boundaries remain visible in both Rich and plain-text fallbacks. The
+rules emphasize predictable alignment cues, conservative parsing, and graceful
+handling when optional dependencies are missing.
+
+Assumptions
+-----------
+- Rendering uses ``rich.markdown.Markdown`` when available and falls back to a
+  plain-text formatter otherwise.
+- Source content may include fenced code blocks; table parsing must not alter
+  lines enclosed by fences.
+- Only pipe-style tables (``|`` separators plus a header divider) are in scope;
+  other table syntaxes remain untouched.
+
+Rendering Rules
+---------------
+- Detect a table when a line containing ``|`` is followed by a header-divider
+  line of dashes and optional colons (e.g., ``| --- |`` or ``:---:``).
+- Trim outer pipes and surrounding whitespace from each cell while preserving
+  interior spacing.
+- Compute column widths from the header, divider, and all subsequent table
+  rows until a blank or non-table line appears.
+- Respect alignment markers in the divider row:
+  - ``:---`` renders left-aligned cells.
+  - ``---:`` renders right-aligned cells.
+  - ``:---:`` renders centered cells.
+  - Missing or malformed markers default to left alignment.
+- Emit formatted rows as ``|``-delimited text with padded cells so that column
+  boundaries align visually in plain text. Include a leading and trailing pipe
+  on every rendered row.
+- Leave fenced code blocks unchanged, even if their content resembles a table.
+- Do not attempt to merge adjacent tables or reorder rows; process each table
+  block independently and preserve original row order.
+
+Fallback Behavior
+-----------------
+- When Rich is unavailable, apply the table formatter before sending content to
+  the plain-text renderer so that column alignment cues remain visible.
+- When Rich is available, retain the formatted table text; Rich will render the
+  table styling while the padded text keeps plain renderings readable if Rich
+  omits table features.
+
+Test Coverage
+-------------
+- Provide fixtures under ``resources/tests`` for at least one table with mixed
+  left, right, and centered alignment markers.
+- Verify that formatted output keeps header and body rows aligned, retains cell
+  content verbatim, and does not alter non-table paragraphs.
+- Confirm that fenced code blocks containing pipe characters bypass table
+  formatting.

@@ -6,6 +6,7 @@ import pytest
 
 from mdview.rendering import (
     HAS_RICH,
+    _format_pipe_tables,
     _pipe_to_command,
     is_markdown_file,
     page_text,
@@ -66,6 +67,31 @@ def test_render_to_ansi_preserves_five_line_plain_text() -> None:
         assert "\x1b" not in "".join(rendered_lines[:5])
 
 
+def test_format_pipe_tables_aligns_columns_and_skips_fences() -> None:
+    fixture = (
+        Path(__file__).resolve().parent.parent
+        / "resources"
+        / "tests"
+        / "markdown_table_alignment.md"
+    )
+    formatted = _format_pipe_tables(fixture.read_text(encoding="utf-8"))
+    lines = formatted.splitlines()
+
+    assert lines[:5] == [
+        "| name         | score | delta |",
+        "| :----------- | ----: | :---: |",
+        "| Ada Lovelace |    99 |   +3  |",
+        "| Bob          |     7 |   -2  |",
+        "| Carol        |    13 |   0   |",
+    ]
+    assert lines[-4:] == [
+        "```",
+        "| not | a | table |",
+        "| --- | --- | --- |",
+        "```",
+    ]
+
+
 def test_rendering_module_handles_absent_rich(monkeypatch) -> None:
     monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
 
@@ -77,6 +103,33 @@ def test_rendering_module_handles_absent_rich(monkeypatch) -> None:
 
         assert reloaded.HAS_RICH is False
         assert "fallback only" in ansi
+    finally:
+        monkeypatch.undo()
+        importlib.reload(rendering)
+
+
+def test_render_to_ansi_formats_tables_without_rich(monkeypatch) -> None:
+    original_find_spec = importlib.util.find_spec
+    monkeypatch.setattr(
+        importlib.util,
+        "find_spec",
+        lambda name: None if name == "rich" else original_find_spec(name),
+    )
+
+    import mdview.rendering as rendering
+
+    reloaded = importlib.reload(rendering)
+    fixture = (
+        Path(__file__).resolve().parent.parent
+        / "resources"
+        / "tests"
+        / "markdown_table_alignment.md"
+    )
+    ansi = reloaded.render_to_ansi(fixture.read_text(encoding="utf-8"), markdown=True)
+    try:
+        assert "| name         | score | delta |" in ansi
+        assert "Outside table paragraph." in ansi
+        assert "| not | a | table |" in ansi
     finally:
         monkeypatch.undo()
         importlib.reload(rendering)
