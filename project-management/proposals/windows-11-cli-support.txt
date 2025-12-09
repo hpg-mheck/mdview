@@ -1,0 +1,101 @@
+Title: Windows 11 Command-Line Support Plan
+Author: R. Talon
+Date: 2025-12-09T05:04:57Z
+Status: Draft
+Reviewers: Matt "Breakpoint" Heck (PM), Windows reliability lead
+Related Work: project-management/backlog.txt
+
+Problem Statement
+Describe the lack of first-class Windows 11 support for cmd.exe and PowerShell
+users. Current tooling assumes POSIX shells, leading to path handling issues,
+virtual environment friction, and poor terminal feature detection. The gap
+blocks reliable usage by Windows-first contributors and automation.
+
+Goals
+- Ship a reliable command-line experience on Windows 11 for both cmd.exe and
+  PowerShell.
+- Provide simple bootstrap commands for setup, linting, testing, and scripts
+  that mirror POSIX workflows.
+- Ensure paths, encodings, and line endings are handled safely and documented.
+- Keep all automation compatible with Python 3.7+ and standard Windows tools.
+
+Non-Goals
+- Replacing PowerShell with third-party shells.
+- Shipping GUI installers or MSIX packages.
+- Expanding beyond command-line scenarios.
+
+Use Cases
+- A contributor clones the repo in PowerShell and runs linting and tests with
+  a single command.
+- A CI job on Windows 11 executes the same scripts without shell-specific
+  patches.
+- A user runs helper scripts from cmd.exe without modifying environment
+  variables manually.
+
+Constraints and Assumptions
+- Python 3.7+ must remain supported.
+- Rely only on built-in Windows tools plus Python stdlib; avoid additional
+  installers.
+- Avoid reliance on symlinks because of permission variability.
+- Preserve CRLF line endings where native tools expect them.
+
+Proposed Approach
+- Provide Windows-aware entry points in scripts using ``python -m`` invocations
+  so cmd.exe and PowerShell behave consistently.
+- Add a ``scripts/windows`` folder with PowerShell (.ps1) and batch (.bat)
+  shims that delegate to Python modules, setting ``PYTHONUTF8=1`` and
+  ``PYTHONIOENCODING=utf-8`` for deterministic encoding.
+- Normalize paths via ``pathlib`` and ``os.fspath``; avoid POSIX-specific path
+  joins in scripts.
+- Document Windows environment setup: enabling long paths, using ``py`` launcher
+  with ``-m venv``, activating virtual environments in both shells, and
+  invoking tools via ``python -m`` rather than shell-specific executables.
+- Detect terminal capabilities using ``isatty`` plus ``colorama`` fallback and
+  default to plain text if unavailable.
+- Add continuous integration coverage on Windows runners to execute the
+  standard lint, compileall, and pytest flows using the new shims.
+
+Risks and Mitigations
+- Batch file quoting differences may break arguments. Mitigate with
+  PowerShell-first shims and escape-aware batch wrappers that forward arguments
+  via ``%*``.
+- Encoding regressions on legacy consoles. Mitigate by setting UTF-8 variables
+  and documenting console font requirements.
+- Path length or case-sensitivity surprises. Mitigate with ``pathlib``
+  normalization and validation in scripts.
+
+Testing and Validation
+- Add Windows CI jobs covering lint, compileall, and pytest using both
+  PowerShell and cmd.exe entry points.
+- Provide local smoke-test instructions: run ``python -m compileall`` and
+  ``python -m pytest`` from both shells inside and outside a virtual
+  environment.
+- Add fixtures for Windows path handling and console detection where feasible.
+
+Alternatives Considered
+- Rely solely on PowerShell scripts. Rejected to maintain parity for cmd.exe
+  users and automation.
+- Require third-party package managers such as Chocolatey. Rejected to avoid
+  external dependencies.
+
+Open Questions
+- Do we need optional ``colorama`` vendorization for offline setups? Owner:
+  Windows reliability lead. Decision by: 2026-01-15.
+- Should we enforce UTF-8 code page via ``chcp 65001`` in scripts or rely on
+  environment variables alone? Owner: R. Talon. Decision by: 2026-01-10.
+
+Milestones
+- Draft Windows shell shims and documentation; targeted completion:
+  2026-01-05.
+- Add Windows CI jobs; targeted completion: 2026-01-12.
+- Finalize documentation and unblock contributors; targeted completion:
+  2026-01-19.
+
+Adoption and Rollout
+- Publish shims and documentation; announce in release notes.
+- Enable Windows CI and block merges on parity failures with POSIX runs.
+- Collect contributor feedback during the first two sprints and adjust shims
+  for usability.
+
+Decision Log
+- None yet.
