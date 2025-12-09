@@ -3,27 +3,41 @@ Architecture and Testing Notes
 
 Design Principles
 -----------------
-- Delegate paging to existing, battle-tested tools instead of reimplementing navigation logic.
-- Keep the rendering pipeline simple: load content, render to ANSI with ``rich``, and stream to a pager.
-- Fail loudly and clearly: errors include actionable guidance (e.g., missing file, unreadable path).
-- Respect minimal dependencies and fast startup; defer any heavy parsing to future work only if justified.
+- Delegate paging to existing, battle-tested tools instead of
+  reimplementing navigation logic.
+- Keep the rendering pipeline simple: load content, render to ANSI with
+  ``rich``, and stream to a pager.
+- Fail loudly and clearly: errors include actionable guidance (e.g.,
+  missing file, unreadable path).
+- Respect minimal dependencies and fast startup; defer any heavy parsing
+  to future work only if justified.
 
 Module Overview
 ---------------
-- ``mdview.cli``: Argument parsing, file existence checks, and orchestration of rendering + paging.
-- ``mdview.rendering``: Functions to classify file types, load text, render Markdown/plain text to ANSI strings, and select the pager backend.
+- ``mdview.cli``: Argument parsing, file existence checks, and
+  orchestration of rendering + paging.
+- ``mdview.rendering``: Functions to classify file types, load text,
+  render Markdown/plain text to ANSI strings, and select the pager
+  backend.
 
 Pager Strategy
 --------------
-- Primary: Use ``pydoc.pager`` with ``LESS=-R`` to ensure ANSI passthrough when ``less`` is present.
-- Fallback: If ``less`` is not available, ``pydoc.pager`` defaults to a simple Python pager; the rendered text should still be readable, though search/navigation depth may vary.
+- Primary: Use ``pydoc.pager`` with ``LESS=-R`` to ensure ANSI
+  passthrough when ``less`` is present.
+- Fallback: If ``less`` is not available, ``pydoc.pager`` defaults to a
+  simple Python pager; the rendered text should still be readable,
+  though search/navigation depth may vary.
 
 Testing Strategy
 ----------------
 - Unit Tests (``pytest``)
-  - File classification: ensure ``.md``/``.markdown`` trigger Markdown rendering; others default to plain text.
-  - Rendering output: confirm Markdown paths pass through ``rich.markdown.Markdown`` and that plain text is emitted unchanged aside from safe normalization.
-  - Pager selection: verify that the exported ANSI text is non-empty and routed to the pager callable.
+  - File classification: ensure ``.md``/``.markdown`` trigger Markdown
+    rendering; others default to plain text.
+  - Rendering output: confirm Markdown paths pass through
+    ``rich.markdown.Markdown`` and that plain text is emitted unchanged
+    aside from safe normalization.
+  - Pager selection: verify that the exported ANSI text is non-empty and
+    routed to the pager callable.
 - Future Integration Tests
   - CLI invocation against sample files to exercise end-to-end flow.
   - Environment-variable controls for pager selection.
@@ -31,5 +45,7 @@ Testing Strategy
 Quality and Style
 -----------------
 - Document public functions with clear docstrings and type hints.
-- Maintain readable, Chicago Manual of Style-compliant prose in documentation.
-- Keep code small, composable, and covered by tests to enable confident future enhancement.
+- Maintain readable, Chicago Manual of Style-compliant prose in
+  documentation.
+- Keep code small, composable, and covered by tests to enable confident
+  future enhancement.
