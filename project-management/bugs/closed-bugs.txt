@@ -1,0 +1,7 @@
+# Closed bugs
+# -----------
+#
+# Record resolved bugs here with the newest items at the top. Use the same
+# asterisk-plus-blank-line formatting, include an ISO 8601 timestamp for when
+# the fix was recorded, the resolution summary, and links to commits or tests
+# when available.

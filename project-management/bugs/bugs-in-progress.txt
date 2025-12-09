@@ -1,0 +1,7 @@
+# Bugs in progress
+# ----------------
+#
+# Track active remediation here. Preserve the asterisk-plus-blank-line
+# formatting. Include the ISO 8601 timestamp for when the bug entered active
+# work, current owner, current status, blockers, and next steps. Update
+# entries promptly as facts change.

@@ -31,19 +31,47 @@ and pessimistic, defense-in-depth testing.
   work. The top item is always next up; the bottom item waits the longest.
   Mark each task with an asterisk followed by a blank line for clarity.
   Explicitly note when a task is blocked and identify what or whom it depends
-  on.
+  on. Include a timestamp in ISO 8601 format indicating when the item was
+  added.
 - Keep `/project-management/tasks-in-progress.txt` nearly empty. Use it only
   for tasks actively being implemented, following the same asterisk and
   blank-line formatting. Include brief status notes and cite blockers. Move
   entries back to the backlog or into completed tasks as soon as possible.
+  Record the timestamp for when the task entered this list.
 - Record finished work in `/project-management/completed-tasks.txt`, placing
   the most recently completed item at the top. Preserve the
   asterisk-plus-blank-line formatting, and include concise context such as
   dates, responsible
-  contributors, and how any blockers were cleared.
+  contributors, and how any blockers were cleared. Stamp each completion with
+  the time it was added to the list.
 - Treat the three project management files as living documents. Update them
   immediately when work status changes, and keep descriptions concise and
   actionable per Chicago Manual of Style guidance.
+
+## Backlog Iteration Orders
+- When instructed to "Iterate the backlog" or simply "iterate," follow the
+  single AI iteration cycle defined in `docs/AI-backlog-iteration.txt` unless
+  the prompt clearly names a different list (for example, "iterate on the
+  buglist").
+
+## Bug Tracking Orders
+- Maintain `/project-management/bugs/known-bugs.txt` as the ordered source of
+  confirmed issues awaiting work. Use the same asterisk-plus-blank-line
+  formatting, include concise context, and stamp each entry with the time it
+  was added.
+- Track active remediation in `/project-management/bugs/bugs-in-progress.txt`
+  with the same formatting, timestamping entries as they move into progress,
+  and noting current owners and blockers.
+- Record resolved items in `/project-management/bugs/closed-bugs.txt`, adding
+  the newest items to the top, preserving the formatting, and including the
+  completion timestamp and short resolution notes.
+- Treat the three bug-tracking files as living documents. Update them as
+  status changes, keeping entries succinct and actionable in line with the
+  Chicago Manual of Style.
+- When instructed to iterate on the buglist, treat the top item in
+  `known-bugs.txt` like a backlog entry: perform one meaningful improvement,
+  record ISO 8601 timestamps when moving items between bug files, and surface
+  ownership or blocker updates.
 
 ## Testing Expectations
 - Default to extensive, paranoid, pessimistic unit tests. Cover edge cases,
