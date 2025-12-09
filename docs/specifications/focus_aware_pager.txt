@@ -1,0 +1,73 @@
+Title: Focus-aware Pager for Hyperlink Navigation
+Status: Draft
+
+Overview:
+- Replace the current less-based paging pipeline with a focus-aware pager that
+  can track and highlight hyperlink focus state while preserving mdview's
+  Markdown rendering quality.
+- Deliver a keyboard-driven navigation loop that honors the hyperlink
+  traversal rules in docs/specifications/hyperlink_navigation.txt.
+- Preserve a fallback path to the existing pager when the interactive stack is
+  unavailable or unsupported in the runtime environment.
+
+Constraints and Dependencies:
+- Maintain compatibility with Python 3.7 and keep optional dependencies
+  minimal. Prefer prompt_toolkit 3.x for focus and key binding support because
+  it runs on Python 3.7 and handles terminal resize events reliably.
+- Continue rendering Markdown with Rich when available so hyperlink text and
+  styling remain consistent with the existing pipeline.
+- Emit user-facing fallback notices when the interactive pager cannot load and
+  mdview reverts to plain paging; update docs/specifications/fallback-
+  behavior.txt accordingly when the implementation lands.
+
+Rendering Model:
+- Render Markdown to Rich segments using the current render_to_ansi pipeline,
+  but intercept the console output to capture hyperlink spans and their visual
+  ranges before emitting ANSI strings.
+- Normalize rendered lines into a scrollable buffer that records hyperlink
+  metadata: line index, column offsets for the link text, destination URL if
+  available, and a stable hyperlink identifier for focus rotation.
+- Represent focused hyperlinks with underline plus a distinct focus style
+  token (e.g., inverse highlight) that meets accessibility contrast targets and
+  remains visible across dark and light themes.
+
+Pager Architecture:
+- Build a prompt_toolkit Application that renders the line buffer with custom
+  style rules for normal and focused hyperlinks. Use an in-memory buffer to
+  avoid disk I/O and to support rapid viewport updates.
+- Register key bindings: TAB advances focus to the next hyperlink; SHIFT+TAB
+  moves to the previous hyperlink. Both bindings wrap cyclically at the ends
+  of the hyperlink list and ignore hyperlinks that are outside the current
+  buffer when filtering by visibility.
+- Keep focus state in a controller that tracks the current hyperlink index,
+  exposes methods for next/previous with wraparound, and forces the viewport to
+  scroll to the focused hyperlink when it is outside the visible window.
+- Provide a fallback binding set (ESC or "q") to exit cleanly, mirroring less
+  muscle memory where feasible without shadowing TAB behavior.
+
+Visibility and Viewport Rules:
+- Recompute visible hyperlink candidates after scroll events or window resizes
+  so focus traversal always reflects on-screen items first. When no hyperlinks
+  are visible, preserve the current focus marker without forcing jumps until a
+  link re-enters the viewport.
+- When no hyperlink has been focused yet, initialize traversal relative to the
+  vertical midpoint of the viewport so TAB selects the first visible hyperlink
+  after the midpoint and SHIFT+TAB selects the last visible hyperlink before
+  it.
+
+Error Handling and Fallbacks:
+- If prompt_toolkit is unavailable or fails to initialize (e.g., missing TTY),
+  fall back to the existing page_text behavior and surface a warning about
+  disabled hyperlink navigation.
+- When a document contains no hyperlinks, defer to prompt_toolkit default focus
+  handling while keeping the buffer scrollable and respecting quit shortcuts.
+
+Testing Strategy:
+- Unit-test the focus controller to ensure cyclic navigation, viewport snaps,
+  and visibility filtering behave as specified, including empty and single-link
+  documents.
+- Add integration-style tests that simulate key presses against a prompt_
+  toolkit Application stub to verify TAB/SHIFT+TAB focus movement, quit
+  handling, and fallback activation when dependencies are missing.
+- Keep fixtures under resources/tests to exercise rendering edge cases such as
+  links at the top, bottom, and outside the viewport after scrolling.
