@@ -3,10 +3,10 @@ Markdown Inline Code Rendering Specification
 
 Scope
 -----
-Define how mdview renders inline code spans so monospace cues, punctuation, and
-spacing remain consistent across renderers. Cover fixture layout, styling
-expectations, escape handling, and fallback behavior when monospace rendering is
-unavailable.
+Define how mdview renders inline code spans so monospace cues, punctuation,
+and spacing remain consistent across renderers. Cover fixture layout with
+explicit format notes, styling expectations, escape handling, and fallback
+behavior when monospace rendering is unavailable.
 
 Assumptions
 -----------
@@ -20,39 +20,52 @@ Assumptions
 Rendering Rules
 ---------------
 - Recognize inline code when content is wrapped in paired backticks
-  (``\`code\``) without collapsing whitespace inside the markers.
-- Emit monospace styling for the enclosed content when the renderer supports it.
-  In fallback mode, render the content literally while preserving surrounding
-  spacing and punctuation.
-- Preserve literal backticks inside code spans when escaped (``\``backtick\```)
-  and render unmatched backticks without inferring closures.
+  (``\`code\``) without collapsing whitespace inside the markers. Do not
+  treat single backticks inside paragraphs as anything but literal characters
+  unless they form a balanced pair.
+- Emit monospace styling for the enclosed content when the renderer supports
+  it. In fallback mode, render the content literally while preserving
+  surrounding spacing and punctuation, and emit a user-facing warning that
+  monospace styling is unavailable.
+- Preserve literal backticks inside code spans when escaped
+  (``\``backtick\```), and render unmatched backticks without inferring
+  closures.
 - Keep inline code scoped to the smallest matching marker pair and do not allow
   the span to cross paragraph boundaries or swallow neighboring emphasis
-  markers.
+  markers. Inline code must not absorb surrounding underscores, asterisks, or
+  tildes.
 
-Whitespace and Spacing Preservation
------------------------------------
+Whitespace, Punctuation, and Spacing Preservation
+-------------------------------------------------
 - Do not trim leading or trailing whitespace inside code spans; preserve spaces
-  exactly as provided to keep alignment and punctuation intact.
+  exactly as provided to keep alignment and punctuation intact. Honor doubled
+  spaces that pad tabs or column guides.
 - Maintain the original spacing surrounding code markers so adjacent text,
-  commas, and periods remain unchanged in rendered output.
+  commas, colons, semicolons, and periods remain unchanged in rendered output.
+  Inline code must never insert padding before or after punctuation.
 - Keep inline code on a single line; do not merge or break lines around code
-  markers during rendering.
+  markers during rendering. Preserve preceding and trailing newlines so the
+  span remains anchored in its source sentence.
 
-Fixture Inventory
------------------
-- ``resources/tests/markdown/inline_code_basic.md``: A sentence with a single
-  ``\`code\`` span asserting monospace styling (or literal rendering in
-  fallback mode) without altering spacing.
-- ``resources/tests/markdown/inline_code_spacing.md``: Exercises leading and
-  trailing spaces inside the code span and around punctuation to verify spacing
-  preservation.
-- ``resources/tests/markdown/inline_code_escape.md``: Uses escaped backticks to
-  confirm literal rendering inside and outside code spans without enabling
-  monospace styling.
+Fixture Inventory and Formats
+-----------------------------
+- ``resources/tests/markdown/inline_code_basic.md``: A single paragraph with
+  one ``\`code\`` span embedded mid-sentence. The expected rendering asserts
+  monospace styling cues (or literal text in fallback mode) without altering
+  spacing or punctuation around the span. Use plain ASCII to keep the fixture
+  portable.
+- ``resources/tests/markdown/inline_code_spacing.md``: Paragraph-level fixture
+  that surrounds the code span with commas and periods while placing leading
+  and trailing spaces inside the markers. Asserts that inner and outer spacing
+  remain unchanged and punctuation hugs the text.
+- ``resources/tests/markdown/inline_code_escape.md``: Contains escaped
+  backticks inside and outside the span plus a trailing unmatched backtick at
+  line end. Confirms literal rendering without invoking monospace styling for
+  escaped or stray characters.
 - ``resources/tests/markdown/inline_code_boundary.md``: Places inline code next
-  to emphasis markers and at line edges to ensure styling does not leak or
-  reorder adjacent content.
+  to emphasis markers, at the beginning of a line, and at the end of a line.
+  Validates that styling does not leak into adjacent emphasis, does not reorder
+  content, and respects paragraph boundaries.
 
 Exit Criteria
 -------------
