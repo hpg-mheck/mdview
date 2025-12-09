@@ -126,3 +126,11 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
   PowerShell users have parity with POSIX workflows, including shims,
   documentation, and CI coverage. Added 2025-12-09T05:04:57Z.
 
+* Draft a specification for a ``--flatten-unicode`` option that maps Unicode
+  characters to classic 8-bit ASCII fallbacks for rendering, ensuring
+  predictable output while preserving intent. Added 2025-12-09T06:20:30Z.
+
+* Draft a specification for a ``--7bit`` option that converts 8-bit ASCII to
+  nearest printable 7-bit mappings and defines combined behavior with
+  ``--flatten-unicode``. Added 2025-12-09T06:20:30Z.
+
