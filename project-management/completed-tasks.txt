@@ -6,6 +6,11 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Drafted docs/specifications/markdown_blockquote_rendering.txt detailing
+  fixture structure, quote styling cues, nesting behavior, interior emphasis
+  tolerance, and exit criteria. Recorded at 2025-12-09T07:42:09Z by R. Talon
+  while clearing the top backlog item.
+
 * Drafted docs/specifications/markdown_fenced_code_block_rendering.txt
   capturing fixture layout, whitespace preservation, language-hint handling,
   and fallback warnings for missing syntax highlighting. Recorded at

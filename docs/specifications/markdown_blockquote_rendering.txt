@@ -1,0 +1,68 @@
+Markdown Blockquote Rendering Specification
+==========================================
+
+Scope
+-----
+Define how mdview renders Markdown blockquotes so quoted text keeps visual
+cues, nested levels remain distinct, and interior emphasis markers stay
+predictable. Cover fixture layout, styling expectations, nesting behavior,
+and tolerance for inline emphasis inside quotes.
+
+Assumptions
+-----------
+- Rendering prefers ``rich.markdown.Markdown`` when available and falls back to
+  a plain-text formatter otherwise.
+- Source line order and spacing must remain unchanged. Renderers may add quote
+  prefix cues but must not reorder or collapse text.
+- Tests rely on small fixtures under ``resources/tests`` and assert on visible
+  cues rather than brittle snapshots.
+
+Rendering Rules
+---------------
+- Recognize a blockquote when a line starts with ``>`` followed by a space or
+  other text. Preserve any content following the marker on the same line.
+- Apply a consistent quote prefix (e.g., leading ``>`` with a space or a Rich
+  style equivalent) for each quoted line. In fallback mode, surface the literal
+  ``>`` markers so quoting remains visible.
+- Preserve interior spacing and punctuation. Do not trim leading or trailing
+  spaces inside the quote content.
+- Keep blockquotes scoped to contiguous quoted lines. Do not merge separate
+  quote blocks across blank lines or unquoted text.
+- Allow inline emphasis (italic, bold, combined) inside quotes. Styling must
+  remain contained without leaking into the quote prefix or neighboring text.
+
+Nesting Expectations
+--------------------
+- Support nested blockquotes by stacking markers (``>>`` or ``> >``). Each
+  nesting level must keep its own prefix cue so depth remains visible.
+- Prevent level merging: a single ``>`` line must not adopt styling from a
+  deeper ``>>`` line, and vice versa.
+- Maintain alignment so nested prefixes do not consume content characters. The
+  quote content should align relative to its own prefix width.
+
+Fixture Inventory
+-----------------
+- ``resources/tests/markdown/blockquote_basic.md``: A single-level blockquote
+  with surrounding prose. Asserts that quote prefixes appear and spacing
+  remains intact in Rich and fallback modes.
+- ``resources/tests/markdown/blockquote_nested.md``: Two-level quote stack with
+  parent and child lines. Confirms each level keeps distinct prefix cues and
+  does not merge indentation or styling.
+- ``resources/tests/markdown/blockquote_emphasis.md``: Quotes containing
+  ``*italic*`` and ``**bold**`` markers. Verifies emphasis styling stays inside
+  the quote content and does not alter prefix cues.
+- ``resources/tests/markdown/blockquote_spacing.md``: Quotes with leading and
+  trailing spaces plus punctuation near the markers. Checks that whitespace and
+  punctuation persist unchanged.
+- ``resources/tests/markdown/blockquote_multiline.md``: A multi-line quote
+  separated from surrounding text by blank lines. Ensures quotes stay grouped
+  without merging into adjacent paragraphs.
+
+Exit Criteria
+-------------
+- All fixtures above exist under ``resources/tests/markdown`` and align with
+  the rendering and nesting rules.
+- Renderers show visible quote prefixes at every depth, preserving spacing and
+  punctuation in both Rich and fallback modes.
+- Inline emphasis within quotes renders as emphasis without affecting quote
+  prefixes or adjacent text outside the blockquote.
