@@ -1,0 +1,70 @@
+Combined Bold+Italic Markdown Rendering Specification
+====================================================
+
+Scope
+-----
+Define how mdview renders combined bold and italic emphasis so both styles
+apply simultaneously without altering character order. The specification
+covers triple-asterisk and triple-underscore markers, fixture layout, and
+rules for keeping emphasis boundaries isolated from adjacent text.
+
+Assumptions
+-----------
+- Rendering uses ``rich.markdown.Markdown`` when available and falls back to a
+  plain-text formatter otherwise.
+- Rendering preserves the source order of characters and markers; no
+  reordering, deduplication, or extra spacing is introduced.
+- Tests rely on minimal fixtures stored under ``resources/tests`` and assert
+  on visible styling cues (e.g., ANSI markers or plain-text tokens) rather
+  than brittle snapshots.
+
+Rendering Rules
+---------------
+- Recognize combined emphasis when text is wrapped in ``***`` or ``___`` pairs
+  without interior whitespace between the markers and the text payload.
+- Apply both bold and italic styles to the enclosed content in renderers that
+  support dual styling. When styling is unavailable, pass the raw text through
+  unmodified while preserving surrounding whitespace and punctuation.
+- Keep emphasis scoped to the smallest matching marker pair. Do not cross
+  paragraph boundaries or consume neighboring emphasis markers.
+- Reject or treat as literal any marker run shorter than three characters or
+  lacking a closing triple marker; do not infer closing markers.
+- Allow interior punctuation (e.g., commas, periods, quotes) to remain
+  untouched. Preserve backslash escapes so that ``\***`` renders literally
+  without triggering emphasis.
+
+Fixture Inventory
+-----------------
+- ``resources/tests/markdown/bold_italic_basic.md``: A single ``***combo***``
+  token within a short sentence; asserts both bold and italic cues are present
+  without reordering characters.
+- ``resources/tests/markdown/bold_italic_underscore.md``: Uses ``___combo___``
+  to confirm triple underscores receive identical treatment to triple
+  asterisks.
+- ``resources/tests/markdown/bold_italic_boundaries.md``: Places
+  ``***combo***`` beside plain text, standalone asterisks, and punctuation to
+  verify emphasis does not leak into neighbors and spacing is preserved.
+- ``resources/tests/markdown/bold_italic_unterminated.md``: Contains an
+  unmatched opening marker (``***open``) that should render literally without
+  enabling styling.
+- ``resources/tests/markdown/bold_italic_escape.md``: Escapes markers using
+  backslashes (``\***escaped***\``) to confirm literal rendering and proper
+  handling of trailing backslashes.
+
+Boundary Handling
+-----------------
+- Do not merge adjacent emphasis segments; ``***one******two***`` renders two
+  separate styled tokens rather than a single combined span.
+- Nested emphasis should honor closest pairs first; ``*outer **not combo***``
+  must retain italic styling on the outer span without introducing combined
+  emphasis.
+- Combined emphasis at line boundaries must not swallow newline characters;
+  wrap markers and content on the same line to avoid ambiguous parsing.
+
+Exit Criteria
+-------------
+- Each fixture listed above exists and aligns with the rendering rules.
+- Tests assert that combined emphasis applies dual styling when available and
+  stays literal when markers are malformed or escaped.
+- Behavior remains consistent across Rich and plain-text fallbacks without
+  reordering or leaking emphasis boundaries.
