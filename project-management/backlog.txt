@@ -6,10 +6,6 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
-* Implement Markdown table rendering support to match the forthcoming table
-  specification, enabling pipe-table parsing and visible column alignment
-  cues. Added 2025-12-09T03:25:18Z.
-
 * Draft a specification for CSV document viewing that converts
   comma-separated rows into fixed-width or alternating-color Markdown tables
   for readability, allowing reuse of Markdown table rendering. Added
@@ -58,10 +54,6 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
 * Draft a specification for Markdown image rendering that captures fixtures
   for alt text and URLs, expected fallbacks when images cannot render, and
   handling of link-adjacent content.
-
-* Draft a specification for Markdown table rendering that establishes simple
-  pipe table fixtures, column alignment expectations, and header-versus-body
-  distinctions.
 
 * Draft a specification for Markdown escaping that records fixtures with
   backslash-escaped characters, literal rendering expectations, and safeguards
