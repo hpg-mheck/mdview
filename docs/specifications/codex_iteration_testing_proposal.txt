@@ -1,0 +1,126 @@
+Title: Codex Iteration Exit Testing Enhancements
+Author: R. Talon
+Date: 2025-12-09T06:15:54Z
+Status: Accepted
+Reviewers: Matt "Breakpoint" Heck (Operator), Core QA Team
+Related Work: docs/AI-backlog-iteration.txt; docs/test-development.txt
+
+Problem Statement
+-----------------
+Codex currently ends each backlog iteration without a structured, repeatable
+exit test routine. Ad hoc checks allow regressions to slip into the next
+iteration, especially when optional dependencies are absent or when
+environment parity is unclear. The lack of codified exit tests makes it hard
+to prove
+quality, align with Joel Spolsky's ship-readiness expectations, or communicate
+coverage status to stakeholders.
+
+Goals
+-----
+- Define a deterministic "iteration exit testing" checklist Codex must run
+  before marking an iteration complete.
+- Cover happy paths, fallbacks, and error handling to enforce defense-in-depth
+  quality at iteration boundaries.
+- Standardize reporting so iteration summaries include test results and
+  coverage indicators.
+- Keep the routine runnable in minimal environments (Python 3.7 baseline) and
+  detectable when optional dependencies are missing.
+
+Non-Goals
+---------
+- Replacing the full CI pipeline.
+- Introducing new runtime features beyond what is necessary to execute the
+  exit tests.
+- Redefining the AI iteration cycle defined in docs/AI-backlog-iteration.txt.
+
+Use Cases
+---------
+- Codex finishes a backlog item and must verify rendering, navigation, and
+  fallback behavior before closing the iteration.
+- Codex operates without optional rendering backends and still needs to report
+  which fallbacks were exercised and validated.
+- Stakeholders request a summary of what was tested during the iteration exit
+  and any residual risks or blockers.
+
+Constraints and Assumptions
+---------------------------
+- Python 3.7 compatibility and no reliance on network access during exit
+  testing.
+- Tests must run within typical developer hardware constraints (<= 5 minutes
+  wall clock) to remain practical.
+- Iteration exit steps must align with the existing AI iteration cycle without
+  adding manual approvals.
+
+Proposed Approach
+-----------------
+- Define an "Iteration Exit Test Suite" under tests/iteration_exit/ containing
+  reusable fixtures that mirror the backlog iteration scope.
+- Provide a driver script (scripts/run_iteration_exit_tests.py) that performs
+  environment detection, emits warnings for missing optional dependencies, and
+  executes the suite with structured logging.
+- Extend the iteration completion checklist (docs/AI-backlog-iteration.txt) to
+  require running the driver script and capturing its summary in the iteration
+  report.
+- Add lightweight coverage notes that map each exit test to the backlog item
+  acceptance criteria and to fallback behaviors documented in
+  docs/specifications/fallback-behavior.txt.
+- Instrument test output to flag skipped cases when dependencies are absent
+  and record them in the iteration summary.
+
+Risks and Mitigations
+---------------------
+- Risk: Exit tests lengthen iteration close-out time.
+  Mitigation: Enforce a five-minute budget and allow parallel execution where
+  available.
+- Risk: Optional dependencies cause inconsistent results.
+  Mitigation: Emit explicit warnings, mark skipped tests, and document
+  fallback coverage for transparency.
+- Risk: Developers bypass the suite to save time.
+  Mitigation: Add checklist gating and automate the driver invocation in the
+  iteration tooling.
+
+Testing and Validation
+----------------------
+- Develop pytest-based suites emphasizing pessimistic edge cases, including
+  fallback rendering, error handling, and degraded environments, consistent
+  with Joel Spolsky's emphasis on shippable quality.
+- Add fixtures under resources/tests/ to keep inputs reproducible across
+  environments.
+- Validate the driver script via unit tests and dry-run modes to ensure clear
+  exit codes and logging when dependencies are missing.
+- Incorporate the suite into local pre-commit guidance and optional CI jobs to
+  ensure continuous visibility.
+
+Alternatives Considered
+-----------------------
+- Relying solely on existing full test runs at the end of an iteration.
+  Rejected because they do not target iteration-specific acceptance criteria
+  or fallback coverage.
+- Adding manual QA checklists without automation. Rejected for poor
+  repeatability and susceptibility to human error.
+
+Open Questions
+--------------
+- Which optional dependencies most frequently trigger fallbacks and therefore
+  need explicit skip reporting?
+- Should iteration summaries include code coverage deltas or only pass/fail
+  outcomes?
+
+Milestones
+----------
+- Draft and review the exit test suite structure and driver design (1 week).
+- Implement fixtures and initial exit tests for core rendering and fallbacks
+  (2 weeks).
+- Integrate driver into iteration checklist and document usage (1 week).
+- Pilot for two iterations and refine based on observed gaps (2 weeks).
+
+Adoption and Rollout
+--------------------
+- Start with opt-in usage for active backlog items, then graduate to mandatory
+  gating after the pilot.
+- Communicate expectations in docs/AI-backlog-iteration.txt and team channels,
+  highlighting the five-minute runtime budget and fallback reporting.
+
+Decision Log
+------------
+- Pending review.
