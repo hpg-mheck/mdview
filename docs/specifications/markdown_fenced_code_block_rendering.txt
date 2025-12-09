@@ -1,0 +1,74 @@
+Markdown Fenced Code Block Rendering Specification
+=================================================
+
+Scope
+-----
+Define how mdview renders fenced code blocks so fixtures remain predictable,
+whitespace stays intact, language hints are honored when available, and clear
+fallbacks apply when syntax highlighting cannot run.
+
+Assumptions
+-----------
+- Rendering uses ``rich.markdown.Markdown`` with syntax highlighting when
+  dependencies are present; otherwise mdview falls back to a plain-text block
+  renderer with visible fences or indentation preserved.
+- Source text order and spacing remain unchanged; renderers must not trim or
+  wrap content inside fences.
+- Tests consume fixtures from ``resources/tests`` and assert on visible cues
+  rather than brittle snapshot comparisons.
+
+Rendering Rules
+---------------
+- Recognize fenced code blocks introduced by three backticks (````` ````) or
+  three tildes (``~~~``) at the start of a line. Require matching closing
+  fences of the same marker length and type; ignore shorter or mixed fences.
+- Treat any language hint immediately following the opening fence as a hint
+  only. Use it to select syntax highlighting when available but never change
+  output content if highlighting is unavailable.
+- Preserve every character inside the fences, including leading and trailing
+  spaces, tabs, blank lines, and trailing newlines. Do not normalize
+  indentation or strip trailing whitespace.
+- Render the block as a distinct unit separated from surrounding paragraphs by
+  at least one newline. Do not merge adjacent paragraphs into the block or
+  extend the block past its closing fence.
+
+Language Hints and Fallback Behavior
+------------------------------------
+- When syntax highlighting is available, apply highlighting for the hinted
+  language without altering whitespace. If the hint is unknown, render the
+  block without highlighting but keep the content unchanged.
+- In fallback mode (missing ``rich`` or pygments), render the block as literal
+  text with preserved fencing boundaries. Emit a user-facing warning that
+  syntax highlighting is unavailable and that the block is shown without
+  styling.
+- Never inject default hints or rewrite fence markers. The renderer must not
+  add numbering, prefixes, or suffixes beyond the original content.
+
+Fixture Inventory and Formats
+-----------------------------
+- ``resources/tests/markdown/fenced_code_basic.md``: Single fenced block using
+  backticks with no language hint. Asserts that the block renders as a
+  distinct unit with preserved interior spacing and separating newlines.
+- ``resources/tests/markdown/fenced_code_language_hints.md``: Contains blocks
+  with ````` ```` and ``~~~`` fences that specify hints such as ``python`` and
+  ``bash`` plus an unknown hint. Validates that known hints trigger
+  highlighting when available and unknown hints render as literal text without
+  errors.
+- ``resources/tests/markdown/fenced_code_whitespace.md``: Includes leading and
+  trailing blank lines inside the block, tabs, and trailing spaces. Confirms
+  no whitespace trimming occurs and that closing fences stop the block
+  cleanly.
+- ``resources/tests/markdown/fenced_code_fallback.md``: Mirrors the basic
+  block but is executed under a fallback renderer to assert preserved content,
+  visible fences or indentation, and emission of a clear warning about missing
+  syntax highlighting.
+
+Exit Criteria
+-------------
+- Fixtures above exist and align with the rendering, whitespace preservation,
+  and fallback rules.
+- Renderers honor language hints when supported, preserve block boundaries and
+  interior whitespace, and surface a warning when syntax highlighting cannot
+  run.
+- Blocks remain isolated from surrounding text, respecting opening and closing
+  fences without bleeding into neighboring content.
