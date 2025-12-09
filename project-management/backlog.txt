@@ -5,6 +5,11 @@ top should be handled next, while lower items should wait accordingly. Mark
 each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
+* Add runtime documentation improvements: adopt argparse best practices with a
+  full --help path, and create cross-platform deployment subdirectories for
+  Windows, macOS, and Linux, including man pages for Linux/macOS plus POSIX
+  meta-target assets where shared. Added 2025-12-09T05:21:39Z.
+
 * Draft a specification for Markdown strikethrough rendering that documents
   fixtures, expected strike styling, and interaction with adjacent emphasis
   markers.
