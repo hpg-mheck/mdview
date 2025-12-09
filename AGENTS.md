@@ -38,3 +38,12 @@ This project follows pragmatic Python best practices with an emphasis on portabi
 Use `python -m pytest -k <pattern>` to focus on a subset of tests when iterating, but always run the full suite before committing.
 
 Address any failures before committing. Document deviations explicitly in commit messages.
+
+## Fallback Notices and Documentation
+- When mdview executes without optional dependencies, emit user-facing warnings
+  describing the active fallback paths before the process exits.
+- Keep `docs/specifications/fallback-behavior.txt` current with sections for
+  each supported fallback. Add new entries there whenever additional fallbacks
+  are introduced.
+- Standing order: extend this section with concise bullets for every new
+  fallback so expectations stay visible to contributors.
