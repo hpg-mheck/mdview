@@ -1,0 +1,94 @@
+User Preferences File Format
+===========================
+
+Goal
+----
+Define a user-maintainable preferences file for mdview that mirrors the
+plain-text, comment-first conventions favored by RHEL-family
+``/etc/*.conf`` files and Ubuntu's ``/etc/default`` style. The format
+must be simple for admins to audit and easy for scripts to manipulate
+without bespoke tooling.
+
+Location and Naming
+-------------------
+- User scope: ``$XDG_CONFIG_HOME/mdview/mdview.conf``; fall back to
+  ``~/.config/mdview/mdview.conf`` when ``$XDG_CONFIG_HOME`` is unset.
+- System scope: ``/etc/mdview/mdview.conf`` provides sitewide defaults.
+- Precedence: user scope overrides system scope; missing keys fall back
+  to built-in application defaults.
+- Encoding: UTF-8 text; avoid BOMs. Line endings: LF.
+- Permissions: user file created with ``0600``; system file managed by
+  packaging with ``0644``.
+
+Format Overview
+---------------
+- INI-inspired sections with ``[section]`` headers and ``key = value``
+  entries, mirroring the style used by many RHEL/Ubuntu tools.
+- Comment leader ``#`` at start of line. Empty lines allowed for
+  readability.
+- Whitespace around ``=`` is optional; parsers must trim it.
+- Values remain unquoted unless whitespace is significant; if quoting is
+  needed later, prefer double quotes.
+
+Recognized Sections and Keys
+----------------------------
+- ``[ui]``
+  - ``theme``: string, logical theme name (e.g., ``auto``, ``light``,
+    ``dark``). Default ``auto``.
+  - ``wrap_column``: integer; column at which to soft-wrap rendered
+    output. Default ``0`` means no additional wrapping beyond the pager.
+- ``[pager]``
+  - ``command``: string; explicit pager executable (e.g., ``less -R``).
+    Default empty to use built-in selection logic.
+  - ``follow_stdin``: boolean; when ``true``, forces paging even if
+    mdview is run in a pipeline. Default ``false``.
+- ``[rendering]``
+  - ``normalize_newlines``: boolean; normalize CRLF to LF before
+    rendering. Default ``true``.
+  - ``link_handling``: enum ``inline`` | ``footnote`` | ``strip``;
+    controls how Markdown links are displayed. Default ``inline``.
+  - ``syntax_highlighting``: boolean; enable ANSI highlighting for code
+    fences. Default ``true``.
+- ``[files]``
+  - ``default_paths``: comma-separated list of paths searched when no
+    argument is provided. Default empty.
+  - ``trust_remote``: boolean; allow reading files from URIs. Default
+    ``false``.
+
+Default Skeleton (All Options Commented)
+----------------------------------------
+Ship a default file with the correct sections and keys present but
+commented out. This mirrors the style of ``/etc/default`` files and
+``/etc/sysconfig`` templates while keeping configuration opt-in.
+
+::
+
+  # mdview user preferences
+  # Copy to ~/.config/mdview/mdview.conf to override defaults.
+
+  # [ui]
+  # theme = auto
+  # wrap_column = 0
+
+  # [pager]
+  # command =
+  # follow_stdin = false
+
+  # [rendering]
+  # normalize_newlines = true
+  # link_handling = inline
+  # syntax_highlighting = true
+
+  # [files]
+  # default_paths =
+  # trust_remote = false
+
+Change Management
+-----------------
+- Place the skeleton under ``resources/`` for packaging and ship the same
+  content to ``/etc/mdview/mdview.conf``. User-level copies should be
+  created lazily when a user first requests customization.
+- Future options must be added to both the "Recognized Sections and
+  Keys" list and the skeleton, maintaining commented defaults.
+- When deprecating an option, retain it in the skeleton marked with a
+  ``# deprecated:`` note until the next major release.
