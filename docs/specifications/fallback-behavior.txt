@@ -20,6 +20,9 @@ Supported Fallbacks:
 - Markdown rendering: When Rich is unavailable, use the plain-text Markdown and
   Console shims to render output without styling. Advise users to install the
   "rich" package to enable ANSI-styled Markdown output.
+- Hyperlink navigation: When prompt_toolkit is unavailable or the session lacks
+  a TTY, fall back to the basic pager and disable hyperlink highlighting with a
+  user-facing notice explaining the reduced navigation features.
 
 Testing Guidance (post-spec):
 - Add regression tests that force dependency detection to fail and confirm the
