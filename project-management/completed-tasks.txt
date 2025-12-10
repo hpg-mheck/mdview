@@ -6,6 +6,11 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Drafted docs/specifications/markdown_nested_list_rendering.txt detailing
+  parent-child indentation rules, separation requirements, and safeguards
+  against level merging. Recorded at 2025-12-10T07:05:14Z by R. Talon while
+  clearing the top backlog item.
+
 * Drafted docs/specifications/markdown_ordered_list_rendering.txt covering
   fixtures for numbered lists, continuation alignment, spacing, and
   restart separation. Recorded at 2025-12-09T07:56:16Z by R. Talon while
