@@ -1,0 +1,80 @@
+Markdown Nested List Rendering Specification
+===========================================
+
+Scope
+-----
+Define how mdview renders nested Markdown lists so parent-child indentation
+remains visible, levels do not merge, and separation stays consistent across
+renderers. Cover both bulleted and ordered parents with mixed child markers
+while preserving existing single-level list rules.
+
+Assumptions
+-----------
+- Rendering prefers ``rich.markdown.Markdown`` and falls back to a plain-text
+  formatter when Rich is unavailable.
+- Input spacing is authoritative; renderers preserve author-indented levels
+  without collapsing interior whitespace.
+- Fixtures live under ``resources/tests/markdown/lists`` and avoid unrelated
+  Markdown constructs such as blockquotes or fenced code blocks.
+- Assertions focus on list cues—indentation depth, prefixes, and separation—
+  rather than brittle full-output snapshots.
+
+Rendering Rules
+---------------
+- Recognize nested items when a bullet or numeric marker appears after at
+  least two leading spaces or a single tab relative to the parent marker.
+- Maintain consistent indentation per depth so child markers align vertically
+  within the same level and visibly offset from parents.
+- Preserve marker characters (``-``, ``*``, or ``1.`` style numbering) at
+  every level. In fallback mode, surface literal prefixes without styling
+  loss.
+- Allow inline emphasis and links inside items while preventing styling from
+  leaking into markers or between levels.
+- Keep each item on its own rendered line; do not concatenate parent and child
+  text even when children immediately follow parent lines in the source.
+
+Indentation and Separation Expectations
+---------------------------------------
+- Preserve blank lines between surrounding prose and the first or last list
+  item so nested lists remain visually distinct.
+- Maintain a single blank line between parent and child blocks when present in
+  the source; otherwise, render contiguous items without inserting extra
+  spacing.
+- Prevent merging adjacent levels: a child block must not inherit the parent's
+  marker or collapse back to the parent depth when siblings follow.
+- Support heterogeneous markers: a bulleted parent may contain ordered
+  children and vice versa without reformatting either marker style.
+
+Safeguards Against Level Merging
+--------------------------------
+- Treat reduced indentation as a deliberate return to a higher level rather
+  than an error. Preserve the new depth and its marker even if spacing varies
+  slightly between items.
+- Reject zero-indent child candidates: items without indentation relative to
+  the current level remain siblings of their nearest matching-depth item.
+- Do not collapse nested items when a parent line wraps; continuation lines
+  must align with the item's own text, not with child indentation.
+
+Fixture Inventory
+-----------------
+- ``resources/tests/markdown/lists/nested_bulleted.md``: Bulleted parents with
+  bulleted children at varying depths. Confirms aligned indentation, preserved
+  markers, and separation from surrounding prose.
+- ``resources/tests/markdown/lists/nested_mixed_markers.md``: Bulleted parents
+  with ordered children and ordered parents with bulleted children. Verifies
+  heterogeneous marker retention without reformatting.
+- ``resources/tests/markdown/lists/nested_spacing.md``: Nested lists with
+  intentional blank lines between depth changes. Ensures separation is
+  preserved and parent-child merging does not occur.
+- ``resources/tests/markdown/lists/nested_wrapping.md``: Parents and children
+  whose text wraps across lines. Validates that wrapped text does not reset
+  indentation or collapse levels.
+
+Exit Criteria
+-------------
+- All fixtures above exist under ``resources/tests/markdown/lists`` with
+  content that reflects indentation, separation, and anti-merging rules.
+- Renderers display clear indentation per depth with visible markers in Rich
+  and fallback modes.
+- Parent and child levels remain distinct even with mixed markers, wrapped
+  text, or spacing variations.
