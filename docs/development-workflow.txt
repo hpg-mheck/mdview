@@ -1,0 +1,29 @@
+Development Workflow
+====================
+
+Deferrals
+---------
+
+When the operator requests that a feature be deferred, move the item from
+`project-management/backlog.txt` or `project-management/tasks-in-progress.txt`
+into `project-management/deferred.txt` without changing the ordering or the
+asterisk-plus-blank-line formatting. Add a short note that explains why the
+work is pausing and stamp the entry with an ISO 8601 timestamp to show when the
+deferral occurred.
+
+Preserve the original task language exactly so it can be re-enabled. Insert a
+quoted block immediately under the rationale and timestamp. Start the block
+with a line that reads `>>BEGIN>>`, end it with a line that reads `>>END>>`,
+and prefix *every* line of the original text—including blank lines—with `> `.
+If the item is reactivated later, remove the deferral entry and copy the
+quoted content back into the backlog or in-progress list verbatim.
+
+Status Hygiene
+--------------
+
+Keep backlog entries concise, actionable, and timestamped when they enter the
+list. Only promote items to `project-management/tasks-in-progress.txt` when
+work begins, and return them to the backlog if progress stops. For completed
+work, record the outcome in `project-management/completed-tasks.txt` at the
+top of the file with a timestamp and a brief summary of what changed.
+

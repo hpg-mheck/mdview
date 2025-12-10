@@ -47,6 +47,16 @@ and pessimistic, defense-in-depth testing.
 - Treat the three project management files as living documents. Update them
   immediately when work status changes, and keep descriptions concise and
   actionable per Chicago Manual of Style guidance.
+- When an operator directs that a feature be deferred, move the item from
+  `project-management/backlog.txt` or
+  `project-management/tasks-in-progress.txt` into
+  `project-management/deferred.txt`, preserving the asterisk-plus-blank-line
+  formatting and recording why the deferral happened. Copy the original task
+  language into a quoted block inside the deferred entry so it can return to
+  the backlog verbatim when re-enabled. The quoted block starts with a line
+  containing only `>>BEGIN>>`, ends with a line containing only `>>END>>`, and
+  includes every line of the original text prefixed by `> `, including blank
+  lines.
 
 ## Backlog Iteration Orders
 - When instructed to "Iterate the backlog" or simply "iterate," follow the

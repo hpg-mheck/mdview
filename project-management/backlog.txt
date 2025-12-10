@@ -21,10 +21,6 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
   backslash-escaped characters, literal rendering expectations, and safeguards
   against unintended formatting.
 
-* Draft a specification for inline HTML passthrough that lists fixtures,
-  defines acceptable passthrough behavior, and notes interactions with other
-  Markdown elements.
-
 * Build pytest coverage for Markdown heading rendering following the new
   specification. Add fixtures under resources/tests and assert on rendered
   heading cues rather than full snapshots.
@@ -84,10 +80,6 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
 
 * Build pytest coverage for Markdown escaping per the specification. Ensure
   backslash-escaped characters render literally and do not trigger formatting.
-
-* Build pytest coverage for inline HTML passthrough per the specification.
-  Confirm inline HTML text remains intact and coexists with surrounding
-  Markdown elements.
 
 * Draft a specification for vi-style visual mode selection covering V entry,
   arrow-key navigation, spacebar toggling for start/end/clear, Enter-based
