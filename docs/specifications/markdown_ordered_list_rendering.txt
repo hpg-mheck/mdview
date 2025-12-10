@@ -1,0 +1,80 @@
+Markdown Ordered List Rendering Specification
+============================================
+
+Scope
+-----
+Define how mdview renders Markdown ordered lists so numbering stays visible,
+continuations remain aligned, and spacing is predictable. This specification
+covers single-level ordered lists. Nested list behavior is handled by a
+separate document.
+
+Assumptions
+-----------
+- Rendering prefers ``rich.markdown.Markdown`` and falls back to a plain-text
+  formatter when Rich is unavailable.
+- Inputs may start numbering at values other than ``1`` and may repeat or
+  reset numbering across disjoint list blocks.
+- Fixtures live under ``resources/tests/markdown/lists`` and avoid mixing
+  ordered lists with nested structures or bullet markers.
+- Assertions focus on numbering cues, alignment, and separation rather than
+  brittle full-output snapshots.
+
+Rendering Rules
+---------------
+- Recognize list items that start with an integer followed by ``. ``. Preserve
+  the digits exactly as written, including leading zeros, without normalizing
+  or renumbering.
+- Render item prefixes with consistent indentation so digits and separators
+  align vertically within the same list. In fallback mode, surface the literal
+  ``1. `` style prefixes without trimming interior spacing.
+- Keep each list item on its own rendered line. Do not merge item text with
+  adjacent items or surrounding paragraphs.
+- Allow inline emphasis inside list items while preventing styling from
+  leaking into numbering prefixes or neighboring lines.
+
+Numbering Continuation and Wrapping
+-----------------------------------
+- Preserve source numbering even when a list resumes after intervening text;
+  do not restart at ``1`` unless the source does.
+- Maintain indentation for wrapped lines within a single item so multi-line
+  content aligns under the text column, not under the numeric marker.
+- Accept varied digit widths (for example ``1.`` versus ``12.``) and ensure
+  subsequent item text columns align despite differing prefix lengths.
+
+Spacing and Separation Expectations
+-----------------------------------
+- Maintain a blank line between surrounding prose and the first or last list
+  item so lists remain visually distinct.
+- Preserve single blank lines between ordered items when present in the
+  source; treat double blanks as intentional breaks rather than collapsing
+  them.
+- Avoid merging adjacent ordered lists that restart numbering after a blank
+  line; treat the restart as a distinct block even when numbering overlaps.
+
+Fixture Inventory
+-----------------
+- ``resources/tests/markdown/lists/ordered_incrementing.md``: Sequential list
+  starting at ``1`` with leading and trailing prose. Verifies alignment,
+  separation from prose, and literal prefixes in fallback mode.
+- ``resources/tests/markdown/lists/ordered_offset_start.md``: List beginning at
+  ``3`` to confirm non-default starts render the authored digits without
+  renumbering and remain aligned with subsequent items.
+- ``resources/tests/markdown/lists/ordered_wrapped_items.md``: Items whose text
+  wraps onto additional lines. Ensures wrapped lines indent beneath the text
+  column rather than beneath numeric markers.
+- ``resources/tests/markdown/lists/ordered_restart.md``: Two ordered lists
+  separated by prose where numbering restarts at ``1``. Confirms lists remain
+  distinct and numbering does not merge across blocks.
+- ``resources/tests/markdown/lists/ordered_wide_numbers.md``: Items with
+  double-digit prefixes to validate column alignment when digit width
+  increases within the same list.
+
+Exit Criteria
+-------------
+- All fixtures above exist under ``resources/tests/markdown/lists`` with
+  content that reflects numbering, alignment, and spacing rules.
+- Renderers display aligned numeric markers, preserve authored numbering
+  across list restarts, and maintain wrapped-line indentation under the text
+  column in both Rich and fallback modes.
+- Ordered lists remain visually separated from surrounding prose and from
+  adjacent ordered lists that intentionally restart numbering.

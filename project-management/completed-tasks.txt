@@ -6,6 +6,11 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Drafted docs/specifications/markdown_ordered_list_rendering.txt covering
+  fixtures for numbered lists, continuation alignment, spacing, and
+  restart separation. Recorded at 2025-12-09T07:56:16Z by R. Talon while
+  clearing the top backlog item.
+
 * Drafted docs/specifications/markdown_bulleted_list_rendering.txt outlining
   fixtures for hyphen and asterisk bullets, spacing expectations, and item
   separation rules. Recorded at 2025-12-09T07:46:36Z by R. Talon while
@@ -103,4 +108,3 @@ summarize how the blocker was resolved.
   2025-12-09T02:33:53+00:00 by R. Talon. Delivered configuration parsing, user
   config creation from the stock skeleton, and pytest coverage for merge
   precedence and validation.
-
