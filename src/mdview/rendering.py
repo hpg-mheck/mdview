@@ -305,6 +305,59 @@ def _normalize_bulleted_lists(text: str, has_rich: bool) -> str:
     return "\n".join(output)
 
 
+def _is_horizontal_rule_line(line: str) -> bool:
+    """Return ``True`` when the line represents a horizontal rule marker."""
+
+    stripped = line.strip()
+    if not stripped:
+        return False
+
+    collapsed = stripped.replace(" ", "").replace("\t", "")
+    marker: Optional[str] = None
+    count = 0
+    for char in collapsed:
+        if char not in {"-", "*"}:
+            return False
+        if marker is None:
+            marker = char
+        elif char != marker:
+            return False
+        count += 1
+
+    return count >= 3
+
+
+def _normalize_horizontal_rules(text: str, has_rich: bool) -> str:
+    """Normalize horizontal rule markers and preserve surrounding spacing."""
+
+    lines = text.splitlines()
+    output: List[str] = []
+    rule_detected = False
+
+    for index, line in enumerate(lines):
+        if _is_horizontal_rule_line(line):
+            rule_detected = True
+            if output and output[-1].strip():
+                output.append("")
+
+            output.append("---")
+
+            next_line = lines[index + 1] if index + 1 < len(lines) else ""
+            if next_line.strip():
+                output.append("")
+
+            continue
+
+        output.append(line)
+
+    if rule_detected and not has_rich:
+        _add_fallback_notice(
+            "Rich unavailable: rendering horizontal rules with plain separators."
+        )
+
+    return "\n".join(output)
+
+
 def _select_rendering_backend() -> Tuple[Type[object], Type[object], bool]:
     """Determine whether Rich is available and return rendering primitives.
 
@@ -392,6 +445,7 @@ def render_to_ansi(content: str, markdown: bool) -> str:
         trailing_newline = content.endswith(("\n", "\r\n"))
         normalized = _normalize_heading_input(content, HAS_RICH)
         normalized = _normalize_bulleted_lists(normalized, HAS_RICH)
+        normalized = _normalize_horizontal_rules(normalized, HAS_RICH)
         formatted = _format_pipe_tables(normalized)
         if trailing_newline:
             formatted += "\n"

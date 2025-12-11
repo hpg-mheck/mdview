@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: mdview
+Version: 0.1.0
+Summary: Console Markdown viewer with less-like navigation
+Author: Matt Heck
+Author-email: mheck@hardproblemsgroup.com
+License: MIT

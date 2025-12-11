@@ -10,6 +10,5 @@ def test_author_email_is_populated() -> None:
 
     assert author_emails, "Author-email metadata should be populated."
     assert any(
-        "mheck@hardproblemsgroup.com" in author_email
-        for author_email in author_emails
+        "mheck@hardproblemsgroup.com" in author_email for author_email in author_emails
     ), "Expected author email missing from metadata."
