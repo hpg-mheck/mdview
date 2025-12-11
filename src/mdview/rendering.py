@@ -7,6 +7,7 @@ covered by unit tests to ensure reliable behavior.
 
 import importlib.util
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -46,6 +47,9 @@ class _PlainConsole:
 
 
 _FALLBACK_NOTICES: List[str] = []
+_EMPTY_HEADING_SENTINEL = "MDVIEWEMPTYHEADING"
+_FORCED_BREAK_SENTINEL = "MDVIEWHEADINGBREAK"
+_ANSI_ESCAPE_PATTERN = r"\x1b\[[0-?]*[ -/]*[@-~]"
 
 
 def _add_fallback_notice(message: str) -> None:
@@ -222,6 +226,37 @@ def _format_pipe_tables(text: str) -> str:
     return "\n".join(output)
 
 
+def _normalize_heading_input(text: str, has_rich: bool) -> str:
+    """Return content adjusted to honor heading-specific constraints."""
+
+    normalized: List[str] = []
+    for line in text.splitlines():
+        stripped = line.lstrip(" \t")
+        if not stripped:
+            normalized.append(line)
+            continue
+
+        if stripped.startswith("#"):
+            heading_body = stripped.lstrip("#").strip()
+            if not heading_body:
+                if has_rich:
+                    normalized.append(_EMPTY_HEADING_SENTINEL)
+                else:
+                    normalized.append("")
+                continue
+
+            if has_rich and len(stripped) != len(line):
+                normalized.append(
+                    f"{line[: len(line) - len(stripped)]}\\{stripped}"
+                    f" {_FORCED_BREAK_SENTINEL}"
+                )
+                continue
+
+        normalized.append(line)
+
+    return "\n".join(normalized)
+
+
 def _select_rendering_backend() -> Tuple[Type[object], Type[object], bool]:
     """Determine whether Rich is available and return rendering primitives.
 
@@ -306,11 +341,29 @@ def render_to_ansi(content: str, markdown: bool) -> str:
 
     console = Console(record=True)
     if markdown:
-        formatted = _format_pipe_tables(content)
+        trailing_newline = content.endswith(("\n", "\r\n"))
+        normalized = _normalize_heading_input(content, HAS_RICH)
+        formatted = _format_pipe_tables(normalized)
+        if trailing_newline:
+            formatted += "\n"
         console.print(Markdown(formatted, code_theme="ansi_dark"))
     else:
         console.print(content)
-    return console.export_text(styles=True)
+
+    rendered = console.export_text(styles=True)
+    if markdown and HAS_RICH:
+        empty_pattern = (
+            rf"\s*(?:{_ANSI_ESCAPE_PATTERN})*{_EMPTY_HEADING_SENTINEL}"
+            rf"(?:{_ANSI_ESCAPE_PATTERN})*\s*"
+        )
+        break_pattern = (
+            rf"\s*(?:{_ANSI_ESCAPE_PATTERN})*{_FORCED_BREAK_SENTINEL}"
+            rf"(?:{_ANSI_ESCAPE_PATTERN})*\s*"
+        )
+
+        rendered = re.sub(empty_pattern, "\n", rendered)
+        rendered = re.sub(break_pattern, "\n", rendered)
+    return rendered
 
 
 def _prompt_toolkit_available() -> bool:
