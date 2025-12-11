@@ -1,0 +1,90 @@
+Markdown Image Rendering Specification
+====================================
+
+Scope
+-----
+Define how mdview handles inline Markdown images (``![alt](url)``) so alt
+text remains visible, URLs stay accessible, and adjacent content stays stable.
+Cover rendering with Rich metadata, plain-text fallbacks when images cannot
+render, and isolation from nearby links or punctuation.
+
+Assumptions
+-----------
+- Rendering prefers ``rich.markdown.Markdown`` with image support and falls
+  back to a plain-text formatter when Rich is unavailable or images cannot
+  render.
+- Image URLs may be remote or local; rendering must not fetch content and must
+  avoid side effects such as network access.
+- Fixtures reside under ``resources/tests/markdown/images`` and avoid
+  combining images with unrelated Markdown constructs to keep coverage
+  targeted.
+- Assertions emphasize visible alt text, preserved URLs, fallback cues, and
+  isolation from neighbor content rather than brittle full-output snapshots.
+
+Rendering Rules
+---------------
+- Recognize inline images written as
+  ``![alt text](https://example.test/img.png)`` and render the alt text
+  verbatim without stripping punctuation or collapsing whitespace inside the
+  brackets.
+- When Rich supports images, expose metadata that pairs the alt text with the
+  URL while keeping surrounding prose intact. Do not fetch or inline the image
+  content.
+- In fallback mode or when images cannot render, display the alt text followed
+  by the URL in parentheses (``alt text (https://example.test/img.png)``) to
+  keep destinations visible.
+- Preserve neighboring content: images adjacent to words, punctuation, or
+  links must not merge with neighbors or reorder characters. Surrounding
+  emphasis must not leak into the image span or its URL.
+- Allow optional titles in the source (``![alt](url "title")``) without
+  altering the displayed alt text or URL handling. Titles remain metadata-only
+  and never replace visible text.
+
+Fallback Behavior
+-----------------
+- When Rich image rendering is unavailable, emit the alt-plus-URL fallback
+  string and warn via the fallback reporting channel that image content is not
+  rendered but remains visible.
+- Treat missing or empty alt text as ``[image]`` while still showing the URL
+  so accessibility cues persist even without descriptive text.
+- If a URL is missing or malformed, render the alt text and surface a
+  placeholder such as ``(missing image URL)`` without raising exceptions.
+
+Metadata Handling
+-----------------
+- When metadata is supported, expose entries that associate alt text, URL, and
+  the rendered span so downstream consumers can build navigation cues.
+- Emit distinct metadata records for multiple images on the same line; never
+  merge separate URLs into a single entry.
+- In fallback mode, include the URL in visible output to keep destinations
+  accessible even without metadata support.
+
+Fixture Inventory
+-----------------
+- ``resources/tests/markdown/images/inline_image_basic.md``: A single inline
+  image with alt text and a URL. Confirms visible alt text and preserved
+  destination.
+- ``resources/tests/markdown/images/inline_image_adjacent_content.md``: Images
+  next to words, punctuation, or links. Verifies isolation from neighbors and
+  stable ordering.
+- ``resources/tests/markdown/images/inline_image_empty_alt.md``: Images with
+  missing or empty alt text. Ensures fallback uses ``[image]`` while keeping
+  the URL visible.
+- ``resources/tests/markdown/images/inline_image_missing_url.md``: Images
+  lacking URLs. Confirms placeholder rendering without exceptions.
+- ``resources/tests/markdown/images/inline_image_fallback.md``: Runs in
+  fallback mode to confirm the ``alt text (url)`` pattern and the emitted
+  missing-image warning.
+- ``resources/tests/markdown/images/inline_image_with_title.md``: Images with
+  optional title strings. Validates that titles stay metadata-only and do not
+  replace displayed alt text or URLs.
+
+Exit Criteria
+-------------
+- All fixtures above exist under ``resources/tests/markdown/images`` with
+  content that matches the rendering and fallback rules.
+- Renderers display alt text cleanly, expose URLs through metadata when
+  available, and keep destinations visible in fallback mode with warnings for
+  missing rendering support.
+- Adjacent content remains stable: images do not merge with neighboring text,
+  and emphasis or links nearby do not alter the image span or its metadata.

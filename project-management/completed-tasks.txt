@@ -6,10 +6,15 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Drafted docs/specifications/markdown_image_rendering.txt outlining alt text
+  visibility, URL exposure, fallbacks for non-rendered images, adjacency
+  isolation, and fixture inventory. Recorded at 2025-12-11T04:32:54Z by
+  R. Talon while clearing the top backlog item.
+
 * Drafted docs/specifications/markdown_link_rendering.txt covering inline link
   fixtures, link text plus URL surfacing, and renderer-dependent metadata
-  handling. Recorded at 2025-12-11T04:22:48Z by R. Talon while clearing the top
-  backlog item.
+  handling. Recorded at 2025-12-11T04:22:48Z by R. Talon while clearing the
+  top backlog item.
 
 * Drafted docs/specifications/markdown_horizontal_rule_rendering.txt covering
   recognition of ``---`` and ``***`` markers, separator layout, trailing text
