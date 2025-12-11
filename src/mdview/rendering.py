@@ -12,7 +12,17 @@ import shlex
 import subprocess
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Tuple, Type
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    List,
+    Match,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+)
 
 from mdview.hyperlinks import (
     Hyperlink,
@@ -50,6 +60,7 @@ _FALLBACK_NOTICES: List[str] = []
 _EMPTY_HEADING_SENTINEL = "MDVIEWEMPTYHEADING"
 _FORCED_BREAK_SENTINEL = "MDVIEWHEADINGBREAK"
 _ANSI_ESCAPE_PATTERN = r"\x1b\[[0-?]*[ -/]*[@-~]"
+_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 
 def _add_fallback_notice(message: str) -> None:
@@ -99,6 +110,19 @@ def _is_divider_row(line: str) -> bool:
         if trimmed.count("-") < 3:
             return False
     return True
+
+
+def _format_links(text: str, has_rich: bool) -> str:
+    """Return content with inline Markdown links expanded for plain rendering."""
+
+    if has_rich:
+        return text
+
+    def _replacement(match: Match[str]) -> str:
+        label, target = match.group(1), match.group(2)
+        return f"{label} ({target})"
+
+    return _LINK_PATTERN.sub(_replacement, text)
 
 
 def _format_table_block(lines: Sequence[str], start: int) -> Tuple[List[str], int]:
@@ -447,6 +471,7 @@ def render_to_ansi(content: str, markdown: bool) -> str:
         normalized = _normalize_bulleted_lists(normalized, HAS_RICH)
         normalized = _normalize_horizontal_rules(normalized, HAS_RICH)
         formatted = _format_pipe_tables(normalized)
+        formatted = _format_links(formatted, HAS_RICH)
         if trailing_newline:
             formatted += "\n"
         console.print(Markdown(formatted, code_theme="ansi_dark"))

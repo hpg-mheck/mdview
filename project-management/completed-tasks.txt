@@ -6,6 +6,12 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Added pytest coverage for Markdown link rendering per the specification,
+  covering text visibility, hyperlink metadata, adjacency handling,
+  emphasized link boundaries, multiple destinations, and fallback URL
+  display. Recorded at 2025-12-11T07:58:07Z by R. Talon while clearing the
+  top backlog item.
+
 * Added pytest coverage for Markdown horizontal rule rendering per the
   specification, covering ``---``/``***`` recognition, spacing variants,
   trailing-text suppression, and fallback notices. Recorded at
