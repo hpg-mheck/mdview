@@ -29,6 +29,22 @@ def test_main_reports_rendering_fallback_notice(monkeypatch, tmp_path, capsys):
         importlib.reload(cli_module)
 
 
+def test_main_warns_about_missing_prerequisites(monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli_module, "detect_prerequisite_issues", lambda: ["prompt_toolkit missing"]
+    )
+    monkeypatch.setattr(
+        cli_module, "report_prerequisite_issues", cli_module.report_prerequisite_issues
+    )
+
+    with pytest.raises(SystemExit):
+        cli_module.main(["--help"])
+
+    captured = capsys.readouterr()
+    assert "prompt_toolkit missing" in captured.err
+    assert "environment checks" in captured.err
+
+
 def test_build_parser_rejects_abbreviations(capsys):
     parser = cli_module.build_parser()
 
