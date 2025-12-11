@@ -6,6 +6,11 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Drafted docs/specifications/markdown_escaping.txt detailing backslash escape
+  rules, formatting isolation, fallback behavior, and fixture inventory.
+  Recorded at 2025-12-11T04:45:16Z by R. Talon while clearing the top backlog
+  item.
+
 * Drafted docs/specifications/markdown_image_rendering.txt outlining alt text
   visibility, URL exposure, fallbacks for non-rendered images, adjacency
   isolation, and fixture inventory. Recorded at 2025-12-11T04:32:54Z by
@@ -50,12 +55,6 @@ summarize how the blocker was resolved.
   fixture formats, punctuation and spacing preservation rules, and fallback
   warnings for missing monospace rendering. Recorded at
   2025-12-09T07:18:00Z by R. Talon while clearing the top backlog item.
-
-* Implemented the Codex iteration exit testing suite per
-  docs/specifications/codex_iteration_testing_proposal.txt. Added the
-  driver script, dependency reporting hooks, fallback coverage tests, and
-  iteration checklist updates. Recorded at 2025-12-09T06:37:55Z by R.
-  Talon while clearing the top backlog item.
 
 * Drafted docs/specifications/markdown_inline_code_rendering.txt defining
   fixtures, monospace styling expectations, punctuation preservation, and
