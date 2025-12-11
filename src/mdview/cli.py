@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from mdview import __version__
+from mdview.prerequisites import (
+    detect_prerequisite_issues,
+    report_prerequisite_issues,
+)
 from mdview.rendering import (
     get_fallback_notices,
     is_markdown_file,
@@ -89,6 +93,7 @@ def _emit_fallback_notices() -> None:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """Entry point for the ``mdview`` CLI."""
 
+    report_prerequisite_issues(detect_prerequisite_issues())
     args = parse_args(argv)
     exit_code = 0
     path: Path = args.path
