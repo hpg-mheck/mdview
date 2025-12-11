@@ -1,0 +1,91 @@
+Markdown Escaping Specification
+===============================
+
+Scope
+-----
+Define how mdview handles backslash escapes so reserved Markdown characters
+render literally without triggering emphasis, heading, list, or rule parsing.
+Capture fixture inventory, rendering expectations, and fallback behavior when
+rich rendering is unavailable.
+
+Assumptions
+-----------
+- Rendering prefers ``rich.markdown.Markdown`` when available and falls back to
+  a plain-text formatter otherwise.
+- Source character order and spacing stay fixed; escapes must not reorder or
+  collapse content even when formatting is suppressed.
+- Tests rely on fixtures under ``resources/tests`` and assert on visible cues
+  rather than brittle snapshots.
+
+Escaping Behavior
+-----------------
+- Treat a backslash immediately preceding Markdown control characters
+  (``*``, ``_``, ``~``, ``#``, ``[``, ``]``, ``(``, ``)``, ``!``, ``>``, ``|``,
+  and backticks) as an escape that forces literal rendering of the character
+  only. Do not emit emphasis, headings, blockquotes, tables, links, images, or
+  code spans when the marker is escaped.
+- Preserve the backslash when it is doubled (``\\``) so the output displays a
+  single literal backslash followed by the escaped marker. Do not drop both
+  backslashes or merge adjacent escapes.
+- Keep trailing backslashes that precede whitespace or line endings literal;
+  do not treat them as hard line breaks. Preserve surrounding spacing so layout
+  remains unchanged.
+- Limit escapes to the next character only. Do not let a single backslash
+  disable multiple markers or change interpretation of later punctuation in the
+  same token.
+
+Interaction with Formatting and Structure
+-----------------------------------------
+- Do not start or continue emphasis, bold, italic, strikethrough, or combined
+  emphasis spans when the opening or closing marker is escaped. Escaped markers
+  render as literal characters without altering adjacent styling boundaries.
+- Suppress heading recognition when a line begins with an escaped hash sign
+  (``\# Heading``). The rendered output must show the hash and following text
+  literally without heading styling or anchor metadata.
+- Suppress list detection for escaped list prefixes at line start, including
+  ``\- ``, ``\* ``, ``\+ ``, ``\1. ``, and ``\01. ``. Render the markers and
+  numbering literally and maintain subsequent spacing.
+- Prevent horizontal rule parsing when hyphens or asterisks are escaped,
+  including ``\---`` and ``\***`` sequences. Render the characters verbatim in
+  order without converting them to separators.
+- Inside code spans or fenced code blocks, honor the existing rule that content
+  renders literally; do not apply additional escape processing beyond retaining
+  the characters as written.
+
+Fallback Behavior
+-----------------
+- In fallback rendering mode, display escaped characters literally with all
+  surrounding spacing intact. Emit a user-facing warning noting that rich
+  Markdown rendering is unavailable while confirming that escaped characters
+  remain literal.
+
+Fixture Inventory and Formats
+-----------------------------
+- ``resources/tests/markdown/escaping_basic.md``: Contains a paragraph with
+  escaped emphasis markers, brackets, parentheses, exclamation marks, pipes,
+  and backticks. Expected rendering shows literal characters with no emphasis,
+  links, images, or tables applied, and retains spacing.
+- ``resources/tests/markdown/escaping_adjacent_emphasis.md``: Places escaped
+  markers next to unescaped ones (for example, ``\*not bold*`` and
+  ``_italic\_``) to verify that escaped markers render literally while adjacent
+  unescaped markers still operate on their own. Asserts that styling boundaries
+  do not leak across the escaped character.
+- ``resources/tests/markdown/escaping_structural.md``: Provides escaped heading
+  leaders, list prefixes, and horizontal rule markers at line start. Confirms
+  literal rendering with no heading anchors, list bullets, numbering, or rule
+  separators, and preserves indentation.
+- ``resources/tests/markdown/escaping_backslash.md``: Includes doubled
+  backslashes before punctuation and trailing backslashes at line ends. Valid
+  output retains a single literal backslash before the escaped character and
+  preserves trailing backslashes without creating hard line breaks or merging
+  lines.
+
+Exit Criteria
+-------------
+- Fixtures above exist and align with the escaping, formatting isolation, and
+  fallback rules.
+- Escaped markers render literally without triggering emphasis, headings, list
+  parsing, horizontal rules, or table formatting; trailing backslashes stay
+  visible and spacing is preserved.
+- Fallback mode emits a warning about missing rich rendering while keeping
+  escaped characters literal and layout intact.
