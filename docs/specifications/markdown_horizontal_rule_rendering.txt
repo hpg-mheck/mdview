@@ -1,0 +1,62 @@
+Markdown Horizontal Rule Rendering Specification
+===============================================
+
+Scope
+-----
+Define how mdview renders Markdown horizontal rules so ``---`` and ``***``
+markers produce predictable separators, avoid stray trailing text, and stay
+consistent across rich and fallback renderers.
+
+Assumptions
+-----------
+- Rendering prefers ``rich.markdown.Markdown`` when available and falls back
+  to a plain-text formatter otherwise.
+- Source spacing and line order must remain unchanged; renderers must not
+  reorder surrounding paragraphs or trim blank lines that separate content
+  from rules.
+- Tests draw fixtures from ``resources/tests`` and assert on visible cues
+  rather than brittle snapshots.
+
+Separator Recognition
+---------------------
+- Recognize a horizontal rule when a line contains at least three hyphens
+  (``---``) or at least three asterisks (``***``) optionally separated by
+  single spaces. Ignore leading and trailing spaces around the markers.
+- Treat mixed markers (e.g., ``-*-``) or lines with fewer than three eligible
+  markers as plain text, not as horizontal rules.
+- Do not accept additional non-space characters on the line. If text follows
+  the markers, render the entire line as literal text to avoid leaking
+  trailing content past the separator.
+
+Rendering Rules
+---------------
+- Render a recognized rule as a separator cue distinct from surrounding
+  paragraphs (e.g., a solid line or styled divider). In fallback mode, surface
+  a plain line of hyphens matching the canonical ``---`` marker count.
+- Preserve surrounding blank lines. Insert at least one newline before and
+  after the rendered separator so adjacent paragraphs remain separate.
+- Suppress any trailing text: when a rule is recognized, no additional text
+  should appear on the separator line in output.
+- Keep rules isolated to their lines. Do not merge with neighboring content or
+  extend styling beyond the separator line.
+
+Fallback Behavior
+-----------------
+- When rich rendering is unavailable, emit a user-facing warning indicating
+  the fallback plain-text separator is active for horizontal rules.
+- In fallback mode, display the literal marker line (normalized to ``---``)
+  and preserve surrounding spacing without additional styling.
+
+Fixture Inventory and Formats
+-----------------------------
+- ``resources/tests/markdown/horizontal_rule_basic.md``: Contains standalone
+  ``---`` and ``***`` lines with surrounding paragraphs. Asserts that both
+  markers render as separators with preserved spacing.
+- ``resources/tests/markdown/horizontal_rule_spacing.md``: Includes rules
+  with optional interior spaces (``- - -`` and ``* * *``) and leading or
+  trailing spaces. Confirms recognition tolerates spacing while rejecting
+  mixed markers.
+- ``resources/tests/markdown/horizontal_rule_text_suppression.md``: Provides
+  lines where markers are followed by text or digits. Validates that such
+  lines render as literal text and that recognized rules never leak trailing
+  content.
