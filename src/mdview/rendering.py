@@ -257,6 +257,54 @@ def _normalize_heading_input(text: str, has_rich: bool) -> str:
     return "\n".join(normalized)
 
 
+def _normalize_bulleted_lists(text: str, has_rich: bool) -> str:
+    """Ensure bulleted list blocks remain visually separated."""
+
+    lines = text.splitlines()
+    output: List[str] = []
+    in_list = False
+    current_marker: Optional[str] = None
+
+    def _append_break() -> None:
+        if has_rich:
+            output.append("")
+            output.extend([_FORCED_BREAK_SENTINEL, _FORCED_BREAK_SENTINEL])
+        else:
+            output.append("")
+
+    for line in lines:
+        stripped = line.lstrip()
+        is_bullet = stripped.startswith("- ") or stripped.startswith("* ")
+        marker = stripped[:1] if is_bullet else None
+
+        if is_bullet:
+            if not in_list and output and output[-1].strip():
+                _append_break()
+            elif in_list and marker != current_marker:
+                _append_break()
+
+            output.append(line)
+            in_list = True
+            current_marker = marker
+            continue
+
+        if in_list:
+            if not line.strip():
+                _append_break()
+                in_list = False
+                current_marker = None
+                continue
+
+            if output and output[-1].strip() and line.strip():
+                _append_break()
+            in_list = False
+            current_marker = None
+
+        output.append(line)
+
+    return "\n".join(output)
+
+
 def _select_rendering_backend() -> Tuple[Type[object], Type[object], bool]:
     """Determine whether Rich is available and return rendering primitives.
 
@@ -343,6 +391,7 @@ def render_to_ansi(content: str, markdown: bool) -> str:
     if markdown:
         trailing_newline = content.endswith(("\n", "\r\n"))
         normalized = _normalize_heading_input(content, HAS_RICH)
+        normalized = _normalize_bulleted_lists(normalized, HAS_RICH)
         formatted = _format_pipe_tables(normalized)
         if trailing_newline:
             formatted += "\n"
