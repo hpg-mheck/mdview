@@ -6,10 +6,6 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
-* Build pytest coverage for nested list rendering in line with the
-  specification. Use fixtures that differentiate parent and child indentation
-  and assert against level merging.
-
 * Build pytest coverage for horizontal rule rendering according to the
   specification. Confirm ``---`` and ``***`` fixtures render separators
   without stray text.

@@ -6,6 +6,11 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Added pytest coverage for Markdown nested list rendering per the
+  specification, covering bulleted hierarchies, mixed markers, spacing,
+  and wrapped items across Rich and plain fallbacks. Recorded at
+  2025-12-11T07:30:25Z by R. Talon while clearing the top backlog item.
+
 * Added pytest coverage for Markdown ordered list rendering per the
   specification, with fixtures for incrementing, offset starts, wrapped
   content, restarts, and wide-number alignment across Rich and plain
