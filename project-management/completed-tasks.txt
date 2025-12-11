@@ -6,6 +6,12 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Added pytest coverage for Markdown strikethrough rendering per the
+  specification, with fixtures for adjacency to emphasis, escape handling,
+  punctuation spacing, unterminated markers, and mixed line endings across
+  Rich and plain fallbacks. Recorded at 2025-12-11T06:11:34Z by R. Talon while
+  clearing the top backlog item.
+
 * Added pytest coverage for combined Markdown bold+italic rendering per the
   specification. Included fixtures for triple-marker basics, boundaries,
   unterminated markers, escape handling, and mixed line endings across Rich
