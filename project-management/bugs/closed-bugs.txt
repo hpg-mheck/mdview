@@ -5,3 +5,10 @@
 # asterisk-plus-blank-line formatting, include an ISO 8601 timestamp for when
 # the fix was recorded, the resolution summary, and links to commits or tests
 # when available.
+
+* 2025-12-11T07:29:12+00:00 Resolved editable install failure by populating
+  the project author email (mheck@hardproblemsgroup.com) and adding metadata
+  coverage to guard against regressions. Owner: R. Talon. Notes: install
+  verification blocked by outbound proxy restrictions; compile-only check
+  succeeded.
+

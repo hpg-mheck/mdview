@@ -7,7 +7,7 @@ name = "mdview"
 version = "0.1.0"
 description = "Console Markdown viewer with less-like navigation"
 authors = [
-  { name = "Matt Heck", email = "" }
+  { name = "Matt Heck", email = "mheck@hardproblemsgroup.com" }
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
