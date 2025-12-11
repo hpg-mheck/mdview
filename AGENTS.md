@@ -4,6 +4,11 @@ This project follows pragmatic Python best practices with an emphasis on
 portability (assume Python 3.7 compatibility when writing or reviewing code)
 and pessimistic, defense-in-depth testing.
 
+Start every engagement by reading `docs/development-workflow.txt` for a
+high-level overview of how to work within this repository. Treat it as the
+first stop for understanding proposals, backlog handling, and execution steps
+before diving into other materials.
+
 ## Style and Documentation
 - Write clear, direct prose that aligns with the Chicago Manual of Style. Keep
   documentation focused, actionable, and concise.
