@@ -407,6 +407,41 @@ def _select_rendering_backend() -> Tuple[Type[object], Type[object], bool]:
 Console, Markdown, HAS_RICH = _select_rendering_backend()
 
 
+def _configure_heading_rendering() -> None:
+    """Resize Markdown heading panels to avoid wrapping artifacts."""
+
+    if not HAS_RICH:
+        return
+
+    try:
+        from rich import box as rich_box
+        from rich.markdown import Heading as RichHeading
+        from rich.panel import Panel
+        from rich.text import Text
+    except Exception:  # pragma: no cover - defensive guard for optional import
+        return
+
+    def _compact_heading_console(self: "RichHeading", console: Console, options):
+        text = self.text.copy()
+        text.justify = "center"
+        if self.tag == "h1":
+            yield Panel(
+                text,
+                box=rich_box.HEAVY,
+                style="markdown.h1.border",
+                expand=False,
+            )
+        else:
+            if self.tag == "h2":
+                yield Text("")
+            yield text
+
+    RichHeading.__rich_console__ = _compact_heading_console
+
+
+_configure_heading_rendering()
+
+
 # Type alias for pager callables used in tests and potential future hooks.
 Pager = Callable[[str], None]
 

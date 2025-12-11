@@ -6,6 +6,10 @@
 # the fix was recorded, the resolution summary, and links to commits or tests
 # when available.
 
+* 2025-12-11T08:13:05+00:00 Resolved H1 heading panels wrapping when terminals
+  narrowed by constraining Rich panels to content width and adding
+  a regression test that enforces narrow-console rendering. Owner: R. Talon.
+
 * 2025-12-11T07:29:12+00:00 Resolved editable install failure by populating
   the project author email (mheck@hardproblemsgroup.com) and adding metadata
   coverage to guard against regressions. Owner: R. Talon. Notes: install

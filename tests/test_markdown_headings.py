@@ -190,3 +190,31 @@ def test_empty_heading_becomes_blank_line(render_heading) -> None:
     assert cleaned[1].strip() == "Following text after the empty heading."
     assert "\x1b" not in raw_lines[0]
     assert rendered.endswith("\n")
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("rich") is None, reason="rich is required for this test"
+)
+def test_h1_panel_resizes_with_console_width(monkeypatch) -> None:
+    """Heading panels should shrink to avoid border wrapping."""
+
+    class NarrowConsole(rendering.Console):
+        def __init__(self, *args, **kwargs):
+            kwargs["width"] = 30
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(rendering, "Console", NarrowConsole)
+
+    rendered = rendering.render_to_ansi(
+        "# A very long heading title that exceeds width\n", markdown=True
+    )
+    heading_lines = [
+        _strip_ansi(line)
+        for line in rendered.splitlines()
+        if line.startswith(("┏", "┃", "┗"))
+    ]
+
+    assert heading_lines
+    assert all(len(line) <= 30 for line in heading_lines)
+    assert len({len(line) for line in heading_lines}) == 1
+    assert any("exceeds width" in line for line in heading_lines)
