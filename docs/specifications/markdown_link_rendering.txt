@@ -1,0 +1,76 @@
+Markdown Link Rendering Specification
+====================================
+
+Scope
+-----
+Define how mdview renders inline Markdown links so link text stays visible,
+URLs surface for navigation and metadata consumers, and fallbacks remain
+predictable when hyperlink rendering is unavailable. This specification focuses
+on inline links of the form ``[text](url)`` and leaves reference-style and
+image links to other documents.
+
+Assumptions
+-----------
+- Rendering prefers ``rich.markdown.Markdown`` with hyperlink support and falls
+  back to a plain-text formatter when Rich is unavailable.
+- Hyperlink navigation uses the metadata exposed by the primary renderer when
+  available; fallback paths still surface URLs as readable text.
+- Fixtures live under ``resources/tests/markdown/links`` and avoid mixing inline
+  links with images or reference definitions so coverage remains targeted.
+- Assertions emphasize visible link text, preserved URLs, and metadata exposure
+  instead of brittle full-output snapshots.
+
+Rendering Rules
+---------------
+- Recognize inline links written as ``[link text](https://example.test/path)``.
+  Display the link text without stripping punctuation or collapsing whitespace
+  contained inside the brackets.
+- When Rich hyperlink rendering is available, underline or otherwise mark the
+  link text as interactive while keeping surrounding prose intact. Do not let
+  styling leak into adjacent words or punctuation.
+- In fallback mode, render the link text followed by the URL in parentheses
+  (``text (https://example.test/path)``) so the destination remains visible
+  without requiring Rich metadata.
+- Permit inline emphasis inside link text while preventing styling from
+  altering the displayed URL or spilling into nearby content.
+- Preserve neighboring content: inline links next to words, punctuation, or
+  other links must not merge or reorder characters.
+
+Metadata Handling
+-----------------
+- When the renderer supports metadata (for example, Rich hyperlink spans), emit
+  link targets alongside their displayed text so downstream components can
+  build navigation cues. Maintain a stable mapping between the rendered span
+  and the URL for focus and activation.
+- Surface multiple links on the same line as distinct metadata entries, each
+  paired with its own URL. Do not merge separate destinations into a single
+  record.
+- In fallback mode, include the raw URL text in the rendered output to keep the
+  destination accessible even without hyperlink metadata.
+
+Fixture Inventory
+-----------------
+- ``resources/tests/markdown/links/inline_link_basic.md``: A single inline link
+  within prose. Confirms visible link text, preserved destination, and Rich
+  metadata exposure.
+- ``resources/tests/markdown/links/inline_link_adjacent_text.md``: Inline links
+  adjacent to words and punctuation. Validates that rendering does not merge
+  links with surrounding text and that metadata stays aligned per link.
+- ``resources/tests/markdown/links/inline_link_emphasis.md``: Link text wrapped
+  with emphasis markers. Ensures combined styling stays within the link text
+  while URLs remain unchanged.
+- ``resources/tests/markdown/links/inline_multiple_links.md``: Multiple links on
+  one line and across lines. Verifies separate metadata entries and preserved
+  destinations for each link.
+- ``resources/tests/markdown/links/inline_fallback_visibility.md``: Runs in
+  fallback mode to confirm the ``text (url)`` pattern keeps destinations
+  readable when Rich hyperlink rendering is unavailable.
+
+Exit Criteria
+-------------
+- All fixtures above exist under ``resources/tests/markdown/links`` with content
+  that reflects the rendering and metadata rules.
+- Renderers display link text cleanly, expose URLs through metadata when
+  supported, and keep URLs visible in fallback mode.
+- Adjacent content remains stable: inline links do not merge with neighbors,
+  and emphasis within links does not leak beyond the bracketed span.
