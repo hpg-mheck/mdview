@@ -651,6 +651,19 @@ def _scroll_window(window: "Window", amount: int, total_lines: int) -> None:
     window.vertical_scroll = new_scroll
 
 
+def _recenter_on_line(
+    window: "Window", line: int, height: int, total_lines: int
+) -> None:
+    """Center the viewport on a target line when possible."""
+
+    if height <= 0:
+        return
+
+    max_scroll = max(total_lines - height, 0)
+    target_scroll = max(line - height // 2, 0)
+    window.vertical_scroll = min(target_scroll, max_scroll)
+
+
 def _attempt_prompt_toolkit_pager(
     text: str, *, render_on_resize: Optional[Callable[[int], str]] = None
 ) -> bool:
@@ -680,6 +693,7 @@ def _attempt_prompt_toolkit_pager(
     )
     navigator = HyperlinkNavigator(hyperlinks)
     last_known_width: Optional[int] = None
+    last_known_height: Optional[int] = None
 
     def _restore_focus(previous: Optional[Hyperlink]) -> None:
         nonlocal navigator
@@ -696,31 +710,39 @@ def _attempt_prompt_toolkit_pager(
                 navigator._focus_index = index
                 break
 
-    def _refresh_rendered_text(width: Optional[int]) -> None:
-        nonlocal current_text, lines, hyperlinks, hyperlinks_by_line, navigator, last_known_width
+    def _refresh_rendered_text(width: Optional[int], height: Optional[int]) -> None:
+        nonlocal current_text, lines, hyperlinks, hyperlinks_by_line, navigator
+        nonlocal last_known_width, last_known_height
 
-        if render_on_resize is None or width is None or width <= 0:
+        if width is None or width <= 0 or height is None or height <= 0:
             return
 
-        if width == last_known_width:
-            return
-
-        if last_known_width is None:
+        if last_known_width is None or last_known_height is None:
             last_known_width = width
+            last_known_height = height
             return
 
+        if width == last_known_width and height == last_known_height:
+            return
+
+        previous_center_line = window.vertical_scroll + (last_known_height // 2)
         previous_focus = navigator.focus
-        current_text = render_on_resize(width)
-        lines, hyperlinks, hyperlinks_by_line = normalize_hyperlinks(
-            current_text.splitlines()
-        )
-        navigator = HyperlinkNavigator(hyperlinks)
-        _restore_focus(previous_focus)
+        if render_on_resize is not None:
+            current_text = render_on_resize(width)
+            lines, hyperlinks, hyperlinks_by_line = normalize_hyperlinks(
+                current_text.splitlines()
+            )
+            navigator = HyperlinkNavigator(hyperlinks)
+            _restore_focus(previous_focus)
+
         last_known_width = width
+        last_known_height = height
+        _recenter_on_line(window, previous_center_line, height, len(lines))
 
     def formatted_text() -> List[Tuple[str, str]]:
         width = _window_width()
-        _refresh_rendered_text(width)
+        height = _window_height()
+        _refresh_rendered_text(width, height)
         return _build_formatted_text(
             lines, hyperlinks_by_line, navigator.focus, fill_width=width
         )
@@ -739,6 +761,14 @@ def _attempt_prompt_toolkit_pager(
         event.app.exit()
 
     def _window_height() -> int:
+        try:
+            app = get_app()
+            size = app.output.get_size()
+            if size and getattr(size, "rows", 0) > 0:
+                return size.rows
+        except (AttributeError, RuntimeError):
+            pass
+
         render_info = window.render_info
         return render_info.window_height if render_info else 0
 
