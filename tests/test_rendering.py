@@ -193,6 +193,20 @@ def test_prompt_toolkit_pager_rerenders_on_resize(monkeypatch) -> None:
             self.window_width = window_width
             self.window_height = window_height
 
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(40, 10)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    app_registry: List["DummyApplication"] = []
+
     controls: List["DummyFormattedTextControl"] = []
 
     class DummyFormattedTextControl:
@@ -227,6 +241,8 @@ def test_prompt_toolkit_pager_rerenders_on_resize(monkeypatch) -> None:
         def __init__(self, layout, key_bindings, full_screen, style) -> None:
             self.layout = layout
             self.invalidate_called = 0
+            self.output = DummyOutput()
+            app_registry.append(self)
 
         def invalidate(self) -> None:
             self.invalidate_called += 1
@@ -234,8 +250,12 @@ def test_prompt_toolkit_pager_rerenders_on_resize(monkeypatch) -> None:
         def run(self) -> None:
             window = self.layout.container
             window.content.rendered.append(window.content.text_func())
-            window.render_info = DummyRenderInfo(60, 10)
+            self.output.size = DummySize(60, 10)
             window.content.rendered.append(window.content.text_func())
+            window.render_info = DummyRenderInfo(60, 10)
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
 
     def fake_components():
         return (
@@ -245,6 +265,7 @@ def test_prompt_toolkit_pager_rerenders_on_resize(monkeypatch) -> None:
             DummyWindow,
             DummyFormattedTextControl,
             DummyStyle,
+            get_dummy_app,
         )
 
     monkeypatch.setattr(sys.stdout, "isatty", lambda: True)

@@ -546,13 +546,22 @@ def _prompt_toolkit_components():
         return None
 
     from prompt_toolkit.application import Application
+    from prompt_toolkit.application.current import get_app
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.layout import Layout
     from prompt_toolkit.layout.containers import Window
     from prompt_toolkit.layout.controls import FormattedTextControl
     from prompt_toolkit.styles import Style
 
-    return Application, KeyBindings, Layout, Window, FormattedTextControl, Style
+    return (
+        Application,
+        KeyBindings,
+        Layout,
+        Window,
+        FormattedTextControl,
+        Style,
+        get_app,
+    )
 
 
 def _build_formatted_text(
@@ -628,6 +637,7 @@ def _attempt_prompt_toolkit_pager(
         Window,
         FormattedTextControl,
         Style,
+        get_app,
     ) = components
 
     current_text = text
@@ -696,6 +706,14 @@ def _attempt_prompt_toolkit_pager(
         return render_info.window_height if render_info else 0
 
     def _window_width() -> Optional[int]:
+        try:
+            app = get_app()
+            size = app.output.get_size()
+            if size and getattr(size, "columns", 0) > 0:
+                return size.columns
+        except (AttributeError, RuntimeError):
+            pass
+
         render_info = window.render_info
         return render_info.window_width if render_info else None
 
