@@ -1,4 +1,11 @@
-"""Interactive workflow for verifying terminal resize event handling."""
+"""Interactive workflow for verifying terminal resize event handling.
+
+The verifier walks the user through a series of resize operations, captures
+every terminal geometry change, and evaluates whether at least one event in
+each burst matches the expectation for the current step. The implementation
+intentionally favors clarity over cleverness so that future maintainers can
+audit the timing, safety checks, and reporting flow without surprises.
+"""
 
 import io
 import os
@@ -65,7 +72,12 @@ class ResizeVerificationReport:
         return f"{size.columns}x{size.lines}"
 
     def format_table(self) -> str:
-        """Render a table summarizing expectations and results."""
+        """Render a table summarizing expectations and results.
+
+        The table includes a final overall PASS/FAIL line for at-a-glance
+        consumption. Column widths are computed from the data to avoid
+        wrapping, which keeps the output readable on narrow terminals.
+        """
 
         headers = ["Step", "Expectation", "Observed", "Result", "Notes"]
         rows: List[List[str]] = []
@@ -99,7 +111,16 @@ class ResizeVerificationReport:
 
 
 class ResizeDetectionVerifier:
-    """Guide the user through a resize detection sequence."""
+    """Guide the user through a resize detection sequence.
+
+    The verifier listens for SIGWINCH signals or polling-based size changes,
+    queues every unique geometry, and treats a "quiet period" of two seconds
+    without new events as the boundary of a resize attempt. Each step passes
+    when at least one event in the collected burst matches the expected
+    direction of change. A five-second guardrail fails the step if activity
+    never starts or never settles, mirroring an operator who walks away or a
+    misbehaving terminal emulator.
+    """
 
     def __init__(
         self,
@@ -109,6 +130,7 @@ class ResizeDetectionVerifier:
         output_stream: TextIO = sys.stdout,
         sleep: Callable[[float], None] = time.sleep,
         poll_interval: float = 0.1,
+        monotonic: Callable[[], float] = time.monotonic,
         install_signal_handler: bool = True,
     ) -> None:
         self._size_reader = size_reader
@@ -116,6 +138,7 @@ class ResizeDetectionVerifier:
         self._output_stream = output_stream
         self._sleep = sleep
         self._poll_interval = poll_interval
+        self._monotonic = monotonic
         self._install_signal_handler = install_signal_handler
 
         self._pending_sizes: Deque[os.terminal_size] = deque()
@@ -176,14 +199,25 @@ class ResizeDetectionVerifier:
         ]
 
     def notify_resize(self, size: os.terminal_size) -> None:
-        """Queue a resize event detected externally."""
+        """Queue a resize event detected externally.
+
+        The verifier consults this queue before polling the terminal size so
+        that signal-driven notifications are processed promptly without
+        blocking the main loop.
+        """
 
         if self._current_size is not None and size == self._current_size:
             return
         self._pending_sizes.append(size)
 
     def run(self) -> ResizeVerificationReport:
-        """Execute the verification steps and return the report."""
+        """Execute the verification steps and return the report.
+
+        The method installs a SIGWINCH handler (unless disabled), guides the
+        user through eight resize prompts, and summarizes the results in a
+        table. Cleanup always restores the previous handler to avoid surprising
+        the caller's signal configuration.
+        """
 
         self._initial_size = self._size_reader()
         self._current_size = self._initial_size
@@ -220,11 +254,12 @@ class ResizeDetectionVerifier:
         self.notify_resize(size)
 
     def _run_step(self, step: ResizeStep) -> ResizeResult:
+        """Drive a single resize instruction from prompt to evaluation."""
         self._write_line(f"Step: {step.name}")
         self._write_line(f"  Action: {step.instruction}")
         self._write_line(f"  Expectation: {step.description}")
 
-        observed_size, user_reported_miss = self._await_resize_or_abort()
+        observed_sizes, user_reported_miss, timed_out = self._await_resize_or_abort()
         if user_reported_miss:
             note = "User reported missed resize detection with X."
             self._write_line(f"  Result: FAIL ({note})")
@@ -232,7 +267,20 @@ class ResizeDetectionVerifier:
                 step, detected=False, passed=False, observed_size=None, note=note
             )
 
-        if observed_size is None:
+        if timed_out:
+            if observed_sizes:
+                self._record_size(observed_sizes[-1])
+            note = "Timed out waiting for resize activity."
+            self._write_line(f"  Result: FAIL ({note})")
+            return ResizeResult(
+                step,
+                detected=bool(observed_sizes),
+                passed=False,
+                observed_size=observed_sizes[-1] if observed_sizes else None,
+                note=note,
+            )
+
+        if not observed_sizes:
             note = "No resize detected."
             self._write_line(f"  Result: FAIL ({note})")
             return ResizeResult(
@@ -240,32 +288,100 @@ class ResizeDetectionVerifier:
             )
 
         assert self._current_size is not None
-        passed, note = self._evaluate_step(
-            step.expectation, self._current_size, observed_size
-        )
-        self._record_size(observed_size)
+        expected_matches = 0
+        first_match_note: Optional[str] = None
+        previous_size = self._current_size
+        for observed_size in observed_sizes:
+            passed, note = self._evaluate_step(
+                step.expectation, previous_size, observed_size
+            )
+            if passed:
+                expected_matches += 1
+                if first_match_note is None:
+                    first_match_note = note
+            self._record_size(observed_size)
+            previous_size = observed_size
+
+        detected = True
+        passed = expected_matches > 0
+        total_events = len(observed_sizes)
+        ratio = expected_matches / total_events
+        # The verifier warns when the expected change represents fewer than 70%
+        # of the observed events. This keeps the test resilient to stray
+        # terminal resize noise while still surfacing suspicious ratios.
+        if passed and ratio < 0.7:
+            warning = (
+                f"\x1b[33mWarning: Only {expected_matches}/{total_events} resize "
+                f"events matched the expected {step.expectation.value} change.\x1b[0m"
+            )
+            self._write_line(warning)
+
+        if passed:
+            note = f"{expected_matches}/{total_events} events matched expectation."
+            if first_match_note:
+                note = f"{note} {first_match_note}"
+        else:
+            note = "No resize matched the expectation."
+
+        final_size = observed_sizes[-1]
         verdict = "PASS" if passed else "FAIL"
         self._write_line(
-            f"  Detected: {observed_size.columns}x{observed_size.lines} -> {verdict} ({note})"
+            f"  Detected: {final_size.columns}x{final_size.lines} -> {verdict} ({note})"
         )
         return ResizeResult(
-            step, detected=True, passed=passed, observed_size=observed_size, note=note
+            step, detected=detected, passed=passed, observed_size=final_size, note=note
         )
 
-    def _await_resize_or_abort(self) -> Tuple[Optional[os.terminal_size], bool]:
+    def _await_resize_or_abort(
+        self,
+    ) -> Tuple[List[os.terminal_size], bool, bool]:
+        """Collect resize events until quiet, an abort signal, or timeout.
+
+        Returns a tuple of three values:
+        1. The list of observed sizes in the order they were detected.
+        2. A boolean indicating whether the user explicitly reported a miss by
+           typing "X" (case-insensitive) followed by Enter.
+        3. A boolean indicating whether the wait timed out because activity
+           never started or never stopped within five seconds of the step
+           beginning.
+        """
+        start_time = self._monotonic()
+        last_event_time: Optional[float] = None
+        observed_sizes: List[os.terminal_size] = []
+        last_seen_size = self._current_size
+
         while True:
-            next_size = self._dequeue_size_change()
+            next_size = self._dequeue_size_change(last_seen_size)
             if next_size is not None:
-                return next_size, False
+                observed_sizes.append(next_size)
+                last_seen_size = next_size
+                last_event_time = self._monotonic()
 
             user_signal = self._read_user_signal()
             if user_signal:
                 if user_signal.strip().lower().startswith("x"):
-                    return None, True
+                    return observed_sizes, True, False
+
+            now = self._monotonic()
+            # Consider the resize attempt complete once two seconds have
+            # elapsed without a new event. This allows for multiple quick
+            # adjustments while ensuring the step eventually advances.
+            if last_event_time is not None and now - last_event_time >= 2.0:
+                return observed_sizes, False, False
+
+            # If five seconds pass without any activity or without a quiet
+            # period, assume the operator is away or the terminal failed to
+            # stabilize. Signal a timeout so the step fails decisively.
+            if now - start_time >= 5.0:
+                if not last_event_time or now - last_event_time < 2.0:
+                    return observed_sizes, False, True
 
             self._sleep(self._poll_interval)
 
-    def _dequeue_size_change(self) -> Optional[os.terminal_size]:
+    def _dequeue_size_change(
+        self, reference_size: Optional[os.terminal_size] = None
+    ) -> Optional[os.terminal_size]:
+        """Return the next resize event or detect a new one via polling."""
         if self._pending_sizes:
             return self._pending_sizes.popleft()
 
@@ -274,14 +390,16 @@ class ResizeDetectionVerifier:
         except OSError:
             return None
 
-        if self._current_size is None:
+        comparison_size = reference_size or self._current_size
+        if comparison_size is None:
             return None
 
-        if current_size != self._current_size:
+        if current_size != comparison_size:
             return current_size
         return None
 
     def _record_size(self, size: os.terminal_size) -> None:
+        """Track the latest and maximum terminal sizes seen so far."""
         self._current_size = size
         if self._max_size is None:
             self._max_size = size
@@ -290,6 +408,7 @@ class ResizeDetectionVerifier:
             self._max_size = size
 
     def _read_user_signal(self) -> Optional[str]:
+        """Detect whether the user typed an abort signal without blocking."""
         try:
             fileno = self._input_stream.fileno()
         except (AttributeError, io.UnsupportedOperation, ValueError):
@@ -318,6 +437,7 @@ class ResizeDetectionVerifier:
         previous: os.terminal_size,
         observed: os.terminal_size,
     ) -> Tuple[bool, str]:
+        """Assess whether a resize event satisfies the current expectation."""
         assert self._initial_size is not None
         assert self._max_size is not None
 
