@@ -45,7 +45,7 @@ class _PlainMarkdown:
 class _PlainConsole:
     """Simplified Console replacement used only when Rich is missing."""
 
-    def __init__(self, record: bool = False) -> None:
+    def __init__(self, record: bool = False, width: Optional[int] = None) -> None:
         self._buffer: List[str] = []
 
     def print(self, content: object) -> None:
@@ -482,7 +482,7 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def render_to_ansi(content: str, markdown: bool) -> str:
+def render_to_ansi(content: str, markdown: bool, *, width: Optional[int] = None) -> str:
     """Render the given content to ANSI-decorated text.
 
     When ``markdown`` is true, the content is parsed through ``rich``'s
@@ -494,12 +494,13 @@ def render_to_ansi(content: str, markdown: bool) -> str:
     Args:
         content: The document content to render.
         markdown: Whether to process the content as Markdown.
+        width: Optional line width override used when rendering through Rich.
 
     Returns:
         A string containing ANSI escape sequences suitable for paging.
     """
 
-    console = Console(record=True)
+    console = Console(record=True, width=width)
     if markdown:
         trailing_newline = content.endswith(("\n", "\r\n"))
         normalized = _normalize_heading_input(content, HAS_RICH)
@@ -607,7 +608,9 @@ def _scroll_window(window: "Window", amount: int, total_lines: int) -> None:
     window.vertical_scroll = new_scroll
 
 
-def _attempt_prompt_toolkit_pager(text: str) -> bool:
+def _attempt_prompt_toolkit_pager(
+    text: str, *, render_on_resize: Optional[Callable[[int], str]] = None
+) -> bool:
     """Return True if text was paged interactively with prompt_toolkit."""
 
     components = _prompt_toolkit_components()
@@ -627,10 +630,52 @@ def _attempt_prompt_toolkit_pager(text: str) -> bool:
         Style,
     ) = components
 
-    lines, hyperlinks, hyperlinks_by_line = normalize_hyperlinks(text.splitlines())
+    current_text = text
+    lines, hyperlinks, hyperlinks_by_line = normalize_hyperlinks(
+        current_text.splitlines()
+    )
     navigator = HyperlinkNavigator(hyperlinks)
+    last_known_width: Optional[int] = None
+
+    def _restore_focus(previous: Optional[Hyperlink]) -> None:
+        nonlocal navigator
+
+        if previous is None:
+            return
+
+        for index, link in enumerate(navigator.hyperlinks):
+            if (
+                link.line == previous.line
+                and link.text == previous.text
+                and link.target == previous.target
+            ):
+                navigator._focus_index = index
+                break
+
+    def _refresh_rendered_text(width: Optional[int]) -> None:
+        nonlocal current_text, lines, hyperlinks, hyperlinks_by_line, navigator, last_known_width
+
+        if render_on_resize is None or width is None or width <= 0:
+            return
+
+        if width == last_known_width:
+            return
+
+        if last_known_width is None:
+            last_known_width = width
+            return
+
+        previous_focus = navigator.focus
+        current_text = render_on_resize(width)
+        lines, hyperlinks, hyperlinks_by_line = normalize_hyperlinks(
+            current_text.splitlines()
+        )
+        navigator = HyperlinkNavigator(hyperlinks)
+        _restore_focus(previous_focus)
+        last_known_width = width
 
     def formatted_text() -> List[Tuple[str, str]]:
+        _refresh_rendered_text(_window_width())
         return _build_formatted_text(lines, hyperlinks_by_line, navigator.focus)
 
     control = FormattedTextControl(
@@ -649,6 +694,10 @@ def _attempt_prompt_toolkit_pager(text: str) -> bool:
     def _window_height() -> int:
         render_info = window.render_info
         return render_info.window_height if render_info else 0
+
+    def _window_width() -> Optional[int]:
+        render_info = window.render_info
+        return render_info.window_width if render_info else None
 
     @bindings.add("tab")
     def _(event) -> None:  # type: ignore[override]
@@ -724,6 +773,8 @@ def page_text(
     text: str,
     pager: Optional[Pager] = None,
     pager_command: Optional[str] = None,
+    *,
+    render_on_resize: Optional[Callable[[int], str]] = None,
 ) -> None:
     """Send text to a pager for interactive navigation.
 
@@ -732,6 +783,8 @@ def page_text(
         pager: Optional callable to handle paging (primarily for testing).
         pager_command: Optional shell-style pager command to execute instead of
             the default ``pydoc.pager`` / ``less`` combination.
+        render_on_resize: Optional callable used to regenerate the text when
+            the interactive pager detects a change in the terminal width.
 
     Raises:
         RuntimeError: If the custom pager command fails to start or exits with
@@ -746,7 +799,7 @@ def page_text(
         _pipe_to_command(text, pager_command)
         return
 
-    if _attempt_prompt_toolkit_pager(text):
+    if _attempt_prompt_toolkit_pager(text, render_on_resize=render_on_resize):
         return
 
     # Default: rely on ``pydoc.pager`` which prefers ``less`` when available.

@@ -111,10 +111,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         _emit_fallback_notices()
         return exit_code
 
-    ansi_text = render_to_ansi(content, markdown=is_markdown_file(path))
+    is_markdown = is_markdown_file(path)
+    ansi_text = render_to_ansi(content, markdown=is_markdown)
 
     try:
-        page_text(ansi_text, pager_command=args.pager_command)
+        page_text(
+            ansi_text,
+            pager_command=args.pager_command,
+            render_on_resize=lambda width: render_to_ansi(
+                content, markdown=is_markdown, width=width
+            ),
+        )
     except RuntimeError as error:
         print(f"mdview: pager error: {error}", file=sys.stderr)
         exit_code = 4

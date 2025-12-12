@@ -1,9 +1,11 @@
 import importlib
+import sys
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import pytest
 
+import mdview.rendering as rendering
 from mdview.rendering import (
     HAS_RICH,
     _format_pipe_tables,
@@ -183,3 +185,84 @@ def test_page_text_records_prompt_toolkit_fallback(monkeypatch) -> None:
     finally:
         monkeypatch.undo()
         importlib.reload(rendering)
+
+
+def test_prompt_toolkit_pager_rerenders_on_resize(monkeypatch) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    controls: List["DummyFormattedTextControl"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+            self.rendered: List[List[Tuple[str, str]]] = []
+            controls.append(self)
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(40, 10)
+            self.vertical_scroll = 0
+
+    class DummyKeyBindings:
+        def add(self, *args, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.invalidate_called = 0
+
+        def invalidate(self) -> None:
+            self.invalidate_called += 1
+
+        def run(self) -> None:
+            window = self.layout.container
+            window.content.rendered.append(window.content.text_func())
+            window.render_info = DummyRenderInfo(60, 10)
+            window.content.rendered.append(window.content.text_func())
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+    resized_widths: List[int] = []
+
+    def render_on_resize(width: int) -> str:
+        resized_widths.append(width)
+        return "resized content"
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        "initial", render_on_resize=render_on_resize
+    )
+
+    # The dummy control stores render output during application.run().
+    # Capture the instance to assert against rendered content.
+    assert resized_widths == [60]
+    assert len(controls) == 1
+    assert controls[0].rendered[0][0][1].strip() == "initial"
+    assert controls[0].rendered[1][0][1].strip() == "resized content"
