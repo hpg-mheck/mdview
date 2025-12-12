@@ -6,6 +6,10 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Added ``--verify-resize-detection`` CLI workflow plus a resize verification
+  harness with simulator-driven tests and README documentation. Recorded at
+  2025-12-12T02:49:55Z by R. Talon for Matt "Breakpoint" Heck.
+
 * Added pytest coverage for Markdown link rendering per the specification,
   covering text visibility, hyperlink metadata, adjacency handling,
   emphasized link boundaries, multiple destinations, and fallback URL
