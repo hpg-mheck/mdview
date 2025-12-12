@@ -4,3 +4,6 @@
 # Track bugs actively being remediated in this file. Use the same formatting
 # as `known-bugs.txt`, including timestamps and owners.
 
+* 2025-12-12T02:30:00Z Reopened H1 frame resize regression for inspection with
+  framebuffer-aware test utilities. Owner: R. Talon. Blockers: None.
+

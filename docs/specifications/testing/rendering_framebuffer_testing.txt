@@ -1,0 +1,35 @@
+Rendering Framebuffer Testing Specification
+==========================================
+
+Purpose and Scope
+-----------------
+Provide reusable test hooks that let engineers resize the rendered console
+container and inspect the resulting text framebuffer. The goal is to validate
+visual Markdown elements, especially heading frames, by sampling exact
+characters at specific coordinates after resizes.
+
+Assumptions
+-----------
+- Tests require ANSI-aware parsing that strips escape codes before coordinate
+  lookups.
+- Renderings come from ``mdview.rendering.render_to_ansi`` with optional width
+  overrides.
+- The same hooks must work whether Rich is present or the plain-text fallback
+  is active.
+
+Capabilities
+------------
+- Construct a reusable render container bound to content so tests can render
+  at different widths without reimplementing the pipeline.
+- Read the text framebuffer as a two-dimensional grid, including helpers to
+  pull individual cells and rectangular regions around points of interest.
+- Preserve access to raw ANSI output alongside sanitized plain-text lines.
+
+Test Coverage Expectations
+--------------------------
+- Add regression coverage that resizes heading frames and inspects framebuffer
+  regions around the heading text to confirm borders and padding stay intact.
+- Ensure helpers tolerate widths that shrink and expand while still locating
+  visible characters.
+- Document how to invoke the framebuffer utilities so future tests can verify
+  visual renderers without duplicating setup code.

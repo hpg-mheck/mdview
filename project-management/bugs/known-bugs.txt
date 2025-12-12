@@ -6,3 +6,7 @@
 # Include a concise summary, reproduction notes when available, the ISO 8601
 # timestamp for when the bug was logged, and any blockers or owners.
 
+* 2025-12-12T02:30:00Z H1 heading frames still fail to honor resize events under
+  regression testing; test infrastructure needs framebuffer inspection support
+  to verify border widths after resizes. Owner: R. Talon.
+
