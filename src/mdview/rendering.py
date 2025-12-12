@@ -424,12 +424,16 @@ def _configure_heading_rendering() -> None:
     def _compact_heading_console(self: "RichHeading", console: Console, options):
         text = self.text.copy()
         text.justify = "center"
+        panel_width: Optional[int] = getattr(options, "max_width", None)
+        if panel_width is None:
+            panel_width = getattr(console, "width", None)
         if self.tag == "h1":
             yield Panel(
                 text,
                 box=rich_box.HEAVY,
                 style="markdown.h1.border",
-                expand=False,
+                expand=True,
+                width=panel_width,
             )
         else:
             if self.tag == "h2":

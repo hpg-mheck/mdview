@@ -218,3 +218,39 @@ def test_h1_panel_resizes_with_console_width(monkeypatch) -> None:
     assert all(len(line) <= 30 for line in heading_lines)
     assert len({len(line) for line in heading_lines}) == 1
     assert any("exceeds width" in line for line in heading_lines)
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("rich") is None, reason="rich is required for this test"
+)
+def test_h1_panel_expands_to_console_width() -> None:
+    rendered = rendering.render_to_ansi("# Expanded Title\n", markdown=True, width=48)
+    frame_widths = {
+        len(_strip_ansi(line))
+        for line in rendered.splitlines()
+        if line.startswith(("┏", "┗"))
+    }
+
+    assert frame_widths == {48}
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("rich") is None, reason="rich is required for this test"
+)
+def test_h1_panel_recomputes_width_on_resize() -> None:
+    narrow = rendering.render_to_ansi("# Expanding Title\n", markdown=True, width=32)
+    wide = rendering.render_to_ansi("# Expanding Title\n", markdown=True, width=68)
+
+    narrow_widths = {
+        len(_strip_ansi(line))
+        for line in narrow.splitlines()
+        if line.startswith(("┏", "┗"))
+    }
+    wide_widths = {
+        len(_strip_ansi(line))
+        for line in wide.splitlines()
+        if line.startswith(("┏", "┗"))
+    }
+
+    assert narrow_widths == {32}
+    assert wide_widths == {68}
