@@ -580,29 +580,47 @@ def _prompt_toolkit_components():
     )
 
 
+def _visible_length(text: str) -> int:
+    """Return the printable length of text without ANSI escapes."""
+
+    return len(re.sub(_ANSI_ESCAPE_PATTERN, "", text))
+
+
 def _build_formatted_text(
     lines: Sequence[str],
     hyperlinks_by_line: Dict[int, List[Hyperlink]],
     focused: Optional[Hyperlink],
+    *,
+    fill_width: Optional[int] = None,
 ) -> List[Tuple[str, str]]:
     """Return formatted text segments with hyperlink styling applied."""
 
     segments: List[Tuple[str, str]] = []
     for line_number, line in enumerate(lines):
         cursor = 0
+        visible_length = 0
+        line_segments: List[Tuple[str, str]] = []
         for link in hyperlinks_by_line.get(line_number, []):
             prefix = line[cursor : link.start]
             if prefix:
-                segments.append(("", prefix))
+                line_segments.append(("", prefix))
+                visible_length += _visible_length(prefix)
 
             style = "class:hyperlink.focused"
             if not focused or focused.index != link.index:
                 style = "class:hyperlink"
-            segments.append((style, line[link.start : link.end]))
+            link_text = line[link.start : link.end]
+            line_segments.append((style, link_text))
+            visible_length += _visible_length(link_text)
             cursor = link.end
 
         remainder = line[cursor:]
-        segments.append(("", remainder + "\n"))
+        visible_length += _visible_length(remainder)
+        if fill_width and fill_width > 0 and visible_length < fill_width:
+            remainder += " " * (fill_width - visible_length)
+
+        line_segments.append(("", remainder + "\n"))
+        segments.extend(line_segments)
     return segments
 
 
@@ -701,8 +719,11 @@ def _attempt_prompt_toolkit_pager(
         last_known_width = width
 
     def formatted_text() -> List[Tuple[str, str]]:
-        _refresh_rendered_text(_window_width())
-        return _build_formatted_text(lines, hyperlinks_by_line, navigator.focus)
+        width = _window_width()
+        _refresh_rendered_text(width)
+        return _build_formatted_text(
+            lines, hyperlinks_by_line, navigator.focus, fill_width=width
+        )
 
     control = FormattedTextControl(
         formatted_text, focusable=False, show_cursor=False, focusable_windows=False
