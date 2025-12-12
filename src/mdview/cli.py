@@ -17,6 +17,7 @@ from mdview.rendering import (
     read_text,
     render_to_ansi,
 )
+from mdview.resize_verifier import ResizeDetectionVerifier
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -37,7 +38,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "path",
         type=Path,
-        help="Path to a Markdown or text file to view.",
+        nargs="?",
+        help=(
+            "Path to a Markdown or text file to view. Required unless "
+            "--verify-resize-detection is used."
+        ),
     )
     parser.add_argument(
         "--pager",
@@ -46,6 +51,14 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Optional pager command to override the default less/pydoc pager "
             "(e.g., 'less -R')."
+        ),
+    )
+    parser.add_argument(
+        "--verify-resize-detection",
+        action="store_true",
+        help=(
+            "Guide a manual resize sequence, acknowledging detected events and "
+            "reporting pass/fail results."
         ),
     )
     parser.add_argument(
@@ -96,7 +109,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     report_prerequisite_issues(detect_prerequisite_issues())
     args = parse_args(argv)
     exit_code = 0
-    path: Path = args.path
+
+    if args.verify_resize_detection:
+        verifier = ResizeDetectionVerifier()
+        report = verifier.run()
+        _emit_fallback_notices()
+        return 0 if report.overall_passed else 1
+
+    path: Optional[Path] = args.path
+    if path is None:
+        print(
+            "mdview: path is required unless --verify-resize-detection is used",
+            file=sys.stderr,
+        )
+        _emit_fallback_notices()
+        return 2
     if not path.exists() or not path.is_file():
         print(f"mdview: path does not exist or is not a file: {path}", file=sys.stderr)
         exit_code = 2

@@ -38,6 +38,8 @@ mdview path/to/file.md
 Optional flags:
 - `--pager "<command>"` to override the pager (defaults to `less -R` through
   `pydoc.pager`).
+- `--verify-resize-detection` to run an interactive resize checklist that
+  acknowledges detected events and reports PASS/FAIL per step.
 - `--version` to display the current version.
 
 If `less` is unavailable, mdview falls back to the default pager provided

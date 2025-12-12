@@ -45,6 +45,14 @@ def test_main_warns_about_missing_prerequisites(monkeypatch, capsys):
     assert "environment checks" in captured.err
 
 
+def test_main_requires_path_without_verification_flag(capsys):
+    exit_code = cli_module.main([])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "path is required" in captured.err
+
+
 def test_build_parser_rejects_abbreviations(capsys):
     parser = cli_module.build_parser()
 
@@ -56,12 +64,32 @@ def test_build_parser_rejects_abbreviations(capsys):
     assert "unrecognized arguments: --pag" in captured.err
 
 
+def test_main_runs_resize_verifier(monkeypatch):
+    class DummyReport:
+        overall_passed = True
+
+        @staticmethod
+        def format_table():
+            return "table"
+
+    class DummyVerifier:
+        def run(self):
+            return DummyReport()
+
+    monkeypatch.setattr(cli_module, "ResizeDetectionVerifier", lambda: DummyVerifier())
+
+    exit_code = cli_module.main(["--verify-resize-detection"])
+
+    assert exit_code == 0
+
+
 def test_format_help_matches_expected_shape():
     help_text = cli_module.format_help()
 
     assert "usage: mdview" in help_text
     assert "--pager COMMAND" in help_text
     assert "Render Markdown in the terminal" in help_text
+    assert "--verify-resize-detection" in help_text
 
 
 def test_version_flag_exits_cleanly(capsys):
