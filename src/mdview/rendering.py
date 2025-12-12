@@ -45,7 +45,12 @@ class _PlainMarkdown:
 class _PlainConsole:
     """Simplified Console replacement used only when Rich is missing."""
 
-    def __init__(self, record: bool = False, width: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        record: bool = False,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ) -> None:
         self._buffer: List[str] = []
 
     def print(self, content: object) -> None:
@@ -424,12 +429,16 @@ def _configure_heading_rendering() -> None:
     def _compact_heading_console(self: "RichHeading", console: Console, options):
         text = self.text.copy()
         text.justify = "center"
+        panel_width: Optional[int] = getattr(options, "max_width", None)
+        if panel_width is None:
+            panel_width = getattr(console, "width", None)
         if self.tag == "h1":
             yield Panel(
                 text,
                 box=rich_box.HEAVY,
                 style="markdown.h1.border",
-                expand=False,
+                expand=True,
+                width=panel_width,
             )
         else:
             if self.tag == "h2":
@@ -482,7 +491,13 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def render_to_ansi(content: str, markdown: bool, *, width: Optional[int] = None) -> str:
+def render_to_ansi(
+    content: str,
+    markdown: bool,
+    *,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+) -> str:
     """Render the given content to ANSI-decorated text.
 
     When ``markdown`` is true, the content is parsed through ``rich``'s
@@ -495,12 +510,13 @@ def render_to_ansi(content: str, markdown: bool, *, width: Optional[int] = None)
         content: The document content to render.
         markdown: Whether to process the content as Markdown.
         width: Optional line width override used when rendering through Rich.
+        height: Optional line height override to mirror viewport sizing.
 
     Returns:
         A string containing ANSI escape sequences suitable for paging.
     """
 
-    console = Console(record=True, width=width)
+    console = Console(record=True, width=width, height=height)
     if markdown:
         trailing_newline = content.endswith(("\n", "\r\n"))
         normalized = _normalize_heading_input(content, HAS_RICH)

@@ -6,7 +6,3 @@
 # Include a concise summary, reproduction notes when available, the ISO 8601
 # timestamp for when the bug was logged, and any blockers or owners.
 
-* Header tags no longer render with full-width frames and the frame width does
-  not recompute on window resizes, causing wraps onto the next line. Restore
-  the full-width frames and recalc widths on resize. Added
-  2025-12-12T00:53:48Z.
