@@ -3,22 +3,22 @@ Status: Draft
 
 Overview:
 - Provide an interactive ``--verify-resize-detection`` workflow that confirms
-  mdview reacts to terminal resize events and reads updated geometry from system
-  calls.
+  mdview reacts to terminal resize events and reads updated geometry from
+  system calls.
 - Allow operators to follow a scripted sequence of resize actions while mdview
   acknowledges each detected change and records whether the expected dimension
   deltas occurred.
-- Surface a consolidated PASS/FAIL report with per-step notes so manual runs and
-  automated harnesses can flag missed events quickly.
+- Surface a consolidated PASS/FAIL report with per-step notes so manual runs
+  and automated harnesses can flag missed events quickly.
 
 Scope and Inputs:
 - New CLI flag ``--verify-resize-detection`` runs independently of document
   viewing; no Markdown path should be required while this mode is active.
 - The verifier must rely on standard library geometry queries (e.g.,
-  ``shutil.get_terminal_size``) rather than cached values so detections reflect
-  the true terminal state.
-- User input is limited to resize gestures and an optional ``X`` + Enter escape
-  if mdview appears unaware of a change.
+  ``shutil.get_terminal_size``) rather than cached values so detections
+  reflect the true terminal state.
+- User input is limited to resize gestures and an optional ``X`` + Enter
+  escape if mdview appears unaware of a change.
 
 Sequence and Expectations:
 - Steps run in order: narrower, wider, taller, shorter, lower-right inward,
@@ -34,21 +34,29 @@ Sequence and Expectations:
   - Lower-right inward: width and height both decrease.
   - Lower-right outward: width and height both increase.
   - Maximize: width and height meet or exceed any previously seen sizes.
-  - Restore: width and height return to the initial starting geometry (within a
-    tolerance of two columns/rows to accommodate window chrome adjustments).
+  - Restore: width and height return to the initial starting geometry (within
+    a tolerance of two columns/rows to accommodate window chrome adjustments).
+- Collect all resize events for a step and move on only after two seconds pass
+  without any new detections. If five seconds pass without activity starting
+  or ending, fail the step as a timeout.
+- Mark a step as passed when at least one recorded event matches the expected
+  direction. When fewer than 70 percent of the detected events match the
+  expectation, print a yellow warning describing the mismatch but continue and
+  keep the step marked as passed.
 - If the user reports a miss with ``X`` or a resize is detected but fails the
   expectation, log the step as failed and continue to the next instruction.
 
 Output and Reporting:
 - Show real-time acknowledgements as each step completes, including PASS/FAIL
   labels and concise notes about observed geometry.
-- After all steps finish, emit a well-formatted table summarizing the step name,
-  expectation, observed geometry (or "not detected"), and pass/fail result.
+- After all steps finish, emit a well-formatted table summarizing the step
+  name, expectation, observed geometry (or "not detected"), and pass/fail
+  result.
 - Conclude with an overall PASS when all steps succeed; otherwise report FAIL.
 
 Testing:
-- Provide a test harness terminal simulator that queues resize events and feeds
-  them into the verifier without real signal handling or sleeps.
+- Provide a test harness terminal simulator that queues resize events and
+  feeds them into the verifier without real signal handling or sleeps.
 - Add a unit test that drives the full sequence through the simulator,
-  asserting that each step passes and that the final report string includes the
-  table and overall PASS indicator.
+  asserting that each step passes and that the final report string includes
+  the table and overall PASS indicator.
