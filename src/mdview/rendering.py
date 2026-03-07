@@ -11,7 +11,6 @@ import re
 import shlex
 import subprocess
 import sys
-import textwrap
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -26,6 +25,7 @@ from typing import (
 )
 
 from mdview.intake import ingest_content
+from mdview.viewer import materialize_plain_text_lines
 from mdview.hyperlinks import (
     Hyperlink,
     HyperlinkNavigator,
@@ -572,38 +572,11 @@ def _render_plain_text_document(
         return document.to_source_text()
 
     target_width = width if width and width > 0 else 78
-    rendered_lines: List[str] = []
-
-    for index, block in enumerate(document.blocks):
-        reflowable = (
-            not block.constraints.no_reflow
-            and (
-                reflow_mode == "all"
-                or (reflow_mode == "prose" and block.style.block_type == "prose")
-            )
-        )
-        if reflowable:
-            paragraph = " ".join(
-                line.source_text.strip()
-                for line in block.lines
-                if line.source_text.strip()
-            )
-            if paragraph:
-                rendered_lines.extend(
-                    textwrap.wrap(
-                        paragraph,
-                        width=target_width,
-                        break_long_words=False,
-                        break_on_hyphens=False,
-                    )
-                )
-            else:
-                rendered_lines.append("")
-        else:
-            rendered_lines.extend(line.source_text for line in block.lines)
-
-        if index < len(document.blocks) - 1:
-            rendered_lines.append("")
+    rendered_lines = materialize_plain_text_lines(
+        document=document,
+        reflow_mode=reflow_mode,
+        width=target_width,
+    )
 
     rendered = "\n".join(rendered_lines)
     if document.trailing_newline and not rendered.endswith("\n"):

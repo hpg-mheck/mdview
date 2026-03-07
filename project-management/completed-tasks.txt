@@ -6,6 +6,24 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Wired viewer policy and DOM contracts into rendering interactions and added
+  viewer integration tests. Recorded at 2026-03-06T22:11:52-08:00 by Codex
+  (GPT-5) while clearing two viewer backlog items on
+  feature/viewer-policy-dom-wiring. Added src/mdview/viewer.py with
+  block-level reflow eligibility using hard limits and soft hints, document
+  materialization, and ViewerSession dual-axis navigation helpers built on
+  ViewportState. Updated src/mdview/rendering.py to consume the shared
+  materialization path for plain-text policy rendering.
+  Added tests/test_viewer.py plus wide fixtures under resources/tests for
+  literal and Markdown table overflow scenarios, panning bounds, and resize
+  anchor preservation.
+  Validation: ``python scripts/run_tool_with_timeout.py pytest --``
+  ``tests/test_viewport.py tests/test_viewer.py tests/test_rendering.py``
+  (pass), ``python scripts/run_tool_with_timeout.py ruff --``
+  ``src/mdview/viewer.py src/mdview/rendering.py tests/test_viewer.py``
+  (pass), and full ``python scripts/run_tool_with_timeout.py pytest`` remains
+  at the known 17-failure stabilization cluster.
+
 * Implemented the internal viewer core viewport engine baseline. Recorded at
   2026-03-06T22:09:16-08:00 by Codex (GPT-5) while clearing the top backlog
   item on feature/viewer-core-viewport-engine. Added src/mdview/viewport.py
