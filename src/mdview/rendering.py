@@ -11,6 +11,7 @@ import re
 import shlex
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -498,6 +499,7 @@ def render_to_ansi(
     *,
     width: Optional[int] = None,
     height: Optional[int] = None,
+    reflow_mode: Optional[str] = None,
 ) -> str:
     """Render the given content to ANSI-decorated text.
 
@@ -512,6 +514,7 @@ def render_to_ansi(
         markdown: Whether to process the content as Markdown.
         width: Optional line width override used when rendering through Rich.
         height: Optional line height override to mirror viewport sizing.
+        reflow_mode: Active reflow policy mode (``prose``, ``all``, ``none``).
 
     Returns:
         A string containing ANSI escape sequences suitable for paging.
@@ -520,6 +523,15 @@ def render_to_ansi(
     # Route all sources through the shared intake model before rendering.
     document = ingest_content(content, markdown=markdown)
     source_text = document.to_source_text()
+    if reflow_mode is None:
+        reflow_mode = "prose" if markdown else "none"
+
+    if not markdown:
+        return _render_plain_text_document(
+            document=document,
+            reflow_mode=reflow_mode,
+            width=width,
+        )
 
     console = Console(record=True, width=width, height=height)
     if markdown:
@@ -532,9 +544,6 @@ def render_to_ansi(
         if trailing_newline:
             formatted += "\n"
         console.print(Markdown(formatted, code_theme="ansi_dark"))
-    else:
-        console.print(source_text)
-
     rendered = console.export_text(styles=True)
     if markdown and HAS_RICH:
         empty_pattern = (
@@ -548,6 +557,57 @@ def render_to_ansi(
 
         rendered = re.sub(empty_pattern, "\n", rendered)
         rendered = re.sub(break_pattern, "\n", rendered)
+    return rendered
+
+
+def _render_plain_text_document(
+    *,
+    document,
+    reflow_mode: str,
+    width: Optional[int],
+) -> str:
+    """Render a plain-text document according to the active reflow policy."""
+
+    if reflow_mode == "none":
+        return document.to_source_text()
+
+    target_width = width if width and width > 0 else 78
+    rendered_lines: List[str] = []
+
+    for index, block in enumerate(document.blocks):
+        reflowable = (
+            not block.constraints.no_reflow
+            and (
+                reflow_mode == "all"
+                or (reflow_mode == "prose" and block.style.block_type == "prose")
+            )
+        )
+        if reflowable:
+            paragraph = " ".join(
+                line.source_text.strip()
+                for line in block.lines
+                if line.source_text.strip()
+            )
+            if paragraph:
+                rendered_lines.extend(
+                    textwrap.wrap(
+                        paragraph,
+                        width=target_width,
+                        break_long_words=False,
+                        break_on_hyphens=False,
+                    )
+                )
+            else:
+                rendered_lines.append("")
+        else:
+            rendered_lines.extend(line.source_text for line in block.lines)
+
+        if index < len(document.blocks) - 1:
+            rendered_lines.append("")
+
+    rendered = "\n".join(rendered_lines)
+    if document.trailing_newline and not rendered.endswith("\n"):
+        rendered += "\n"
     return rendered
 
 

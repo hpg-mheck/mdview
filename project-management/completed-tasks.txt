@@ -6,6 +6,23 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Integrated unified reflow-policy controls into CLI and rendering. Recorded
+  at 2026-03-06T22:07:34-08:00 by Codex (GPT-5) while clearing the top
+  backlog item on feature/reflow-policy-integration. Added CLI flags
+  ``--reflow``, ``--reflow-mode prose|all|none``, and ``--noreflow`` with
+  precedence resolution in src/mdview/cli.py and threaded active policy into
+  resize rerenders. Updated src/mdview/rendering.py to apply plain-text
+  policy behavior, including default no-reflow for ``.txt`` and width-based
+  reflow when enabled. Extended tests/test_cli.py and tests/test_rendering.py
+  with policy and precedence coverage.
+  Validation: ``python scripts/run_tool_with_timeout.py pytest --``
+  ``tests/test_cli.py tests/test_rendering.py`` (pass),
+  ``python scripts/run_tool_with_timeout.py ruff -- src/mdview/cli.py``
+  ``src/mdview/rendering.py tests/test_cli.py tests/test_rendering.py``
+  (pass), and full ``python scripts/run_tool_with_timeout.py pytest`` now
+  reports 17 failures (down from 18), with
+  ``test_render_to_ansi_preserves_five_line_plain_text`` resolved.
+
 * Cleared the three-pass intake parser backlog group and finalized DOM-linked
   parser integration. Recorded at 2026-03-06T21:04:58-08:00 by Codex (GPT-5)
   from direct operator instruction. Implemented pass-1 line analysis, pass-2

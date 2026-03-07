@@ -62,6 +62,27 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--reflow",
+        action="store_true",
+        help=(
+            "Enable reflow processing. If no explicit mode is supplied, "
+            "defaults to --reflow-mode prose."
+        ),
+    )
+    parser.add_argument(
+        "--reflow-mode",
+        choices=("prose", "all", "none"),
+        help=(
+            "Select reflow policy mode explicitly. Applies even without "
+            "--reflow."
+        ),
+    )
+    parser.add_argument(
+        "--noreflow",
+        action="store_true",
+        help="Disable reflow in all cases (equivalent to --reflow-mode none).",
+    )
+    parser.add_argument(
         "-V",
         "--version",
         action="version",
@@ -139,14 +160,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return exit_code
 
     is_markdown = is_markdown_file(path)
-    ansi_text = render_to_ansi(content, markdown=is_markdown)
+    active_reflow_mode = resolve_reflow_mode(
+        markdown=is_markdown,
+        reflow=args.reflow,
+        reflow_mode=args.reflow_mode,
+        noreflow=args.noreflow,
+    )
+    ansi_text = render_to_ansi(
+        content,
+        markdown=is_markdown,
+        reflow_mode=active_reflow_mode,
+    )
 
     try:
         page_text(
             ansi_text,
             pager_command=args.pager_command,
             render_on_resize=lambda width: render_to_ansi(
-                content, markdown=is_markdown, width=width
+                content,
+                markdown=is_markdown,
+                width=width,
+                reflow_mode=active_reflow_mode,
             ),
         )
     except RuntimeError as error:
@@ -154,6 +188,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         exit_code = 4
     _emit_fallback_notices()
     return exit_code
+
+
+def resolve_reflow_mode(
+    *,
+    markdown: bool,
+    reflow: bool,
+    reflow_mode: Optional[str],
+    noreflow: bool,
+) -> str:
+    """Resolve the effective reflow mode from CLI flags and source defaults."""
+
+    if noreflow:
+        return "none"
+    if reflow_mode is not None:
+        return reflow_mode
+    if reflow:
+        return "prose"
+    if markdown:
+        return "prose"
+    return "none"
 
 
 if __name__ == "__main__":
