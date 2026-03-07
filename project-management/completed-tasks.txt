@@ -6,6 +6,18 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Implemented the internal viewer core viewport engine baseline. Recorded at
+  2026-03-06T22:09:16-08:00 by Codex (GPT-5) while clearing the top backlog
+  item on feature/viewer-core-viewport-engine. Added src/mdview/viewport.py
+  with dual-axis viewport state, overflow activation checks, bounded panning,
+  resize anchor preservation, and visible-range helpers. Added
+  tests/test_viewport.py with isolated coverage for clamping, overflow state,
+  pan bounds, resize behavior, and visible slice math.
+  Validation: ``python scripts/run_tool_with_timeout.py pytest --``
+  ``tests/test_viewport.py`` (pass) and
+  ``python scripts/run_tool_with_timeout.py ruff -- src/mdview/viewport.py``
+  ``tests/test_viewport.py`` (pass).
+
 * Integrated unified reflow-policy controls into CLI and rendering. Recorded
   at 2026-03-06T22:07:34-08:00 by Codex (GPT-5) while clearing the top
   backlog item on feature/reflow-policy-integration. Added CLI flags
