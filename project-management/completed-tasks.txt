@@ -6,6 +6,14 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Drafted docs/specifications/visual_mode_selection.txt covering vi-style
+  visual mode selection. Recorded at 2026-03-06T22:19:07-08:00 by Codex
+  (GPT-5) while clearing the visual-mode spec backlog item on
+  proposals/visual-mode-selection-spec. The specification defines `V` entry,
+  arrow-key navigation, `Space` start/end/clear cycling, `Enter` copy-and-exit
+  semantics with multi-clipboard expectations, `Escape` exit behavior, and
+  wrap/overflow/resize interaction requirements.
+
 * Added Markdown image, table, and escaping pytest coverage and fixture
   corpus. Recorded at 2026-03-06T22:18:13-08:00 by Codex (GPT-5) while
   clearing three backlog items on feature/markdown-format-coverage. Added
