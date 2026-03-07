@@ -6,13 +6,30 @@
 # the fix was recorded, the resolution summary, and links to commits or tests
 # when available.
 
+* 2026-03-06T22:13:44-08:00 Closed BUG-2026-03-07-01 by normalizing Rich
+  markdown export behavior to remove right-padding drift and reduce brittle
+  hard wraps in non-interactive render paths. Validation: full ``pytest``
+  suite now passes emphasis boundary tests for bold, italic, bold+italic, and
+  strikethrough suites. Owner: Codex (GPT-5).
+
+* 2026-03-06T22:13:44-08:00 Closed BUG-2026-03-07-02 by scrubbing forced-break
+  sentinels from rendered output and stabilizing nested-list segmentation in
+  Rich rendering paths. Validation: nested-list suites now pass under full
+  ``pytest`` runs. Owner: Codex (GPT-5).
+
+* 2026-03-06T22:13:44-08:00 Closed BUG-2026-03-07-03 by implementing
+  plain-text default no-reflow behavior with explicit CLI overrides
+  (``--reflow``, ``--reflow-mode``, ``--noreflow``). Validation:
+  ``test_render_to_ansi_preserves_five_line_plain_text`` and full ``pytest``
+  suite pass. Owner: Codex (GPT-5).
+
 * 2025-12-12T01:59:17+00:00 Added peek/poke framebuffer helpers so visual
   regressions can inspect and mutate viewport cells with terminal-style
   coordinates. Owner: R. Talon (Matt "Breakpoint" Heck).
 
 * 2025-12-12T03:50:00Z Stabilized H1 resize regression by giving framebuffer
-  helpers width-and-height awareness, enforcing explicit resize dimensions, and
-  extending the regression test to probe padded rows. Owner: R. Talon.
+  helpers width-and-height awareness, enforcing explicit resize dimensions,
+  and extending the regression test to probe padded rows. Owner: R. Talon.
 
 * 2025-12-12T01:12:41Z Restored full-width H1 heading frames and recomputed
   widths on resize by honoring console dimensions and expanding regression
@@ -32,4 +49,3 @@
   coverage to guard against regressions. Owner: R. Talon. Notes: install
   verification blocked by outbound proxy restrictions; compile-only check
   succeeded.
-

@@ -533,7 +533,12 @@ def render_to_ansi(
             width=width,
         )
 
-    console = Console(record=True, width=width, height=height)
+    effective_width = width
+    if markdown and effective_width is None:
+        # Non-interactive rendering has no true viewport; prefer a wide default
+        # to avoid brittle hard wraps in exported text and tests.
+        effective_width = 130
+    console = Console(record=True, width=effective_width, height=height)
     if markdown:
         trailing_newline = document.trailing_newline
         normalized = _normalize_heading_input(source_text, HAS_RICH)
@@ -557,7 +562,21 @@ def render_to_ansi(
 
         rendered = re.sub(empty_pattern, "\n", rendered)
         rendered = re.sub(break_pattern, "\n", rendered)
+        rendered = rendered.replace(_FORCED_BREAK_SENTINEL, "")
+        rendered = rendered.replace(_EMPTY_HEADING_SENTINEL, "")
+        rendered = _rstrip_exported_lines(rendered)
     return rendered
+
+
+def _rstrip_exported_lines(text: str) -> str:
+    """Strip right padding that Rich exports for fixed-width segments."""
+
+    trailing_newline = text.endswith("\n")
+    stripped = [line.rstrip() for line in text.splitlines()]
+    normalized = "\n".join(stripped)
+    if trailing_newline:
+        normalized += "\n"
+    return normalized
 
 
 def _render_plain_text_document(

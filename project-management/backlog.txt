@@ -6,32 +6,17 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
-* Stabilization gate: resolve the current open failing-test cluster by
-  aligning implementation to updated intake/reflow/viewer specifications.
-  Target failing suites: tests/test_markdown_bold.py,
-  tests/test_markdown_bold_italic.py, tests/test_markdown_italic.py,
-  tests/test_markdown_nested_lists.py, tests/test_markdown_strikethrough.py,
-  and tests/test_rendering.py. Added 2026-03-07T03:04:20Z.
-  Related bugs: BUG-2026-03-07-01, BUG-2026-03-07-02,
-  BUG-2026-03-07-03 in project-management/bugs/known-bugs.txt.
-  Dependencies: DOM, parser, reflow policy, and viewer tasks above.
-  Acceptance: previously failing suites pass and full ``python -m pytest``
-  passes without new regressions.
-
 * Build pytest coverage for Markdown image rendering in accordance with the
   specification. Validate alt text display and safe handling of image URLs
   when rendering is unavailable. Added 2026-03-07T03:04:20Z.
-  Blocked on: stabilization gate completion.
 
 * Build pytest coverage for Markdown table rendering following the
   specification, asserting on column separation cues and header distinction.
   Added 2026-03-07T03:04:20Z.
-  Blocked on: stabilization gate completion.
 
 * Build pytest coverage for Markdown escaping per the specification. Ensure
   backslash-escaped characters render literally and do not trigger formatting.
   Added 2026-03-07T03:04:20Z.
-  Blocked on: stabilization gate completion.
 
 * Draft a specification for vi-style visual mode selection covering V entry,
   arrow-key navigation, spacebar toggling for start/end/clear, Enter-based

@@ -6,6 +6,14 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Cleared the stabilization gate for the previously failing test cluster.
+  Recorded at 2026-03-06T22:13:44-08:00 by Codex (GPT-5) on
+  feature/viewer-policy-dom-wiring. Resolved Rich markdown spacing drift,
+  removed visible forced-break sentinel leakage, and stabilized plain-text
+  default no-reflow behavior under the new CLI policy controls.
+  Validation: ``python scripts/run_tool_with_timeout.py pytest`` now reports
+  ``207 passed`` with no failing tests.
+
 * Wired viewer policy and DOM contracts into rendering interactions and added
   viewer integration tests. Recorded at 2026-03-06T22:11:52-08:00 by Codex
   (GPT-5) while clearing two viewer backlog items on

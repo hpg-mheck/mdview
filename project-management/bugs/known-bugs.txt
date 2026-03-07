@@ -5,34 +5,3 @@
 # a blank line for each entry, mirroring `/project-management/backlog.txt`.
 # Include a concise summary, reproduction notes when available, the ISO 8601
 # timestamp for when the bug was logged, and any blockers or owners.
-
-* BUG-2026-03-07-01 Added 2026-03-07T03:42:15Z. Rich-rendered emphasis paths
-  introduce wrap-join spacing drift that breaks boundary assertions for bold,
-  italic, bold+italic, and strikethrough suites.
-  Reproduction: run ``python -m pytest tests/test_markdown_bold.py
-  tests/test_markdown_bold_italic.py tests/test_markdown_italic.py
-  tests/test_markdown_strikethrough.py`` and observe ``force_plain=False``
-  failures where expected substrings are split by injected spaces/newlines.
-  Owner: unassigned. Blockers: blocked on stabilization-gate backlog task and
-  upstream DOM/parser/viewer rollout ordering.
-  Related backlog: stabilization gate entry in project-management/backlog.txt.
-
-* BUG-2026-03-07-02 Added 2026-03-07T03:42:15Z. Nested list rich rendering
-  leaks internal ``MDVIEWHEADINGBREAK`` sentinels into visible output and
-  disrupts expected line segmentation.
-  Reproduction: run ``python -m pytest tests/test_markdown_nested_lists.py``
-  and inspect failing output for leaked sentinel tokens and wrapped-line
-  lookup misses in nested list fixtures.
-  Owner: unassigned. Blockers: blocked on stabilization-gate backlog task and
-  parser/viewer integration work.
-  Related backlog: stabilization gate entry in project-management/backlog.txt.
-
-* BUG-2026-03-07-03 Added 2026-03-07T03:42:15Z. Plain-text rendering path
-  wraps the five-line fixture unexpectedly under rich-enabled execution,
-  violating the default no-reflow expectation for ``*.txt``.
-  Reproduction: run ``python -m pytest tests/test_rendering.py`` and observe
-  ``test_render_to_ansi_preserves_five_line_plain_text`` failure where one
-  fixture line splits across two rendered lines.
-  Owner: unassigned. Blockers: blocked on stabilization-gate backlog task and
-  unified reflow-policy implementation.
-  Related backlog: stabilization gate entry in project-management/backlog.txt.
