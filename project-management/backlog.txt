@@ -6,10 +6,6 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
-* Draft a specification for vi-style visual mode selection covering V entry,
-  arrow-key navigation, spacebar toggling for start/end/clear, Enter-based
-  multi-clipboard copy and exit, and Escape exit. Added 2025-12-09T03:13:26Z.
-
 * Implement Windows 11 command-line support per the proposal in
   project-management/proposals/windows-11-cli-support.txt. Ensure cmd.exe and
   PowerShell users have parity with POSIX workflows, including shims,
