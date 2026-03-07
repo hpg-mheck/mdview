@@ -96,6 +96,37 @@ def test_render_to_ansi_preserves_five_line_plain_text() -> None:
         assert "\x1b" not in "".join(rendered_lines[:5])
 
 
+def test_render_to_ansi_reflows_plain_text_when_enabled() -> None:
+    content = (
+        "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu\n"
+        "second line remains present\n"
+    )
+    rendered = render_to_ansi(
+        content,
+        markdown=False,
+        reflow_mode="all",
+        width=30,
+    )
+    lines = rendered.splitlines()
+    joined = " ".join(lines)
+
+    assert "alpha beta gamma delta epsilon" in lines[0]
+    assert any("zeta eta theta iota" in line for line in lines)
+    assert "second line remains present" in joined
+
+
+def test_render_to_ansi_respects_no_reflow_mode_for_plain_text() -> None:
+    content = "plain line one\nplain line two\n"
+    rendered = render_to_ansi(
+        content,
+        markdown=False,
+        reflow_mode="none",
+        width=10,
+    )
+
+    assert rendered == content
+
+
 def test_format_pipe_tables_aligns_columns_and_skips_fences() -> None:
     fixture = (
         Path(__file__).resolve().parent.parent

@@ -88,6 +88,9 @@ def test_format_help_matches_expected_shape():
 
     assert "usage: mdview" in help_text
     assert "--pager COMMAND" in help_text
+    assert "--reflow" in help_text
+    assert "--reflow-mode {prose,all,none}" in help_text
+    assert "--noreflow" in help_text
     assert "Render Markdown in the terminal" in help_text
     assert "--verify-resize-detection" in help_text
 
@@ -101,3 +104,51 @@ def test_version_flag_exits_cleanly(capsys):
     assert excinfo.value.code == 0
     captured = capsys.readouterr()
     assert "mdview" in captured.out
+
+
+def test_resolve_reflow_mode_precedence():
+    assert (
+        cli_module.resolve_reflow_mode(
+            markdown=False,
+            reflow=True,
+            reflow_mode=None,
+            noreflow=False,
+        )
+        == "prose"
+    )
+    assert (
+        cli_module.resolve_reflow_mode(
+            markdown=False,
+            reflow=False,
+            reflow_mode="all",
+            noreflow=False,
+        )
+        == "all"
+    )
+    assert (
+        cli_module.resolve_reflow_mode(
+            markdown=False,
+            reflow=True,
+            reflow_mode="all",
+            noreflow=True,
+        )
+        == "none"
+    )
+    assert (
+        cli_module.resolve_reflow_mode(
+            markdown=True,
+            reflow=False,
+            reflow_mode=None,
+            noreflow=False,
+        )
+        == "prose"
+    )
+    assert (
+        cli_module.resolve_reflow_mode(
+            markdown=False,
+            reflow=False,
+            reflow_mode=None,
+            noreflow=False,
+        )
+        == "none"
+    )
