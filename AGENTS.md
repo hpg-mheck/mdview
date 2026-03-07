@@ -8,6 +8,8 @@ Start every engagement by reading `docs/development-workflow.txt` for a
 high-level overview of how to work within this repository. Treat it as the
 first stop for understanding proposals, backlog handling, and execution steps
 before diving into other materials.
+Then check `.git/codex-local-notes.txt` for operator-provided local-only
+environment notes that must not be committed.
 
 ## Style and Documentation
 - Write clear, direct prose that aligns with the Chicago Manual of Style. Keep

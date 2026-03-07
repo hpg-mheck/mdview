@@ -1,0 +1,27 @@
+Resizing the Test Framebuffer
+=============================
+
+Render containers expose a ``resize`` helper so tests can simulate terminal
+width changes without duplicating rendering logic. Each resize call re-renders
+bound content and captures a fresh framebuffer for inspection.
+
+Steps
+-----
+1. Create a container bound to your content: ``container =
+ RenderContainer(render_to_ansi, sample_text, markdown=True)``.
+2. Render at the starting size: ``narrow = container.render(width=32,
+   height=8)``.
+3. Resize to a wider viewport: ``wide = container.resize(68, 12)``.
+4. Compare border and padding positions across the two framebuffers using
+   ``peek`` or ``region`` to confirm resizes recompute layout correctly. Use
+   ``poke`` if you need to mark points of interest during debugging. All
+   coordinates follow the zero-based ``(column, row)`` convention with (0, 0)
+   in the upper-left corner.
+
+Considerations
+--------------
+- Width and height arguments pass directly to ``render_to_ansi``, matching
+  console construction in production code and ensuring both dimensions are
+  exercised in tests.
+- The last framebuffer remains stored on the container for quick reuse, but
+  capturing a new region always reads from the latest render.

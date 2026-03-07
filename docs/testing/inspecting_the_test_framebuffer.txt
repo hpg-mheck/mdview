@@ -1,0 +1,31 @@
+Inspecting the Test Framebuffer
+===============================
+
+Use the framebuffer helpers in ``tests/helpers/framebuffer.py`` to read
+rendered console output by coordinate. They expose both raw ANSI output and
+sanitized plain-text lines so you can check exact characters without manual
+parsing.
+
+Steps
+-----
+1. Build a render container bound to the content under test: ``container =
+   RenderContainer(render_to_ansi, "# Title\n", markdown=True)``.
+2. Render at a target size: ``framebuffer = container.render(width=40,
+   height=10)``.
+3. Locate rows of interest with ``find_line`` and probe cells using
+   ``framebuffer.peek(column, row)``. Coordinates are zero-based with (0, 0)
+   at the upper-left corner, so the lower-right position is (width - 1,
+   height - 1).
+4. Pull regions around a feature with ``framebuffer.region`` or
+   ``framebuffer.region_around`` to verify borders and padding within the
+   viewport. Mutate captured content in place when needed with
+   ``framebuffer.poke(column, row, "X")``.
+
+Notes
+-----
+- ``strip_ansi`` is available for lightweight cleaning when you only need to
+  compare strings.
+- ``raw_lines`` and ``plain_lines`` are stored on each framebuffer when you
+  need the untouched or sanitized output, and ``width``/``height`` record the
+  viewport that the coordinates map to. ``peek`` and ``poke`` operate on the
+  viewport representation without altering the raw capture.

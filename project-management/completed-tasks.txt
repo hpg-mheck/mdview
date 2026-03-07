@@ -82,6 +82,10 @@ summarize how the blocker was resolved.
   spec, and aligned docs/specifications/plain_text_reflow_behavior.txt.
   Blockers: none.
 
+* Added ``--verify-resize-detection`` CLI workflow plus a resize verification
+  harness with simulator-driven tests and README documentation. Recorded at
+  2025-12-12T02:49:55Z by R. Talon for Matt "Breakpoint" Heck.
+
 * Added pytest coverage for Markdown link rendering per the specification,
   covering text visibility, hyperlink metadata, adjacency handling,
   emphasized link boundaries, multiple destinations, and fallback URL

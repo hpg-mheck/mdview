@@ -40,6 +40,10 @@ Optional flags:
   unless another mode is specified.
 - `--reflow-mode prose|all|none` to select policy behavior.
 - `--noreflow` to disable reflow in all cases (`--reflow-mode none`).
+- `--pager "<command>"` to override the pager (defaults to `less -R` through
+  `pydoc.pager`).
+- `--verify-resize-detection` to run an interactive resize checklist that
+  acknowledges detected events and reports PASS/FAIL per step.
 - `--version` to display the current version.
 
 Markdown content reflows to current window dimensions by default.

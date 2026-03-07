@@ -1,9 +1,11 @@
 import importlib
+import sys
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import pytest
 
+import mdview.rendering as rendering
 from mdview.rendering import (
     HAS_RICH,
     _format_pipe_tables,
@@ -210,3 +212,305 @@ def test_page_text_records_prompt_toolkit_fallback(monkeypatch) -> None:
     finally:
         monkeypatch.undo()
         importlib.reload(rendering)
+
+
+def test_prompt_toolkit_pager_rerenders_on_resize(monkeypatch) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(40, 10)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    app_registry: List["DummyApplication"] = []
+
+    controls: List["DummyFormattedTextControl"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+            self.rendered: List[List[Tuple[str, str]]] = []
+            controls.append(self)
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(40, 10)
+            self.vertical_scroll = 0
+
+    class DummyKeyBindings:
+        def add(self, *args, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.invalidate_called = 0
+            self.output = DummyOutput()
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            self.invalidate_called += 1
+
+        def run(self) -> None:
+            window = self.layout.container
+            window.content.rendered.append(window.content.text_func())
+            self.output.size = DummySize(60, 10)
+            window.content.rendered.append(window.content.text_func())
+            window.render_info = DummyRenderInfo(60, 10)
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+    resized_widths: List[int] = []
+
+    def render_on_resize(width: int) -> str:
+        resized_widths.append(width)
+        return "resized content"
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        "initial", render_on_resize=render_on_resize
+    )
+
+    # The dummy control stores render output during application.run().
+    # Capture the instance to assert against rendered content.
+    assert resized_widths == [60]
+    assert len(controls) == 1
+    assert controls[0].rendered[0][0][1].strip() == "initial"
+    assert controls[0].rendered[1][0][1].strip() == "resized content"
+
+
+def test_prompt_toolkit_pager_pads_lines_after_shrinking(monkeypatch) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(50, 10)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+            self.rendered: List[List[Tuple[str, str]]] = []
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(50, 10)
+            self.vertical_scroll = 0
+
+    class DummyKeyBindings:
+        def add(self, *args, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.invalidate_called = 0
+            self.output = DummyOutput()
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            self.invalidate_called += 1
+
+        def run(self) -> None:
+            window = self.layout.container
+            window.content.rendered.append(window.content.text_func())
+            self.output.size = DummySize(20, 10)
+            window.render_info = DummyRenderInfo(20, 10)
+            window.content.rendered.append(window.content.text_func())
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+    resized_widths: List[int] = []
+
+    def render_on_resize(width: int) -> str:
+        resized_widths.append(width)
+        return "narrow"
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        "wide", render_on_resize=render_on_resize
+    )
+
+    assert resized_widths == [20]
+    control = app_registry[-1].layout.container.content
+    assert len(control.rendered) == 2
+    resized_render = "".join(part for _, part in control.rendered[1])
+    # Remove the trailing newline added by the renderer before measuring width.
+    resized_line = resized_render.rstrip("\n")
+    assert len(resized_line) == 20
+
+
+def test_prompt_toolkit_pager_recenters_on_resize(monkeypatch) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(50, 6)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+            self.rendered: List[List[Tuple[str, str]]] = []
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(50, 6)
+            self.vertical_scroll = 4
+
+    class DummyKeyBindings:
+        def add(self, *args, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.invalidate_called = 0
+            self.output = DummyOutput()
+            self.window: DummyWindow
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            self.invalidate_called += 1
+
+        def run(self) -> None:
+            window = self.layout.container
+            self.window = window
+            window.content.rendered.append(window.content.text_func())
+            self.output.size = DummySize(50, 10)
+            window.render_info = DummyRenderInfo(50, 10)
+            window.content.rendered.append(window.content.text_func())
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+    resized_widths: List[int] = []
+
+    content = "\n".join(f"line {index}" for index in range(20))
+
+    def render_on_resize(width: int) -> str:
+        resized_widths.append(width)
+        return content
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        content, render_on_resize=render_on_resize
+    )
+
+    assert resized_widths == [50]
+    application = app_registry[-1]
+    assert application.window.vertical_scroll == 2
