@@ -79,3 +79,10 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
 * Draft a specification for a ``--7bit`` option that converts 8-bit ASCII to
   nearest printable 7-bit mappings and defines combined behavior with
   ``--flatten-unicode``. Added 2025-12-09T06:20:30Z.
+
+* Draft a proposal for version-management workflow extensions covering
+  multi-version support, including bugs that affect both current and older
+  supported maintenance branches. Added 2026-03-06T22:01:06-08:00.
+  Priority: low.
+  Acceptance: proposal defines branching, backport/cherry-pick policy,
+  bug-tracking linkage across versions, and release-note traceability.
