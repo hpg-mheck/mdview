@@ -6,18 +6,6 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
-* Build pytest coverage for Markdown image rendering in accordance with the
-  specification. Validate alt text display and safe handling of image URLs
-  when rendering is unavailable. Added 2026-03-07T03:04:20Z.
-
-* Build pytest coverage for Markdown table rendering following the
-  specification, asserting on column separation cues and header distinction.
-  Added 2026-03-07T03:04:20Z.
-
-* Build pytest coverage for Markdown escaping per the specification. Ensure
-  backslash-escaped characters render literally and do not trigger formatting.
-  Added 2026-03-07T03:04:20Z.
-
 * Draft a specification for vi-style visual mode selection covering V entry,
   arrow-key navigation, spacebar toggling for start/end/clear, Enter-based
   multi-clipboard copy and exit, and Escape exit. Added 2025-12-09T03:13:26Z.
