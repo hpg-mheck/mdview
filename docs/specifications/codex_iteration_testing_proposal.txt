@@ -23,7 +23,7 @@ Goals
   quality at iteration boundaries.
 - Standardize reporting so iteration summaries include test results and
   coverage indicators.
-- Keep the routine runnable in minimal environments (Python 3.7 baseline) and
+- Keep the routine runnable in minimal environments (Python 3.9+ baseline) and
   detectable when optional dependencies are missing.
 
 Non-Goals
@@ -44,7 +44,7 @@ Use Cases
 
 Constraints and Assumptions
 ---------------------------
-- Python 3.7 compatibility and no reliance on network access during exit
+- Python 3.9+ compatibility and no reliance on network access during exit
   testing.
 - Tests must run within typical developer hardware constraints (<= 5 minutes
   wall clock) to remain practical.

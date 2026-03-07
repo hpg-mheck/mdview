@@ -6,4 +6,3 @@ marked with an asterisk followed by a blank line. Include brief status notes
 and cite any blockers by name, task identifier, bug link, or person
 responsible for unblocking. Remove tasks from this file as soon as they are
 completed or moved back to the backlog.
-

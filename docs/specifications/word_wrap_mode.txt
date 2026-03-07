@@ -6,6 +6,10 @@ Overview:
   width.
 - Apply to reading, navigation, and layout recalculation whenever word
   wrap is enabled.
+- For pure text files (``*.txt``), initial wrap enablement is controlled by
+  ``docs/specifications/plain_text_reflow_behavior.txt``.
+- For Markdown files, wrap to viewport width by default. Markdown tables
+  may exceed viewport width when minimum sizing requires overflow.
 
 Default Layout:
 - Lines wrap at word boundaries by default; fallback to character wrap

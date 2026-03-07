@@ -24,6 +24,7 @@ from typing import (
     Type,
 )
 
+from mdview.intake import ingest_content
 from mdview.hyperlinks import (
     Hyperlink,
     HyperlinkNavigator,
@@ -464,10 +465,14 @@ def render_to_ansi(content: str, markdown: bool) -> str:
         A string containing ANSI escape sequences suitable for paging.
     """
 
+    # Route all sources through the shared intake model before rendering.
+    document = ingest_content(content, markdown=markdown)
+    source_text = document.to_source_text()
+
     console = Console(record=True)
     if markdown:
-        trailing_newline = content.endswith(("\n", "\r\n"))
-        normalized = _normalize_heading_input(content, HAS_RICH)
+        trailing_newline = document.trailing_newline
+        normalized = _normalize_heading_input(source_text, HAS_RICH)
         normalized = _normalize_bulleted_lists(normalized, HAS_RICH)
         normalized = _normalize_horizontal_rules(normalized, HAS_RICH)
         formatted = _format_pipe_tables(normalized)
@@ -476,7 +481,7 @@ def render_to_ansi(content: str, markdown: bool) -> str:
             formatted += "\n"
         console.print(Markdown(formatted, code_theme="ansi_dark"))
     else:
-        console.print(content)
+        console.print(source_text)
 
     rendered = console.export_text(styles=True)
     if markdown and HAS_RICH:

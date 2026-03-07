@@ -1,0 +1,76 @@
+Unified Content Intake and Classification Model
+==============================================
+
+Scope
+-----
+Define the shared intake model used for all content sources (Markdown, plain
+text, and future formats). This specification establishes a three-pass
+classification pipeline that assigns block-type probabilities and supports
+reflow policy decisions.
+
+Objectives
+----------
+- Normalize all source files into a common internal content model.
+- Preserve source fidelity while enabling adaptive behavior such as selective
+  reflow and overflow scrolling.
+- Produce probabilistic block classifications with transparent scoring.
+
+Three-Pass Intake Pipeline
+--------------------------
+- Pass 1: Line-local analysis.
+  - Evaluate each line in isolation.
+  - Collect statistics such as:
+    - Character count and display width.
+    - Ratio of prose characters to symbol/delimiter characters.
+    - Presence of box/line-drawing characters.
+    - Repeated spacing patterns suggestive of fixed-width columns.
+    - Empty-line and separator-line signals.
+  - Emit per-line feature vectors and initial confidence hints.
+- Pass 2: Block segmentation and scoring.
+  - Segment lines into candidate blocks using pass-1 features and separator
+    cues.
+  - Score each block against all known block types (for example: prose,
+    table-like, list-like, code-like, heading-like, delimiter block).
+  - Retain full score vectors for every block; do not collapse to a single
+    label at this stage.
+- Pass 3: Document-level refinement.
+  - Compare block scores against document-wide averages and peer blocks of the
+    same candidate type.
+  - Reweight ambiguous blocks using neighborhood context and distribution
+    consistency.
+  - Emit final block classification probabilities plus confidence metadata.
+
+Common Content Model
+--------------------
+- Represent documents as ordered blocks composed of ordered source lines.
+- Keep both original source text and normalized display text.
+- Store line-break fidelity markers so hard source line breaks can be honored
+  when policies require literal preservation.
+- Attach classification score vectors and confidence metadata to each block.
+- Support per-block behavioral constraints:
+  - Hard limits (must never reflow, must preserve indentation, minimum width).
+  - Soft hints (preferred wrap behavior, preferred scroll anchoring).
+
+Policy Integration
+------------------
+- Reflow policy selection (``prose``, ``all``, ``none``) consumes block
+  probabilities and constraints from this model.
+- Hard limits always override policy mode.
+- Viewer behavior (horizontal overflow activation, panning eligibility) must
+  rely on model-reported dimensions and constraints.
+
+Observability
+-------------
+- Provide debug output hooks that expose:
+  - Per-line feature summaries from pass 1.
+  - Per-block score vectors from pass 2.
+  - Refinement adjustments from pass 3.
+- Keep diagnostic output optional and disabled by default.
+
+Testing Guidance
+----------------
+- Add fixtures with ambiguous mixed-content documents to validate pass-3
+  refinement behavior.
+- Verify that score vectors are retained for all block types, not only the
+  top-scoring type.
+- Validate hard-limit enforcement under each reflow mode.

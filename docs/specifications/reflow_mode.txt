@@ -1,0 +1,61 @@
+Reflow Mode Specification
+=========================
+
+Scope
+-----
+Define the semantics of ``--reflow-mode`` and its interaction with
+``--reflow`` and ``--noreflow`` across all content sources after intake into
+the common internal content model.
+
+Mode Definitions
+----------------
+- ``prose``: Reflow only blocks classified as prose-like by the intake
+  pipeline, subject to block hard limits.
+- ``all``: Reflow all blocks that are not protected by hard no-reflow limits.
+- ``none``: Disable reflow for all blocks.
+
+CLI Controls
+------------
+- ``--reflow`` enables reflow processing. If no explicit mode is supplied,
+  ``--reflow`` defaults to ``--reflow-mode prose``.
+- ``--reflow-mode prose|all|none`` sets the active reflow policy mode.
+- ``--noreflow`` forces no reflow and is equivalent to
+  ``--reflow-mode none``.
+
+Precedence Rules
+----------------
+- Highest priority: ``--noreflow``.
+- Next: explicit ``--reflow-mode`` value.
+- Next: implicit mode from ``--reflow`` (defaults to ``prose``).
+- Lowest: source-type defaults when no flags are provided.
+
+Source-Type Defaults
+--------------------
+- Markdown defaults to prose-mode behavior when no reflow flags are supplied.
+- Plain text (``*.txt``) defaults to preserving source line breaks with no
+  reflow when no reflow flags are supplied.
+
+Hard-Limit Overrides
+--------------------
+- Hard no-reflow constraints override active mode, including ``all``.
+- Hard limits are attached to blocks in the common content model and may
+  include fixed-width table structures, preserved indentation contracts, or
+  other no-reflow declarations.
+
+Behavioral Requirements
+-----------------------
+- Reflow decisions must preserve character order and content.
+- Mode changes must not drop lines or collapse structural boundaries.
+- When reflow is disabled (``none``), source line boundaries must remain
+  intact aside from safe newline normalization.
+
+Testing Guidance
+----------------
+- Validate precedence with flag combinations:
+  - ``--reflow`` alone => ``prose``.
+  - ``--reflow-mode all`` without ``--reflow`` => ``all``.
+  - ``--reflow --reflow-mode none`` => ``none``.
+  - ``--reflow --noreflow`` => ``none``.
+- Validate hard-limit overrides in each mode.
+- Validate source defaults for Markdown and plain text when no reflow flags
+  are present.

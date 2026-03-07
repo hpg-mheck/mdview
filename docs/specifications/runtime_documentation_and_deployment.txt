@@ -21,7 +21,8 @@ Goals
 
 Non-goals
 ---------
-- Introducing new CLI flags beyond what mdview already supports.
+- Defining rendering semantics for CLI flags; behavior belongs in dedicated
+  runtime specifications.
 - Changing paging behavior or rendering logic.
 - Adding platform installers or binary distribution pipelines.
 
@@ -34,10 +35,10 @@ Implementation sketch
   return the formatted help text for reuse.
 - Document the help path and usage notes in a short README within a
   cross-platform deployment layout:
-  - ``docs/deployment/windows/`` with command-line help and paging notes.
+  - ``docs/deployment/windows/`` with command-line help and viewer notes.
   - ``docs/deployment/macos/`` with a man page and platform-specific
     installation notes.
-  - ``docs/deployment/linux/`` with a man page and POSIX pager expectations.
+  - ``docs/deployment/linux/`` with a man page and POSIX viewer expectations.
   - ``docs/deployment/posix/`` with shared assets referenced by Linux and
     macOS.
 - Keep documentation wrapped to 78 columns and align tone with the Chicago

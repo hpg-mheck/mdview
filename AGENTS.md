@@ -1,7 +1,7 @@
 # Engineering Guidance
 
 This project follows pragmatic Python best practices with an emphasis on
-portability (assume Python 3.7 compatibility when writing or reviewing code)
+portability (assume Python 3.9+ compatibility when writing or reviewing code)
 and pessimistic, defense-in-depth testing.
 
 Start every engagement by reading `docs/development-workflow.txt` for a
@@ -14,7 +14,7 @@ before diving into other materials.
   documentation focused, actionable, and concise.
 - Prefer explicit, self-documenting code. Avoid cleverness that obscures
   intent.
-- Maintain compatibility with Python 3.7 constructs and standard library
+- Maintain compatibility with Python 3.9+ constructs and standard library
   features unless explicitly justified otherwise.
 - Comment sparingly but meaningfully: explain *why* rather than *what* when
   intent is non-obvious.
@@ -100,15 +100,23 @@ before diving into other materials.
 
 ## Required Local Checks (run before submitting any change)
 1. Format and lint:
-   - `python -m black .`
-   - `python -m ruff check .`
+   - `python scripts/run_tool_with_timeout.py black`
+   - `python scripts/run_tool_with_timeout.py ruff`
 2. Static sanity:
-   - `python -m compileall src tests`
+   - `python scripts/run_tool_with_timeout.py compileall`
 3. Tests:
-   - `python -m pytest`
+   - `python scripts/run_tool_with_timeout.py pytest`
 
-Use `python -m pytest -k <pattern>` to focus on a subset of tests when
-iterating, but always run the full suite before committing.
+Use `python scripts/run_tool_with_timeout.py pytest -- -k <pattern>` to focus
+on a subset of tests when iterating, but always run the full suite before
+committing.
+
+Timeout policy for AI agents:
+- Invoke `black`, `ruff`, `compileall`, and `pytest` only through
+  `scripts/run_tool_with_timeout.py`.
+- Keep bailout timeouts short by default via `scripts/tool_timeouts.json`.
+- Increase timeout values only when a short timeout demonstrably interrupts a
+  valid run in progress.
 
 Address any failures before committing. Document deviations explicitly in
 commit messages.

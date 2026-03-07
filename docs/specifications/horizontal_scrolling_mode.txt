@@ -1,15 +1,15 @@
-Title: Horizontal Scrolling Mode (No Word Wrap)
+Title: Horizontal Scrolling Mode
 Status: Draft
 
 Overview:
-- Define viewport behavior when long lines extend horizontally and word
-  wrapping is disabled.
-- Apply to reading, navigation, and layout recalculation whenever the
-  application enters or remains in horizontal scrolling mode.
+- Define viewport behavior when rendered lines extend beyond viewport
+  width.
+- Apply whenever at least one rendered line is wider than the current
+  viewport, regardless of wrap defaults for other lines.
 
 Default Layout:
-- Lines render without breaking; horizontal overflow is accessible via
-  horizontal scroll.
+- Horizontal overflow is accessible via an internal horizontal scrollbar
+  and key-driven panning.
 - The viewport preserves both vertical and horizontal offsets across
   navigation, search, and resize actions.
 - A ruler or gutter alignment must remain vertically locked so that line
@@ -18,8 +18,10 @@ Default Layout:
 Scrolling Behavior:
 - Vertical scrolling moves along document lines; horizontal offsets
   remain unchanged unless user explicitly scrolls horizontally.
-- Horizontal scrolling is available via mouse wheel modifiers, trackpad
-  gestures, or keyboard panning commands.
+- Left and right arrow keys scroll the viewport horizontally within the
+  rendered virtual document when overflow exists.
+- Horizontal scrolling may also be available via mouse wheel modifiers,
+  trackpad gestures, or keyboard panning commands.
 - Inertial or paged horizontal scrolls must stop at content bounds and
   respect configured scroll increment settings.
 - When both axes change simultaneously (e.g., touchpad diagonal), apply
@@ -48,8 +50,8 @@ Anchoring and Resizing:
   and clamp only when necessary.
 
 Accessibility and Indicators:
-- Provide a horizontal scroll indicator (e.g., a minimap or scrollbar)
-  that reflects current column offset and range.
+- Provide a horizontal scrollbar indicator that reflects current column
+  offset and range whenever overflow exists.
 - Ensure keyboard focus follows scroll adjustments so that focused
   elements remain reachable by tabbing and screen readers announce the
   current line and column after jumps.

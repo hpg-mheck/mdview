@@ -56,7 +56,7 @@ Failure and Edge Cases
   rather than partially styled spans.
 - Inputs with mixed line endings (``\n`` and ``\r\n``) produce consistent
   rendering cues without losing markers.
-- Rendering must remain stable under Python 3.7 environments and avoid new
+- Rendering must remain stable under Python 3.9+ environments and avoid new
   dependencies beyond the existing project stack.
 
 Test Coverage Outline

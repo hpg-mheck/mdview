@@ -1,0 +1,97 @@
+Metadata-Version: 2.4
+Name: mdview
+Version: 0.1.0
+Summary: Console Markdown viewer with less-like navigation
+Author-email: Matt Heck <mheck@hardproblemsgroup.com>
+License: MIT License
+        
+        Copyright (c) 2025 Matt Heck
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Environment :: Console
+Classifier: Topic :: Text Processing :: Markup
+Classifier: Topic :: Utilities
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: rich>=13.7.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4; extra == "dev"
+Dynamic: license-file
+
+# mdview
+
+A console-first Markdown viewer that pipes styled output into a familiar
+`less`-like interface. mdview renders headings, emphasis, and code blocks with
+ANSI styling so Markdown reads naturally in the terminal.
+
+## Features
+- Renders Markdown using the
+  [`rich`](https://github.com/Textualize/rich) library for readable terminal
+  formatting.
+- Delegates navigation and search to `less` (via `pydoc.pager`) for
+  muscle-memory-friendly controls.
+- Supports `.md`, `.markdown`, and `.txt` input out of the box.
+- Minimal runtime dependencies; packaged for Python 3.9+.
+- Graceful fallback to plain-text output if `rich` is unavailable in the
+  environment.
+- Provides stateful mode-switching helpers intended for a `<META>+W` hotkey
+  that toggles word wrap against horizontal scrolling while preserving search
+  anchors.
+
+## Installation
+```bash
+pip install .
+```
+
+For development:
+```bash
+pip install -e .[dev]
+```
+
+## Usage
+Render a file in your terminal with full `less` navigation (arrows,
+Page Up/Down, `/` search, `n`/`N` next/previous, `q` to quit):
+```bash
+mdview path/to/file.md
+```
+
+Optional flags:
+- `--pager "<command>"` to override the pager (defaults to `less -R` through
+  `pydoc.pager`).
+- `--version` to display the current version.
+
+If `less` is unavailable, mdview falls back to the default pager provided
+by the Python standard library; output remains readable though navigation may
+be more limited.
+
+## Project Structure
+- `src/mdview/` – Library code for rendering and paging.
+- `docs/specifications/` – Written specifications and architecture notes.
+- `tests/` – Pytest-based unit tests covering the rendering pipeline and pager
+  integration hooks.
+
+## Contributing
+- Keep code small, focused, and well-documented with type hints.
+- Prefer standard library facilities and minimal external dependencies.
+- Add or update tests alongside any code changes.

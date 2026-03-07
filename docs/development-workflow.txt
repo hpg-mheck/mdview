@@ -13,9 +13,9 @@ the template in `docs/format-for-proposals.txt` and store each file in
 `project-management/proposals/` with a descriptive name. Stamp every proposal
 with an ISO 8601 date, status, and reviewer list. Cross-reference backlog
 entries, bugs, and specifications in the metadata so readers can trace the
-request through the workflow. Keep revisions append-only: update the status and
-decision log instead of rewriting history, and record who accepted or rejected
-the proposal.
+request through the workflow. Keep revisions append-only: update the
+status and decision log instead of rewriting history, and record who accepted
+or rejected the proposal.
 
 Treat proposals as temporary while the team converges on scope. Close them as
 accepted, rejected, or superseded and capture the rationale in the decision
@@ -45,15 +45,18 @@ Execution
 
 Promote an item to `project-management/tasks-in-progress.txt` when active work
 begins. Copy the backlog entry verbatim, add a fresh timestamp for when the
-effort started, and include current owners plus any known blockers. Link to the
-relevant specification or proposal so reviewers can verify scope. While
+effort started, and include current owners plus any known blockers. Link to
+the relevant specification or proposal so reviewers can verify scope. While
 executing, keep notes concise and dated.
 
 Implement the specification, keeping code and tests aligned with Chicago style
-documentation standards and the required checks. Run `python -m black .`,
-`python -m ruff check .`, `python -m compileall src tests`, and `python -m
-pytest` before declaring the work ready. If progress stalls, move the entry
-back to the backlog with an explanation and timestamp.
+documentation standards and the required checks. Run
+`python scripts/run_tool_with_timeout.py black`,
+`python scripts/run_tool_with_timeout.py ruff`,
+`python scripts/run_tool_with_timeout.py compileall`, and
+`python scripts/run_tool_with_timeout.py pytest` before declaring the work
+ready. If progress stalls, move the entry back to the backlog with an
+explanation and timestamp.
 
 Clearing
 --------
@@ -78,8 +81,8 @@ When the operator requests that a feature be deferred, move the item from
 `project-management/backlog.txt` or `project-management/tasks-in-progress.txt`
 into `project-management/deferred.txt` without changing the ordering or the
 asterisk-plus-blank-line formatting. Add a short note that explains why the
-work is pausing and stamp the entry with an ISO 8601 timestamp to show when the
-deferral occurred.
+work is pausing and stamp the entry with an ISO 8601 timestamp to show when
+the deferral occurred.
 
 Preserve the original task language exactly so it can be re-enabled. Insert a
 quoted block immediately under the rationale and timestamp. Start the block
@@ -101,4 +104,3 @@ Ensure every stage leaves a paper trail: proposals record decisions, backlog
 entries show queue position, in-progress tasks log active ownership, and the
 completed list reflects what shipped. Avoid rewriting history; append concise
 notes instead.
-

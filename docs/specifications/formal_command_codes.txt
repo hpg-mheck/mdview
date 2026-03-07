@@ -12,6 +12,10 @@ Command Codes:
   wrap disabled and restore any stored horizontal offset.
 - VIEW_MODE_WRAP_ENABLE: Force word-wrap mode and clear horizontal
   offsets while preserving vertical anchors.
+- VIEW_SCROLL_LEFT: Move the viewport window one horizontal increment
+  to the left within overflow content.
+- VIEW_SCROLL_RIGHT: Move the viewport window one horizontal increment
+  to the right within overflow content.
 
 Usage Notes:
 - Command codes are stable API surfaces for configuration files and

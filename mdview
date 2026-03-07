@@ -1,0 +1,3 @@
+#!/bin/bash
+pandoc "\$1" -f markdown -t html -s -o /tmp/view_md.html
+xdg-open /tmp/view_md.html

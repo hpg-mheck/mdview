@@ -14,6 +14,33 @@ from mdview.rendering import (
 )
 
 
+def test_render_to_ansi_routes_content_through_intake(monkeypatch) -> None:
+    import mdview.rendering as rendering
+
+    captured = {"called": False}
+
+    def _fake_ingest(content: str, markdown: bool):
+        from mdview.dom import Block, Document, Line
+
+        captured["called"] = True
+        captured["content"] = content
+        captured["markdown"] = markdown
+        return Document(
+            blocks=(Block(block_id="b1", lines=(Line.from_source(content),)),),
+            source_markdown=markdown,
+            trailing_newline=content.endswith(("\n", "\r\n")),
+            original_text=content,
+        )
+
+    monkeypatch.setattr(rendering, "ingest_content", _fake_ingest)
+    ansi = rendering.render_to_ansi("intake-smoke", markdown=False)
+
+    assert captured["called"] is True
+    assert captured["content"] == "intake-smoke"
+    assert captured["markdown"] is False
+    assert "intake-smoke" in ansi
+
+
 def test_is_markdown_file_matches_expected_suffixes(tmp_path: Path) -> None:
     md_file = tmp_path / "sample.md"
     md_file.write_text("# Heading")

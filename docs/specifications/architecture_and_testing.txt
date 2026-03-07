@@ -3,10 +3,10 @@ Architecture and Testing Notes
 
 Design Principles
 -----------------
-- Delegate paging to existing, battle-tested tools instead of
-  reimplementing navigation logic.
-- Keep the rendering pipeline simple: load content, render to ANSI with
-  ``rich``, and stream to a pager.
+- Use an internal viewing engine for all display and navigation behavior.
+- Keep the rendering pipeline explicit: ingest to a common model, classify
+  blocks, apply policy, render to ANSI with ``rich``, and present through
+  mdview's viewport controller.
 - Fail loudly and clearly: errors include actionable guidance (e.g.,
   missing file, unreadable path).
 - Respect minimal dependencies and fast startup; defer any heavy parsing
@@ -15,18 +15,26 @@ Design Principles
 Module Overview
 ---------------
 - ``mdview.cli``: Argument parsing, file existence checks, and
-  orchestration of rendering + paging.
+  orchestration of rendering + viewer startup.
+- ``mdview.intake``: Three-pass analysis and classification pipeline defined
+  in ``docs/specifications/unified_content_intake_model.txt``.
+- ``mdview.dom``: Common internal content model storing source fidelity,
+  block score vectors, hard limits, and soft hints.
 - ``mdview.rendering``: Functions to classify file types, load text,
-  render Markdown/plain text to ANSI strings, and select the pager
-  backend.
+  render Markdown/plain text to ANSI strings, and enforce unified reflow
+  policy from ``docs/specifications/plain_text_reflow_behavior.txt`` and
+  mode semantics from ``docs/specifications/reflow_mode.txt``.
+- ``mdview.viewer``: Internal viewport engine that handles vertical and
+  horizontal scrolling, search focus, and key-driven navigation.
 
-Pager Strategy
---------------
-- Primary: Use ``pydoc.pager`` with ``LESS=-R`` to ensure ANSI
-  passthrough when ``less`` is present.
-- Fallback: If ``less`` is not available, ``pydoc.pager`` defaults to a
-  simple Python pager; the rendered text should still be readable,
-  though search/navigation depth may vary.
+Viewer Strategy
+---------------
+- mdview must use its internal viewer engine exclusively and must not
+  delegate display to external pagers such as ``less`` or ``more``.
+- Horizontal scrolling activates whenever at least one rendered line is
+  wider than the viewport, including wide Markdown table rows.
+- Left and right arrow keys move the horizontal viewport position within
+  the rendered virtual document.
 
 Testing Strategy
 ----------------
@@ -34,13 +42,20 @@ Testing Strategy
   - File classification: ensure ``.md``/``.markdown`` trigger Markdown
     rendering; others default to plain text.
   - Rendering output: confirm Markdown paths pass through
-    ``rich.markdown.Markdown`` and that plain text is emitted unchanged
-    aside from safe normalization.
-  - Pager selection: verify that the exported ANSI text is non-empty and
-    routed to the pager callable.
+    ``rich.markdown.Markdown`` and that plain text follows reflow
+    precedence: ``--noreflow`` (or ``--reflow-mode none``) disables
+    wrapping, ``--reflow`` enables policy-driven wrapping, and plain-text
+    default preserves source line breaks.
+  - Reflow mode behavior: verify ``prose|all|none`` semantics and CLI
+    precedence rules from ``docs/specifications/reflow_mode.txt``.
+  - Intake behavior: verify line metrics, block score vectors, and
+    document-level score refinement across all three intake passes.
+  - Viewer behavior: verify horizontal overflow activates scrolling and
+    that left/right arrow handling updates the horizontal viewport offset.
 - Future Integration Tests
-  - CLI invocation against sample files to exercise end-to-end flow.
-  - Environment-variable controls for pager selection.
+  - CLI invocation against sample files to exercise end-to-end flow in
+    the internal viewer.
+  - Markdown table overflow scenarios that require horizontal scrolling.
 
 Quality and Style
 -----------------

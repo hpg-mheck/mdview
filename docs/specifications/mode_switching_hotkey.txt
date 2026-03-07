@@ -6,6 +6,9 @@ Overview:
   and word-wrap mode.
 - Specify state management, visual feedback, and interaction with
   existing navigation features when the mode changes via hotkey.
+- For Markdown documents, wrapping remains enabled by default; horizontal
+  scrolling still activates automatically for overflow content such as
+  wide tables.
 
 Hotkey Behavior:
 - Provide a dedicated toggle command that switches between horizontal and
@@ -35,6 +38,8 @@ Interaction with Scrolling and Search:
   exists for that view; if present, restore that offset.
 - Switching to wrap mode clears horizontal offsets and reflows text,
   keeping the same top logical line visible.
+- If overflow persists in wrap mode (for example, wide Markdown tables),
+  horizontal scrolling remains available.
 - Active search highlights remain; the viewport adjusts to keep the
   active match visible in the new mode, re-centering only when needed to
   show the match start.

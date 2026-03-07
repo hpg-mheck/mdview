@@ -1,21 +1,28 @@
 ." mdview manual page for macOS
 .TH MDVIEW 1 "2025-12-09" "mdview 0.1.0" "User Commands"
 .SH NAME
-mdview \- render Markdown in the terminal with less-like navigation
+mdview \- render Markdown in the terminal with an internal viewer
 .SH SYNOPSIS
 .B mdview
 .RI [ \-h ]
-.RI [ \-\-pager
-.I COMMAND
+.RI [ \-\-reflow ]
+.RI [ \-\-reflow\-mode
+.I MODE
 .RI ]
+.RI [ \-\-noreflow ]
 .RI [ \-V ]
 .I path
 .SH DESCRIPTION
-mdview renders Markdown and plain text with ANSI styling and pipes the output
-to pagers such as
+mdview renders Markdown and plain text with ANSI styling and displays content
+through its internal viewing engine. External pagers such as
 .BR less (1)
-for comfortable navigation. The program falls back to standard-library paging
-when Rich or a pager is unavailable.
+and
+.BR more (1)
+are not used for display.
+For pure text files, default behavior preserves source line breaks and
+does not reflow unless reflow is explicitly enabled.
+Markdown reflows to viewport width by default. Markdown tables may exceed
+viewport width when minimum table sizing requires overflow.
 .SH OPTIONS
 .TP
 .B path
@@ -24,9 +31,18 @@ Path to a Markdown or text file to view.
 .BR \-h , " \-\-help"
 Show the help message and exit.
 .TP
-.BR \-\-pager " " COMMAND
-Optional pager command to override the default less/pydoc pager (for example,
-.BR "less \-R" ).
+.BR \-\-reflow
+Enable reflow processing. If no explicit mode is supplied, prose mode is used.
+.TP
+.BR \-\-reflow\-mode " " MODE
+Select reflow policy mode:
+.IR prose ,
+.IR all ,
+or
+.IR none .
+.TP
+.BR \-\-noreflow
+Disable reflow in all cases (equivalent to mode none).
 .TP
 .BR \-V , " \-\-version"
 Show the mdview version and exit.
@@ -36,5 +52,5 @@ Show the mdview version and exit.
 The shared POSIX help text derived from the argparse configuration. Keep this
 file in sync with the parser when packaging the macOS man page.
 .SH SEE ALSO
-.BR less (1),
-.BR pydoc (1)
+.BR curses (3x),
+.BR terminfo (5)

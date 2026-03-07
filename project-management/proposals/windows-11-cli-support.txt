@@ -17,7 +17,7 @@ Goals
 - Provide simple bootstrap commands for setup, linting, testing, and scripts
   that mirror POSIX workflows.
 - Ensure paths, encodings, and line endings are handled safely and documented.
-- Keep all automation compatible with Python 3.7+ and standard Windows tools.
+- Keep all automation compatible with Python 3.9+ and standard Windows tools.
 
 Non-Goals
 - Replacing PowerShell with third-party shells.
@@ -33,22 +33,23 @@ Use Cases
   variables manually.
 
 Constraints and Assumptions
-- Python 3.7+ must remain supported.
+- Python 3.9+ must remain supported.
 - Rely only on built-in Windows tools plus Python stdlib; avoid additional
   installers.
 - Avoid reliance on symlinks because of permission variability.
 - Preserve CRLF line endings where native tools expect them.
 
 Proposed Approach
-- Provide Windows-aware entry points in scripts using ``python -m`` invocations
-  so cmd.exe and PowerShell behave consistently.
+- Provide Windows-aware entry points in scripts using ``python -m``
+  invocations so cmd.exe and PowerShell behave consistently.
 - Add a ``scripts/windows`` folder with PowerShell (.ps1) and batch (.bat)
   shims that delegate to Python modules, setting ``PYTHONUTF8=1`` and
   ``PYTHONIOENCODING=utf-8`` for deterministic encoding.
-- Normalize paths via ``pathlib`` and ``os.fspath``; avoid POSIX-specific path
-  joins in scripts.
-- Document Windows environment setup: enabling long paths, using ``py`` launcher
-  with ``-m venv``, activating virtual environments in both shells, and
+- Normalize paths via ``pathlib`` and ``os.fspath``; avoid POSIX-specific
+  path joins in scripts.
+- Document Windows environment setup: enabling long paths, using ``py``
+  launcher with ``-m venv``, activating virtual environments in both
+  shells, and
   invoking tools via ``python -m`` rather than shell-specific executables.
 - Detect terminal capabilities using ``isatty`` plus ``colorama`` fallback and
   default to plain text if unavailable.
@@ -57,8 +58,8 @@ Proposed Approach
 
 Risks and Mitigations
 - Batch file quoting differences may break arguments. Mitigate with
-  PowerShell-first shims and escape-aware batch wrappers that forward arguments
-  via ``%*``.
+  PowerShell-first shims and escape-aware batch wrappers that forward
+  arguments via ``%*``.
 - Encoding regressions on legacy consoles. Mitigate by setting UTF-8 variables
   and documenting console font requirements.
 - Path length or case-sensitivity surprises. Mitigate with ``pathlib``

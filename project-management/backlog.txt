@@ -6,19 +6,67 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
+* Integrate unified reflow policy and CLI overrides into runtime behavior:
+  ``--reflow``, ``--reflow-mode prose|all|none``, and ``--noreflow`` with
+  precedence rules from docs/specifications/plain_text_reflow_behavior.txt.
+  Added 2026-03-07T03:04:20Z.
+  Dependencies: parser classification outputs and DOM hard-limit fields.
+  Acceptance: policy integration passes CLI and renderer tests for default and
+  override modes.
+
+* Implement internal viewer core viewport engine from
+  project-management/proposals/internal-viewer-engine.txt. Deliver resizable
+  dual-axis viewport state, scrollbars, and horizontal overflow activation.
+  Added 2026-03-07T03:04:20Z.
+  Dependencies: DOM geometry contracts.
+  Acceptance: core viewport handles vertical/horizontal offsets and bounds
+  correctly in isolated tests.
+
+* Wire viewer policy and DOM contracts into rendering interactions. Enforce
+  block hard limits, consume soft hints, and keep left/right arrow panning
+  consistent with overflow state. Added 2026-03-07T03:04:20Z.
+  Dependencies: core viewport engine and reflow-policy integration.
+  Acceptance: viewer honors no-reflow blocks, wrap hints, and overflow panning
+  rules in integration tests.
+
+* Add viewer unit/integration tests for dual-axis scrolling, horizontal
+  overflow activation, left/right panning bounds, and resize anchor
+  preservation. Include wide Markdown-table and wide literal ``.txt`` table
+  fixtures. Added 2026-03-07T03:04:20Z.
+  Dependencies: viewer core and viewer policy/DOM wiring.
+  Acceptance: viewer tests pass across overflow and resize scenarios.
+
+* Stabilization gate: resolve the current open failing-test cluster by
+  aligning implementation to updated intake/reflow/viewer specifications.
+  Target failing suites: tests/test_markdown_bold.py,
+  tests/test_markdown_bold_italic.py, tests/test_markdown_italic.py,
+  tests/test_markdown_nested_lists.py, tests/test_markdown_strikethrough.py,
+  and tests/test_rendering.py. Added 2026-03-07T03:04:20Z.
+  Related bugs: BUG-2026-03-07-01, BUG-2026-03-07-02,
+  BUG-2026-03-07-03 in project-management/bugs/known-bugs.txt.
+  Dependencies: DOM, parser, reflow policy, and viewer tasks above.
+  Acceptance: previously failing suites pass and full ``python -m pytest``
+  passes without new regressions.
+
 * Build pytest coverage for Markdown image rendering in accordance with the
   specification. Validate alt text display and safe handling of image URLs
-  when rendering is unavailable.
+  when rendering is unavailable. Added 2026-03-07T03:04:20Z.
+  Blocked on: stabilization gate completion.
 
 * Build pytest coverage for Markdown table rendering following the
   specification, asserting on column separation cues and header distinction.
+  Added 2026-03-07T03:04:20Z.
+  Blocked on: stabilization gate completion.
 
 * Build pytest coverage for Markdown escaping per the specification. Ensure
   backslash-escaped characters render literally and do not trigger formatting.
+  Added 2026-03-07T03:04:20Z.
+  Blocked on: stabilization gate completion.
 
 * Draft a specification for vi-style visual mode selection covering V entry,
   arrow-key navigation, spacebar toggling for start/end/clear, Enter-based
   multi-clipboard copy and exit, and Escape exit. Added 2025-12-09T03:13:26Z.
+
 * Implement Windows 11 command-line support per the proposal in
   project-management/proposals/windows-11-cli-support.txt. Ensure cmd.exe and
   PowerShell users have parity with POSIX workflows, including shims,
@@ -31,4 +79,3 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
 * Draft a specification for a ``--7bit`` option that converts 8-bit ASCII to
   nearest printable 7-bit mappings and defines combined behavior with
   ``--flatten-unicode``. Added 2025-12-09T06:20:30Z.
-
