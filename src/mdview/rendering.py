@@ -68,6 +68,7 @@ _EMPTY_HEADING_SENTINEL = "MDVIEWEMPTYHEADING"
 _FORCED_BREAK_SENTINEL = "MDVIEWHEADINGBREAK"
 _ANSI_ESCAPE_PATTERN = r"\x1b\[[0-?]*[ -/]*[@-~]"
 _LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+_IMAGE_PATTERN = re.compile(r"(?<!\\)!\[([^\]]*)\]\(([^)]*)\)")
 
 
 def _add_fallback_notice(message: str) -> None:
@@ -130,6 +131,29 @@ def _format_links(text: str, has_rich: bool) -> str:
         return f"{label} ({target})"
 
     return _LINK_PATTERN.sub(_replacement, text)
+
+
+def _format_images(text: str, has_rich: bool) -> str:
+    """Return content with inline Markdown images expanded in fallback mode."""
+
+    if has_rich:
+        return text
+
+    def _replacement(match: Match[str]) -> str:
+        alt_text = match.group(1).strip() or "[image]"
+        target = match.group(2).strip()
+        if not target:
+            return f"{alt_text} (missing image URL)"
+
+        # Optional title suffix is metadata-only for fallback visibility.
+        url = target
+        if ' "' in target:
+            url = target.split(' "', 1)[0].strip()
+        if not url:
+            return f"{alt_text} (missing image URL)"
+        return f"{alt_text} ({url})"
+
+    return _IMAGE_PATTERN.sub(_replacement, text)
 
 
 def _format_table_block(lines: Sequence[str], start: int) -> Tuple[List[str], int]:
@@ -545,6 +569,7 @@ def render_to_ansi(
         normalized = _normalize_bulleted_lists(normalized, HAS_RICH)
         normalized = _normalize_horizontal_rules(normalized, HAS_RICH)
         formatted = _format_pipe_tables(normalized)
+        formatted = _format_images(formatted, HAS_RICH)
         formatted = _format_links(formatted, HAS_RICH)
         if trailing_newline:
             formatted += "\n"

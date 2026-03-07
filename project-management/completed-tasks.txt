@@ -6,6 +6,21 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Added Markdown image, table, and escaping pytest coverage and fixture
+  corpus. Recorded at 2026-03-06T22:18:13-08:00 by Codex (GPT-5) while
+  clearing three backlog items on feature/markdown-format-coverage. Added
+  dedicated suites tests/test_markdown_images.py,
+  tests/test_markdown_tables.py, and tests/test_markdown_escaping.py plus
+  fixture sets under resources/tests/markdown/images and
+  resources/tests/markdown/escaping. Updated src/mdview/rendering.py fallback
+  image formatting so plain mode surfaces ``alt (url)`` and missing-URL
+  placeholders per specification guidance.
+  Validation: ``python scripts/run_tool_with_timeout.py pytest --``
+  ``tests/test_markdown_images.py tests/test_markdown_tables.py``
+  ``tests/test_markdown_escaping.py`` (pass), and full
+  ``python scripts/run_tool_with_timeout.py pytest`` reports
+  ``223 passed``.
+
 * Cleared the stabilization gate for the previously failing test cluster.
   Recorded at 2026-03-06T22:13:44-08:00 by Codex (GPT-5) on
   feature/viewer-policy-dom-wiring. Resolved Rich markdown spacing drift,
