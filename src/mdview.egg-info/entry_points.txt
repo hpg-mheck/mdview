@@ -1,0 +1,2 @@
+[console_scripts]
+mdview = mdview.cli:main

@@ -58,7 +58,7 @@ Compatibility and Edge Cases
   text rather than heading markers to match standard Markdown behavior.
 - Empty headings (``#\n``) render as blank lines without emitting stray style
   markers.
-- Rendering must remain stable under Python 3.7 environments and avoid
+- Rendering must remain stable under Python 3.9+ environments and avoid
   dependencies beyond the existing project stack.
 
 Test Coverage Outline

@@ -6,6 +6,27 @@
 # the fix was recorded, the resolution summary, and links to commits or tests
 # when available.
 
+* 2025-12-12T01:59:17+00:00 Added peek/poke framebuffer helpers so visual
+  regressions can inspect and mutate viewport cells with terminal-style
+  coordinates. Owner: R. Talon (Matt "Breakpoint" Heck).
+
+* 2025-12-12T03:50:00Z Stabilized H1 resize regression by giving framebuffer
+  helpers width-and-height awareness, enforcing explicit resize dimensions, and
+  extending the regression test to probe padded rows. Owner: R. Talon.
+
+* 2025-12-12T01:12:41Z Restored full-width H1 heading frames and recomputed
+  widths on resize by honoring console dimensions and expanding regression
+  coverage for resize behavior. Owner: R. Talon.
+
+* 2025-12-12T00:58:20Z Resolved centered pager content failing to realign
+  after window resizes by sourcing updated widths from the prompt_toolkit
+  output size and expanding resize coverage in the pager tests. Owner:
+  R. Talon.
+
+* 2025-12-11T08:13:05+00:00 Resolved H1 heading panels wrapping when terminals
+  narrowed by constraining Rich panels to content width and adding
+  a regression test that enforces narrow-console rendering. Owner: R. Talon.
+
 * 2025-12-11T07:29:12+00:00 Resolved editable install failure by populating
   the project author email (mheck@hardproblemsgroup.com) and adding metadata
   coverage to guard against regressions. Owner: R. Talon. Notes: install

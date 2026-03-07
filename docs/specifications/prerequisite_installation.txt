@@ -16,7 +16,7 @@ recent macOS versions.
   with development extras through pip.
 - Offer a dry-run mode to show commands without executing them so tests can
   validate logic without mutating the host.
-- Keep logic compatible with Python 3.7+ and avoid non-portable shell
+- Keep logic compatible with Python 3.9+ and avoid non-portable shell
   features.
 
 ## System package expectations

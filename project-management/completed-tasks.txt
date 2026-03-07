@@ -6,6 +6,86 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Cleared the three-pass intake parser backlog group and finalized DOM-linked
+  parser integration. Recorded at 2026-03-06T21:04:58-08:00 by Codex (GPT-5)
+  from direct operator instruction. Implemented pass-1 line analysis, pass-2
+  segmentation with full multi-type score vectors, and pass-3 document-level
+  score refinement in src/mdview/intake.py, while extending src/mdview/dom.py
+  to store line feature vectors and block parser diagnostics. Added mixed
+  intake fixtures under resources/tests and added parser regression
+  coverage in tests/test_intake_parser.py for Unicode width edges, ambiguity
+  handling,
+  score-band assertions, deterministic output snapshots, and pass diagnostics.
+  Validation: ``python scripts/run_tool_with_timeout.py pytest --``
+  ``tests/test_intake_parser.py tests/test_dom.py`` (pass),
+  ``python scripts/run_tool_with_timeout.py compileall`` (pass),
+  ``python scripts/run_tool_with_timeout.py ruff -- src/mdview/intake.py``
+  ``src/mdview/dom.py tests/test_intake_parser.py`` (pass), and full
+  ``python scripts/run_tool_with_timeout.py pytest`` still reports the known
+  18 pre-existing failures tracked in project-management/bugs/known-bugs.txt.
+
+* Added DOM unit coverage for invariants and behavior precedence. Recorded at
+  2026-03-06T20:58:55-08:00 by Codex (GPT-5) while clearing the top backlog
+  item. Expanded tests/test_dom.py to cover frozen-model invariants, source
+  fidelity for ingest/export, hard-limit precedence over soft wrap hints, and
+  deterministic mixed-content export snapshots.
+  Validation: ``python scripts/run_tool_with_timeout.py pytest --``
+  ``tests/test_dom.py`` (pass),
+  ``python scripts/run_tool_with_timeout.py compileall`` (pass), and
+  ``python scripts/run_tool_with_timeout.py ruff -- tests/test_dom.py``
+  (pass).
+
+* Added black timeout watchdog retries to the tooling wrapper. Recorded at
+  2026-03-06T20:53:07-08:00 by Codex (GPT-5) from direct operator approval.
+  Updated scripts/run_tool_with_timeout.py and scripts/tool_timeouts.json so
+  black timeout events trigger one cleanup-and-retry cycle before final
+  failure. Cleanup now targets only ``python -m black`` processes to avoid
+  killing wrapper sessions. Validation: forced-timeout invocation confirmed
+  retry and cleanup behavior; ruff/compileall/pytest wrapper checks unchanged.
+
+* Added timeout-enforced tooling wrappers for required local checks. Recorded
+  at 2026-03-06T20:40:16-08:00 by Codex (GPT-5) from a direct operator
+  request. Added scripts/tool_timeouts.json and
+  scripts/run_tool_with_timeout.py so black/ruff/compileall/pytest run with
+  short bailout limits by default and explicit timeout overrides when
+  justified. Updated AGENTS.md plus docs/development-workflow.txt and
+  docs/running-tests.txt to require and document wrapper-based execution.
+  Validation: timeout wrapper passed for ruff and compileall; pytest still
+  reports the known 18 failing tests.
+
+* Implemented the unified internal document object model baseline from
+  project-management/proposals/internal-document-object-model.txt. Recorded at
+  2026-03-07T03:58:54Z by Codex (GPT-5) while clearing the top backlog item.
+  Added src/mdview/dom.py with Document/Block/Line and constraint/style
+  profiles, added src/mdview/intake.py ingestion helpers, and routed
+  src/mdview/rendering.py through intake so rendering consumes the common
+  model without source-fidelity regressions. Added smoke coverage in
+  tests/test_dom.py and intake-consumption coverage in
+  tests/test_rendering.py.
+  Validation: black/ruff/compileall passed; pytest remains blocked by the
+  known 18-failure cluster tracked in project-management/bugs/known-bugs.txt.
+
+* Populated project-management/bugs/known-bugs.txt with actionable entries
+  for the current failing-test cluster and linked them back to the backlog
+  stabilization gate (BUG-2026-03-07-01 through BUG-2026-03-07-03). Recorded
+  at 2026-03-07T03:42:51Z by Codex (GPT-5) while clearing the top backlog
+  item. Updated project-management/backlog.txt to include related-bug links in
+  the stabilization gate task. Blockers: none.
+
+* Drafted docs/specifications/reflow_mode.txt as the dedicated
+  ``--reflow-mode`` specification defining ``prose|all|none`` semantics,
+  precedence with ``--reflow``/``--noreflow``, source defaults, hard-limit
+  overrides, and testing guidance. Recorded at 2026-03-07T03:40:50Z by
+  Codex (GPT-5) while clearing the top backlog item. Updated
+  docs/specifications/project_overview.txt and
+  docs/specifications/architecture_and_testing.txt to cross-reference the new
+  spec, and aligned docs/specifications/plain_text_reflow_behavior.txt.
+  Blockers: none.
+
+* Added ``--verify-resize-detection`` CLI workflow plus a resize verification
+  harness with simulator-driven tests and README documentation. Recorded at
+  2025-12-12T02:49:55Z by R. Talon for Matt "Breakpoint" Heck.
+
 * Added pytest coverage for Markdown link rendering per the specification,
   covering text visibility, hyperlink metadata, adjacency handling,
   emphasized link boundaries, multiple destinations, and fallback URL

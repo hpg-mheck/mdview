@@ -11,9 +11,9 @@ Overview:
   unavailable or unsupported in the runtime environment.
 
 Constraints and Dependencies:
-- Maintain compatibility with Python 3.7 and keep optional dependencies
+- Maintain compatibility with Python 3.9+ and keep optional dependencies
   minimal. Prefer prompt_toolkit 3.x for focus and key binding support because
-  it runs on Python 3.7 and handles terminal resize events reliably.
+  it runs on Python 3.9+ and handles terminal resize events reliably.
 - Continue rendering Markdown with Rich when available so hyperlink text and
   styling remain consistent with the existing pipeline.
 - Emit user-facing fallback notices when the interactive pager cannot load and
@@ -28,8 +28,8 @@ Rendering Model:
   metadata: line index, column offsets for the link text, destination URL if
   available, and a stable hyperlink identifier for focus rotation.
 - Represent focused hyperlinks with underline plus a distinct focus style
-  token (e.g., inverse highlight) that meets accessibility contrast targets and
-  remains visible across dark and light themes.
+  token (e.g., inverse highlight) that meets accessibility contrast
+  targets and remains visible across dark and light themes.
 
 Pager Architecture:
 - Build a prompt_toolkit Application that renders the line buffer with custom
@@ -40,8 +40,9 @@ Pager Architecture:
   of the hyperlink list and ignore hyperlinks that are outside the current
   buffer when filtering by visibility.
 - Keep focus state in a controller that tracks the current hyperlink index,
-  exposes methods for next/previous with wraparound, and forces the viewport to
-  scroll to the focused hyperlink when it is outside the visible window.
+  exposes methods for next/previous with wraparound, and forces the
+  viewport to scroll to the focused hyperlink when it is outside the
+  visible window.
 - Provide a fallback binding set (ESC or "q") to exit cleanly, mirroring less
   muscle memory where feasible without shadowing TAB behavior.
 
@@ -59,13 +60,14 @@ Error Handling and Fallbacks:
 - If prompt_toolkit is unavailable or fails to initialize (e.g., missing TTY),
   fall back to the existing page_text behavior and surface a warning about
   disabled hyperlink navigation.
-- When a document contains no hyperlinks, defer to prompt_toolkit default focus
-  handling while keeping the buffer scrollable and respecting quit shortcuts.
+- When a document contains no hyperlinks, defer to prompt_toolkit default
+  focus handling while keeping the buffer scrollable and respecting quit
+  shortcuts.
 
 Testing Strategy:
 - Unit-test the focus controller to ensure cyclic navigation, viewport snaps,
-  and visibility filtering behave as specified, including empty and single-link
-  documents.
+  and visibility filtering behave as specified, including empty and
+  single-link documents.
 - Add integration-style tests that simulate key presses against a prompt_
   toolkit Application stub to verify TAB/SHIFT+TAB focus movement, quit
   handling, and fallback activation when dependencies are missing.

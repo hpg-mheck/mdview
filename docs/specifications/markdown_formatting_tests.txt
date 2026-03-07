@@ -79,5 +79,5 @@ Exit Criteria
   clear inputs and assertions.
 - Fixtures and assertions avoid brittle snapshots while still detecting
   missing or malformed styling.
-- Specifications remain compatible with Python 3.7 environments and rely only
+- Specifications remain compatible with Python 3.9+ environments and rely only
   on existing project dependencies.

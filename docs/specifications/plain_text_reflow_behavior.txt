@@ -1,0 +1,64 @@
+Unified Reflow Policy Specification
+===================================
+
+Scope
+-----
+Define reflow behavior for all loaded content sources after ingestion into
+mdview's common internal content model. This specification governs CLI
+controls and precedence for plain text, Markdown, and mixed-content blocks.
+Detailed mode semantics for ``prose|all|none`` are defined in
+``docs/specifications/reflow_mode.txt``.
+
+Definitions
+-----------
+- Common content model: A unified internal representation used for all file
+  types after intake.
+- Reflow: Rewrapping input line content into new visual lines.
+- Viewport wrap: Reflow to the active viewport width.
+- Policy mode ``prose``: Reflow only blocks classified as prose.
+- Policy mode ``all``: Reflow all blocks that are not hard-locked against
+  reflow.
+- Policy mode ``none``: Disable reflow for all blocks.
+
+Command-Line Controls
+---------------------
+- ``--reflow``: Enable reflow using the selected policy mode.
+- ``--noreflow``: Disable reflow in all cases.
+- ``--reflow-mode prose|all|none``: Select reflow policy explicitly.
+
+Precedence Rules
+----------------
+- ``--noreflow`` has highest priority and is equivalent to
+  ``--reflow-mode none``.
+- If ``--reflow`` is present and no explicit mode is given, default to
+  ``--reflow-mode prose``.
+- If ``--reflow-mode`` is provided without ``--reflow``, its value still
+  applies.
+- If no reflow flags are provided:
+  - Markdown defaults to viewport reflow for prose-like blocks.
+  - Plain text (``*.txt``) preserves source line breaks and does not
+    reflow by default.
+
+Behavioral Requirements
+-----------------------
+- All sources must be ingested into the common content model before reflow
+  decisions are applied.
+- ``*.txt`` content enters the model with minimal formatting metadata and
+  source line breaks preserved as hard breaks.
+- Reflow decisions must not alter character order or remove content.
+- Blocks with hard no-reflow constraints (for example, table-like fixed-width
+  structures) must never be reflowed, even in ``all`` mode.
+- When reflow is disabled, line count and line boundaries must reflect source
+  content exactly, aside from safe newline normalization.
+
+Testing Guidance
+----------------
+- Add coverage for default behavior by file type:
+  - ``*.txt`` default preserves source line breaks.
+  - Markdown default reflows prose to viewport width.
+- Add coverage for override behavior:
+  - ``--reflow`` with implicit ``prose`` mode.
+  - ``--reflow-mode all`` and ``--reflow-mode none``.
+  - ``--reflow --noreflow`` resolves to no reflow.
+- Keep assertions focused on line-boundary outcomes, hard-limit compliance,
+  and character-order preservation rather than full-frame snapshots.

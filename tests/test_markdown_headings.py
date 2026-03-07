@@ -2,13 +2,13 @@
 
 import importlib
 import importlib.util
-import re
 from pathlib import Path
-from typing import Callable, List, Tuple
+from typing import List, Tuple
 
 import pytest
 
 import mdview.rendering as rendering
+from tests.helpers.framebuffer import RenderContainer, find_line, strip_ansi
 
 FIXTURE_DIR = (
     Path(__file__).resolve().parent.parent
@@ -17,19 +17,6 @@ FIXTURE_DIR = (
     / "markdown"
     / "headings"
 )
-
-ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
-
-
-def _strip_ansi(text: str) -> str:
-    return ANSI_ESCAPE.sub("", text)
-
-
-def _find_line(lines: List[str], predicate: Callable[[str], bool]) -> int:
-    for index, line in enumerate(lines):
-        if predicate(line):
-            return index
-    raise AssertionError("expected line not found")
 
 
 @pytest.fixture
@@ -58,7 +45,7 @@ def render_heading(monkeypatch):
         try:
             rendered = module.render_to_ansi(content, markdown=True)
             raw_lines = rendered.splitlines()
-            cleaned = [_strip_ansi(line) for line in raw_lines]
+            cleaned = [strip_ansi(line) for line in raw_lines]
         finally:
             if force_plain:
                 monkeypatch.undo()
@@ -75,8 +62,8 @@ def test_headings_preserve_hierarchy_and_spacing(
 ) -> None:
     cleaned, _, rendered = render_heading("h1_and_h2.md", force_plain=force_plain)
 
-    first_index = _find_line(cleaned, lambda line: "Level One Heading" in line)
-    second_index = _find_line(cleaned, lambda line: "Level Two Heading" in line)
+    first_index = find_line(cleaned, lambda line: "Level One Heading" in line)
+    second_index = find_line(cleaned, lambda line: "Level Two Heading" in line)
 
     assert second_index > first_index
     assert any(not line.strip() for line in cleaned[first_index + 1 : second_index])
@@ -94,7 +81,7 @@ def test_heading_levels_remain_distinct(render_heading, force_plain: bool) -> No
         "Senary Heading",
     ]
     positions = [
-        _find_line(cleaned, lambda line, text=text: text in line) for text in texts
+        find_line(cleaned, lambda line, text=text: text in line) for text in texts
     ]
 
     assert positions == sorted(positions)
@@ -121,8 +108,8 @@ def test_heading_does_not_absorb_adjacent_text(
         "heading_adjacent_text.md", force_plain=force_plain
     )
 
-    heading_index = _find_line(cleaned, lambda line: "Heading Beside Body" in line)
-    body_index = _find_line(
+    heading_index = find_line(cleaned, lambda line: "Heading Beside Body" in line)
+    body_index = find_line(
         cleaned,
         lambda line: line.strip() == "This paragraph starts right after the heading.",
     )
@@ -139,10 +126,10 @@ def test_inline_formatting_stays_within_heading(
         "heading_with_inline_formatting.md", force_plain=force_plain
     )
 
-    heading_index = _find_line(
+    heading_index = find_line(
         cleaned, lambda line: "Heading with" in line and "italic" in line
     )
-    body_index = _find_line(
+    body_index = find_line(
         cleaned,
         lambda line: line.strip()
         == "Plain continuation text that should stay unstyled.",
@@ -190,3 +177,82 @@ def test_empty_heading_becomes_blank_line(render_heading) -> None:
     assert cleaned[1].strip() == "Following text after the empty heading."
     assert "\x1b" not in raw_lines[0]
     assert rendered.endswith("\n")
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("rich") is None, reason="rich is required for this test"
+)
+def test_h1_panel_resizes_with_console_width(monkeypatch) -> None:
+    """Heading panels should shrink to avoid border wrapping."""
+
+    class NarrowConsole(rendering.Console):
+        def __init__(self, *args, **kwargs):
+            kwargs["width"] = 30
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(rendering, "Console", NarrowConsole)
+
+    rendered = rendering.render_to_ansi(
+        "# A very long heading title that exceeds width\n", markdown=True
+    )
+    heading_lines = [
+        strip_ansi(line)
+        for line in rendered.splitlines()
+        if line.startswith(("┏", "┃", "┗"))
+    ]
+
+    assert heading_lines
+    assert all(len(line) <= 30 for line in heading_lines)
+    assert len({len(line) for line in heading_lines}) == 1
+    assert any("exceeds width" in line for line in heading_lines)
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("rich") is None, reason="rich is required for this test"
+)
+def test_h1_panel_expands_to_console_width() -> None:
+    rendered = rendering.render_to_ansi("# Expanded Title\n", markdown=True, width=48)
+    frame_widths = {
+        len(strip_ansi(line))
+        for line in rendered.splitlines()
+        if line.startswith(("┏", "┗"))
+    }
+
+    assert frame_widths == {48}
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("rich") is None, reason="rich is required for this test"
+)
+def test_h1_panel_recomputes_width_on_resize() -> None:
+    container = RenderContainer(
+        rendering.render_to_ansi, "# Expanding Title\n", markdown=True
+    )
+    narrow = container.render(width=32, height=6)
+    wide = container.resize(68, 10)
+
+    narrow_top = find_line(narrow.plain_lines, lambda line: line.startswith("┏"))
+    wide_top = find_line(wide.plain_lines, lambda line: line.startswith("┏"))
+
+    assert len(narrow.region(narrow_top, 0, 1, 32)[0]) == 32
+    assert len(wide.region(wide_top, 0, 1, 68)[0]) == 68
+
+    assert narrow.width == 32
+    assert narrow.height == 6
+    assert wide.width == 68
+    assert wide.height == 10
+
+    narrow_heading = find_line(
+        narrow.plain_lines, lambda line: "Expanding Title" in line
+    )
+    wide_heading = find_line(wide.plain_lines, lambda line: "Expanding Title" in line)
+
+    assert narrow.peek(0, narrow_heading) == "┃"
+    assert narrow.peek(31, narrow_heading) == "┃"
+
+    assert wide.peek(0, wide_heading) == "┃"
+    assert wide.peek(67, wide_heading) == "┃"
+
+    assert "Expanding Title" in wide.plain_lines[wide_heading]
+
+    assert wide.peek(0, wide.height - 1) == " "

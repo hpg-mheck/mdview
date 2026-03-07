@@ -1,0 +1,16 @@
+Alert summary for overnight maintenance.
+
+component  latency_ms  healthy
+edge-a     14          yes
+edge-b     13          yes
+
+component  latency_ms  healthy
+edge-c     87          no
+edge-d     92          no
+
+Narrative paragraph explains the unusual spike and why the maintenance
+window will continue while telemetry stabilizes.
+
+component  latency_ms  healthy
+edge-e     16          yes
+edge-f     18          yes

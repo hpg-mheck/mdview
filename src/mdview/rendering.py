@@ -24,6 +24,7 @@ from typing import (
     Type,
 )
 
+from mdview.intake import ingest_content
 from mdview.hyperlinks import (
     Hyperlink,
     HyperlinkNavigator,
@@ -45,7 +46,12 @@ class _PlainMarkdown:
 class _PlainConsole:
     """Simplified Console replacement used only when Rich is missing."""
 
-    def __init__(self, record: bool = False) -> None:
+    def __init__(
+        self,
+        record: bool = False,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ) -> None:
         self._buffer: List[str] = []
 
     def print(self, content: object) -> None:
@@ -407,6 +413,45 @@ def _select_rendering_backend() -> Tuple[Type[object], Type[object], bool]:
 Console, Markdown, HAS_RICH = _select_rendering_backend()
 
 
+def _configure_heading_rendering() -> None:
+    """Resize Markdown heading panels to avoid wrapping artifacts."""
+
+    if not HAS_RICH:
+        return
+
+    try:
+        from rich import box as rich_box
+        from rich.markdown import Heading as RichHeading
+        from rich.panel import Panel
+        from rich.text import Text
+    except Exception:  # pragma: no cover - defensive guard for optional import
+        return
+
+    def _compact_heading_console(self: "RichHeading", console: Console, options):
+        text = self.text.copy()
+        text.justify = "center"
+        panel_width: Optional[int] = getattr(options, "max_width", None)
+        if panel_width is None:
+            panel_width = getattr(console, "width", None)
+        if self.tag == "h1":
+            yield Panel(
+                text,
+                box=rich_box.HEAVY,
+                style="markdown.h1.border",
+                expand=True,
+                width=panel_width,
+            )
+        else:
+            if self.tag == "h2":
+                yield Text("")
+            yield text
+
+    RichHeading.__rich_console__ = _compact_heading_console
+
+
+_configure_heading_rendering()
+
+
 # Type alias for pager callables used in tests and potential future hooks.
 Pager = Callable[[str], None]
 
@@ -447,7 +492,13 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def render_to_ansi(content: str, markdown: bool) -> str:
+def render_to_ansi(
+    content: str,
+    markdown: bool,
+    *,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+) -> str:
     """Render the given content to ANSI-decorated text.
 
     When ``markdown`` is true, the content is parsed through ``rich``'s
@@ -459,15 +510,21 @@ def render_to_ansi(content: str, markdown: bool) -> str:
     Args:
         content: The document content to render.
         markdown: Whether to process the content as Markdown.
+        width: Optional line width override used when rendering through Rich.
+        height: Optional line height override to mirror viewport sizing.
 
     Returns:
         A string containing ANSI escape sequences suitable for paging.
     """
 
-    console = Console(record=True)
+    # Route all sources through the shared intake model before rendering.
+    document = ingest_content(content, markdown=markdown)
+    source_text = document.to_source_text()
+
+    console = Console(record=True, width=width, height=height)
     if markdown:
-        trailing_newline = content.endswith(("\n", "\r\n"))
-        normalized = _normalize_heading_input(content, HAS_RICH)
+        trailing_newline = document.trailing_newline
+        normalized = _normalize_heading_input(source_text, HAS_RICH)
         normalized = _normalize_bulleted_lists(normalized, HAS_RICH)
         normalized = _normalize_horizontal_rules(normalized, HAS_RICH)
         formatted = _format_pipe_tables(normalized)
@@ -476,7 +533,7 @@ def render_to_ansi(content: str, markdown: bool) -> str:
             formatted += "\n"
         console.print(Markdown(formatted, code_theme="ansi_dark"))
     else:
-        console.print(content)
+        console.print(source_text)
 
     rendered = console.export_text(styles=True)
     if markdown and HAS_RICH:
@@ -510,38 +567,65 @@ def _prompt_toolkit_components():
         return None
 
     from prompt_toolkit.application import Application
+    from prompt_toolkit.application.current import get_app
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.layout import Layout
     from prompt_toolkit.layout.containers import Window
     from prompt_toolkit.layout.controls import FormattedTextControl
     from prompt_toolkit.styles import Style
 
-    return Application, KeyBindings, Layout, Window, FormattedTextControl, Style
+    return (
+        Application,
+        KeyBindings,
+        Layout,
+        Window,
+        FormattedTextControl,
+        Style,
+        get_app,
+    )
+
+
+def _visible_length(text: str) -> int:
+    """Return the printable length of text without ANSI escapes."""
+
+    return len(re.sub(_ANSI_ESCAPE_PATTERN, "", text))
 
 
 def _build_formatted_text(
     lines: Sequence[str],
     hyperlinks_by_line: Dict[int, List[Hyperlink]],
     focused: Optional[Hyperlink],
+    *,
+    fill_width: Optional[int] = None,
 ) -> List[Tuple[str, str]]:
     """Return formatted text segments with hyperlink styling applied."""
 
     segments: List[Tuple[str, str]] = []
     for line_number, line in enumerate(lines):
         cursor = 0
+        visible_length = 0
+        line_segments: List[Tuple[str, str]] = []
         for link in hyperlinks_by_line.get(line_number, []):
             prefix = line[cursor : link.start]
             if prefix:
-                segments.append(("", prefix))
+                line_segments.append(("", prefix))
+                visible_length += _visible_length(prefix)
 
             style = "class:hyperlink.focused"
             if not focused or focused.index != link.index:
                 style = "class:hyperlink"
-            segments.append((style, line[link.start : link.end]))
+            link_text = line[link.start : link.end]
+            line_segments.append((style, link_text))
+            visible_length += _visible_length(link_text)
             cursor = link.end
 
         remainder = line[cursor:]
-        segments.append(("", remainder + "\n"))
+        visible_length += _visible_length(remainder)
+        if fill_width and fill_width > 0 and visible_length < fill_width:
+            remainder += " " * (fill_width - visible_length)
+
+        line_segments.append(("", remainder + "\n"))
+        segments.extend(line_segments)
     return segments
 
 
@@ -572,7 +656,22 @@ def _scroll_window(window: "Window", amount: int, total_lines: int) -> None:
     window.vertical_scroll = new_scroll
 
 
-def _attempt_prompt_toolkit_pager(text: str) -> bool:
+def _recenter_on_line(
+    window: "Window", line: int, height: int, total_lines: int
+) -> None:
+    """Center the viewport on a target line when possible."""
+
+    if height <= 0:
+        return
+
+    max_scroll = max(total_lines - height, 0)
+    target_scroll = max(line - height // 2, 0)
+    window.vertical_scroll = min(target_scroll, max_scroll)
+
+
+def _attempt_prompt_toolkit_pager(
+    text: str, *, render_on_resize: Optional[Callable[[int], str]] = None
+) -> bool:
     """Return True if text was paged interactively with prompt_toolkit."""
 
     components = _prompt_toolkit_components()
@@ -590,13 +689,68 @@ def _attempt_prompt_toolkit_pager(text: str) -> bool:
         Window,
         FormattedTextControl,
         Style,
+        get_app,
     ) = components
 
-    lines, hyperlinks, hyperlinks_by_line = normalize_hyperlinks(text.splitlines())
+    current_text = text
+    lines, hyperlinks, hyperlinks_by_line = normalize_hyperlinks(
+        current_text.splitlines()
+    )
     navigator = HyperlinkNavigator(hyperlinks)
+    last_known_width: Optional[int] = None
+    last_known_height: Optional[int] = None
+
+    def _restore_focus(previous: Optional[Hyperlink]) -> None:
+        nonlocal navigator
+
+        if previous is None:
+            return
+
+        for index, link in enumerate(navigator.hyperlinks):
+            if (
+                link.line == previous.line
+                and link.text == previous.text
+                and link.target == previous.target
+            ):
+                navigator._focus_index = index
+                break
+
+    def _refresh_rendered_text(width: Optional[int], height: Optional[int]) -> None:
+        nonlocal current_text, lines, hyperlinks, hyperlinks_by_line, navigator
+        nonlocal last_known_width, last_known_height
+
+        if width is None or width <= 0 or height is None or height <= 0:
+            return
+
+        if last_known_width is None or last_known_height is None:
+            last_known_width = width
+            last_known_height = height
+            return
+
+        if width == last_known_width and height == last_known_height:
+            return
+
+        previous_center_line = window.vertical_scroll + (last_known_height // 2)
+        previous_focus = navigator.focus
+        if render_on_resize is not None:
+            current_text = render_on_resize(width)
+            lines, hyperlinks, hyperlinks_by_line = normalize_hyperlinks(
+                current_text.splitlines()
+            )
+            navigator = HyperlinkNavigator(hyperlinks)
+            _restore_focus(previous_focus)
+
+        last_known_width = width
+        last_known_height = height
+        _recenter_on_line(window, previous_center_line, height, len(lines))
 
     def formatted_text() -> List[Tuple[str, str]]:
-        return _build_formatted_text(lines, hyperlinks_by_line, navigator.focus)
+        width = _window_width()
+        height = _window_height()
+        _refresh_rendered_text(width, height)
+        return _build_formatted_text(
+            lines, hyperlinks_by_line, navigator.focus, fill_width=width
+        )
 
     control = FormattedTextControl(
         formatted_text, focusable=False, show_cursor=False, focusable_windows=False
@@ -612,8 +766,28 @@ def _attempt_prompt_toolkit_pager(text: str) -> bool:
         event.app.exit()
 
     def _window_height() -> int:
+        try:
+            app = get_app()
+            size = app.output.get_size()
+            if size and getattr(size, "rows", 0) > 0:
+                return size.rows
+        except (AttributeError, RuntimeError):
+            pass
+
         render_info = window.render_info
         return render_info.window_height if render_info else 0
+
+    def _window_width() -> Optional[int]:
+        try:
+            app = get_app()
+            size = app.output.get_size()
+            if size and getattr(size, "columns", 0) > 0:
+                return size.columns
+        except (AttributeError, RuntimeError):
+            pass
+
+        render_info = window.render_info
+        return render_info.window_width if render_info else None
 
     @bindings.add("tab")
     def _(event) -> None:  # type: ignore[override]
@@ -689,6 +863,8 @@ def page_text(
     text: str,
     pager: Optional[Pager] = None,
     pager_command: Optional[str] = None,
+    *,
+    render_on_resize: Optional[Callable[[int], str]] = None,
 ) -> None:
     """Send text to a pager for interactive navigation.
 
@@ -697,6 +873,8 @@ def page_text(
         pager: Optional callable to handle paging (primarily for testing).
         pager_command: Optional shell-style pager command to execute instead of
             the default ``pydoc.pager`` / ``less`` combination.
+        render_on_resize: Optional callable used to regenerate the text when
+            the interactive pager detects a change in the terminal width.
 
     Raises:
         RuntimeError: If the custom pager command fails to start or exits with
@@ -711,7 +889,7 @@ def page_text(
         _pipe_to_command(text, pager_command)
         return
 
-    if _attempt_prompt_toolkit_pager(text):
+    if _attempt_prompt_toolkit_pager(text, render_on_resize=render_on_resize):
         return
 
     # Default: rely on ``pydoc.pager`` which prefers ``less`` when available.

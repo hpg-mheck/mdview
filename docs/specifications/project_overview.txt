@@ -4,22 +4,23 @@ mdview: Console Markdown Viewer Specification
 Purpose
 -------
 mdview renders Markdown and plain-text documents directly in a terminal
-while delegating navigation to the familiar ``less`` pager. The tool
-preserves semantic formatting (headings, emphasis, code blocks, lists)
-using ANSI styling while keeping the interaction model intentionally
-minimal and consistent with ``less``.
+using an internal rendering and viewing engine. The tool preserves
+semantic formatting (headings, emphasis, code blocks, lists) with ANSI
+styling and provides integrated navigation without outsourcing display
+functions to external pagers.
 
 Goals and Non-Goals
 -------------------
 - Goals
   - Provide a readable, styled Markdown rendering in terminals.
-  - Offer familiar ``less`` navigation: line/page scrolling, search, jump
-    to start/end, and quit.
-  - Remain lightweight with minimal dependencies (Python 3.8+, ``rich``
-    for formatting, standard library for paging and CLI).
+  - Offer integrated navigation: line/page scrolling, search, jump to
+    start/end, and horizontal scrolling for overflow content.
+  - Remain lightweight with minimal dependencies (Python 3.9+, ``rich``
+    for formatting, standard library for CLI).
 - Non-Goals
   - Editing or annotating documents.
-  - Implementing a custom curses pager beyond basic output piping.
+  - Delegating terminal display to external programs such as ``less`` or
+    ``more``.
   - Supporting formats beyond ``.md``, ``.markdown``, and ``.txt`` in the
     initial release.
 
@@ -27,10 +28,13 @@ User Workflow
 -------------
 1. Invoke ``mdview <path>``.
 2. mdview determines if the file is Markdown or plain text.
-3. mdview renders the content with ``rich`` (Markdown markup or plain
-   text as-is).
-4. The rendered ANSI text is piped to ``less -R`` (via ``pydoc.pager``)
-   for navigation and search.
+3. mdview ingests content into the common internal content model using
+   the three-pass classification pipeline described in
+   ``docs/specifications/unified_content_intake_model.txt``.
+4. mdview renders content with ``rich`` (Markdown markup or plain text
+   under the unified reflow policy and reflow-mode semantics).
+5. The internal viewer presents the rendered document, including vertical
+   and horizontal navigation when content exceeds viewport width.
 
 Functional Requirements
 -----------------------
@@ -40,34 +44,46 @@ Functional Requirements
   - Reads content using UTF-8 with graceful error messaging on failure.
 - Rendering
   - Markdown files: rendered using ``rich.markdown.Markdown``.
-  - Plain text: passed through unmodified except for safe handling of
-    control characters.
-- Paging
-  - Uses the ``less`` pager (``LESS=-R``) to preserve ANSI styling and
-    allow search navigation.
-  - Falls back to the default ``pydoc.pager`` behavior if ``less`` is
-    unavailable on the host.
+    Markdown reflows prose-like blocks to current viewport width by
+    default under ``--reflow-mode prose`` semantics.
+    ``--reflow`` is redundant for standard Markdown workflows.
+    Markdown tables may remain wider than the viewport because of minimum
+    sizing constraints and must retain readable column structure.
+  - Plain text (``*.txt``): follows
+    ``docs/specifications/plain_text_reflow_behavior.txt``. Default behavior
+    preserves source line breaks with no reflow. ``--reflow`` enables
+    reflow (defaulting to ``--reflow-mode prose``). ``--noreflow`` or
+    ``--reflow-mode none`` disables reflow in all cases.
+  - Reflow mode semantics and precedence are defined in
+    ``docs/specifications/reflow_mode.txt``.
+- Viewing Engine
+  - Uses mdview's internal viewer exclusively for display and navigation.
+  - Activates horizontal scrolling whenever at least one rendered line
+    exceeds viewport width.
+  - Uses left and right arrow keys to move the viewport horizontally
+    across the rendered virtual document.
 - CLI
   - Command: ``mdview <path>``.
-  - Options: ``--version`` for program version; ``--pager`` to override
-    the pager command (optional future hook).
+  - Options: ``--version`` for program version; ``--reflow`` to enable
+    reflow processing; ``--noreflow`` to disable reflow; and
+    ``--reflow-mode prose|all|none`` to select policy behavior as defined in
+    ``docs/specifications/reflow_mode.txt``.
 
 Quality Attributes
 ------------------
 - Reliability: Clear error messages for missing files, unreadable files,
   or rendering issues.
 - Usability: Output should be immediately legible; headings and emphasis
-  must stand out, and navigation mirrors ``less``.
-- Portability: Works on Unix-like systems with Python 3.8+; degrades
-  gracefully if ``less`` is missing.
+  must stand out, and navigation should remain consistent and predictable.
+- Portability: Works on Unix-like systems with Python 3.9+; degrades
+  gracefully when optional rendering dependencies are missing.
 - Testability: Core formatting and content-loading logic covered by unit
   tests (pytest). CLI behavior validated via smoke tests where feasible.
 
 Dependencies
 ------------
 - Runtime: ``rich`` for Markdown rendering.
-- Standard library: ``argparse``, ``pathlib``, ``pydoc``, ``subprocess``,
-  and ``typing``.
+- Standard library: ``argparse``, ``pathlib``, and ``typing``.
 - Dev/Test: ``pytest`` for unit tests.
 
 Future Enhancements (Out of Scope for Initial Scaffold)

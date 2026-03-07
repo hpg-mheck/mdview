@@ -1,12 +1,14 @@
-usage: mdview [-h] [--pager COMMAND] [-V] path
+usage: mdview [-h] [--reflow] [--reflow-mode MODE] [--noreflow] [-V] path
 
-Render Markdown in the terminal with less-like navigation.
+Render Markdown in the terminal with an internal viewer.
 
 positional arguments:
   path             Path to a Markdown or text file to view.
 
 options:
   -h, --help       show this help message and exit
-  --pager COMMAND  Optional pager command to override the default less/pydoc
-                   pager (e.g., 'less -R'). (default: None)
+  --reflow         Enable reflow processing; defaults to reflow-mode prose.
+  --reflow-mode MODE
+                   Select reflow policy mode: prose, all, or none.
+  --noreflow       Disable reflow in all cases (equivalent to mode none).
   -V, --version    Show the mdview version and exit.

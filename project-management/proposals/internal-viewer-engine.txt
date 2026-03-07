@@ -1,0 +1,115 @@
+Title: Internal Dual-Scrolling Viewer Engine Plan
+Author: R. Talon
+Date: 2026-03-07T03:04:20Z
+Status: Draft
+Reviewers: Matt "Breakpoint" Heck (Operator), UI Architecture Lead
+Related Work: project-management/proposals/internal-document-object-model.txt;
+project-management/proposals/three-pass-intake-parser.txt;
+docs/specifications/horizontal_scrolling_mode.txt;
+docs/specifications/word_wrap_mode.txt
+
+Problem Statement
+-----------------
+mdview requires a fully internal, feature-complete text-mode viewer that does
+not depend on external pagers. The viewer must support dual-axis navigation,
+resize handling, and policy-aware behavior driven by DOM hints and hard limits
+instead of ad hoc per-format logic.
+
+Goals
+-----
+- Define requirements for an internal, resizable, dual-scrolling viewer.
+- Establish an object-oriented contract between viewer and content blocks.
+- Enforce hard limits while honoring soft hints for flow, wrap, and reflow.
+- Support accessible, predictable keyboard navigation for overflow content.
+
+Non-Goals
+---------
+- Enumerating every rendering rule for each Markdown element.
+- Choosing final UI polish details (themes, animations, color palettes).
+- Delegating display or navigation to ``less``, ``more``, or equivalents.
+
+Use Cases
+---------
+- Viewport narrower than rendered content requires horizontal scrolling with
+  left/right arrow keys.
+- Reflow mode changes require recomputation while preserving anchors and
+  respecting no-reflow blocks.
+- Mixed documents require per-block behavior without hardcoding viewer logic
+  by file extension.
+
+Constraints and Assumptions
+---------------------------
+- Python 3.9+ compatibility and terminal portability are required.
+- Implementation should target ncurses-compatible semantics (or equivalent
+  text UI runtime) while keeping abstraction boundaries clear.
+- Viewer must operate on DOM-provided dimensions, constraints, and hints.
+
+Proposed Approach
+-----------------
+- Build viewer around object-oriented interfaces:
+  - ``ViewDocument``: owns block ordering, aggregate dimensions, and anchors.
+  - ``ViewBlock``: exposes measured geometry, hard limits, and soft hints.
+  - ``ViewPolicy``: resolves reflow/wrap decisions under precedence rules.
+  - ``ViewportState``: tracks row/column offsets, visible range, and focus.
+  - ``InteractionController``: routes key events and updates viewport state.
+- Require every block type to report:
+  - Hard limits (must not wrap, minimum width, fixed indentation semantics).
+  - Soft hints (preferred wrap mode, suggested anchor behavior, scroll bias).
+  - Geometry probes (min width, preferred width, computed rendered width).
+- Define global viewer rules:
+  - Horizontal scrollbar is active whenever any visible rendered line exceeds
+    viewport width.
+  - Left/right arrow keys pan horizontally within bounded offsets.
+  - Resize recomputes geometry and preserves top-line and column anchors when
+    possible.
+  - Policy changes respect hard limits first, then mode, then hints.
+
+Risks and Mitigations
+---------------------
+- Risk: Interface complexity slows delivery.
+  Mitigation: phase interfaces with a minimal viable contract first.
+- Risk: Inconsistent behavior across terminals.
+  Mitigation: add capability detection and fallback keypath tests.
+- Risk: Scroll jitter during rapid resize or policy toggles.
+  Mitigation: use anchor-preservation rules and debounced recomputation.
+
+Testing and Validation
+----------------------
+- Add unit tests for viewport math, offset clamping, and anchor retention.
+- Add integration tests for dual-axis scrolling, including overflow activation
+  and left/right key panning.
+- Validate contract compliance: each block type must expose required hard
+  limits and soft hints before registration.
+- Follow Joel Spolsky's ship-readiness guidance with pessimistic edge-case
+  coverage prior to rollout.
+
+Alternatives Considered
+-----------------------
+- Continue with external pager orchestration.
+  Rejected because it cannot meet internal policy and DOM contract needs.
+- Implement viewer logic as format-specific branches.
+  Rejected because it does not scale and conflicts with OO contract goals.
+
+Open Questions
+--------------
+- Should rendering invalidation be full-frame or region-based initially?
+  Owner: Viewer lead. Decision by: 2026-04-04.
+- Which terminal abstraction layer best balances portability and control?
+  Owner: Platform lead. Decision by: 2026-04-04.
+
+Milestones
+----------
+- Milestone 1 (2026-03-21): Finalize viewer contracts and state model.
+- Milestone 2 (2026-03-28): Implement core viewport and dual-axis scrolling.
+- Milestone 3 (2026-04-04): Integrate policy resolution and DOM contracts.
+- Milestone 4 (2026-04-11): Complete resize and interaction hardening.
+
+Adoption and Rollout
+--------------------
+- Deploy internal viewer behind a feature gate with comparative snapshots.
+- Validate navigation parity and overflow handling on representative fixtures.
+- Promote as default path after contract, scroll, and resize suites pass.
+
+Decision Log
+------------
+- None yet.
