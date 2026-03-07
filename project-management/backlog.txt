@@ -6,20 +6,6 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
-* Wire viewer policy and DOM contracts into rendering interactions. Enforce
-  block hard limits, consume soft hints, and keep left/right arrow panning
-  consistent with overflow state. Added 2026-03-07T03:04:20Z.
-  Dependencies: core viewport engine and reflow-policy integration.
-  Acceptance: viewer honors no-reflow blocks, wrap hints, and overflow panning
-  rules in integration tests.
-
-* Add viewer unit/integration tests for dual-axis scrolling, horizontal
-  overflow activation, left/right panning bounds, and resize anchor
-  preservation. Include wide Markdown-table and wide literal ``.txt`` table
-  fixtures. Added 2026-03-07T03:04:20Z.
-  Dependencies: viewer core and viewer policy/DOM wiring.
-  Acceptance: viewer tests pass across overflow and resize scenarios.
-
 * Stabilization gate: resolve the current open failing-test cluster by
   aligning implementation to updated intake/reflow/viewer specifications.
   Target failing suites: tests/test_markdown_bold.py,
