@@ -1,0 +1,77 @@
+Unicode Flattening Specification
+================================
+
+Scope
+-----
+Define ``--flatten-unicode`` behavior for converting Unicode display text into
+predictable 8-bit ASCII-compatible fallbacks while preserving intent and
+readability.
+
+Goal
+----
+Provide a deterministic display path for terminals, logs, and copy workflows
+that cannot reliably render Unicode symbols.
+
+Option Definition
+-----------------
+- ``--flatten-unicode``: map Unicode characters in rendered output to nearest
+  printable 8-bit ASCII-compatible substitutions.
+
+Behavioral Requirements
+-----------------------
+- Apply flattening to rendered display text, not the source file on disk.
+- Preserve character order and visible semantics as closely as possible.
+- Perform flattening before final viewport measurement so wrapping and
+  overflow decisions use flattened widths.
+- Keep mapping deterministic and versioned to avoid drift across releases.
+
+Mapping Rules
+-------------
+- Canonical decomposition:
+  - Strip combining marks from Latin text where possible.
+  - Example: ``cafe\u0301`` and ``caf\xe9`` both render as ``cafe``.
+- Punctuation:
+  - Curly single quotes -> ``'``
+  - Curly double quotes -> ``"``
+  - En dash -> ``-``
+  - Em dash -> ``--``
+  - Ellipsis -> ``...``
+- Spacing:
+  - Non-breaking and narrow spaces -> plain space.
+- Bullets and markers:
+  - Bullet-like symbols (for example ``•``) -> ``*``.
+- Box and line drawing:
+  - Horizontal/vertical line glyphs -> ``-`` and ``|``.
+  - Corners/intersections -> ``+``.
+- Unknown symbols:
+  - Characters with no defined mapping -> ``?``.
+
+Markdown and Hyperlink Handling
+-------------------------------
+- Apply flattening after Markdown parsing but before final viewport layout.
+- Link targets remain unchanged when activated; only visible link text is
+  flattened.
+- Markdown table separators and layout markers must remain structurally valid
+  after flattening.
+
+Interaction with Other Modes
+----------------------------
+- Reflow modes (``prose|all|none``) operate on flattened text widths when this
+  flag is enabled.
+- Combined behavior with ``--7bit`` is specified in
+  ``docs/specifications/7bit_mode.txt``.
+
+Error Handling and Diagnostics
+------------------------------
+- Do not fail rendering when unmapped characters appear.
+- Optionally expose a diagnostic count of substituted characters in future
+  status output; this is not required for initial implementation.
+
+Testing Guidance
+----------------
+- Add fixture coverage for:
+  - Accented Latin text.
+  - Curly punctuation and dash variants.
+  - Box-drawing tables and bullets.
+  - Unknown symbol fallback to ``?``.
+- Verify flattening does not alter link destinations or source file bytes.

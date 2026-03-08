@@ -6,9 +6,11 @@ from scripts.install_prerequisites import (
     OSInfo,
     build_install_commands,
     ensure_virtualenv,
+    install_git_hooks,
     parse_os_release,
     select_package_manager,
     system_packages_for,
+    venv_python_path,
 )
 
 
@@ -47,6 +49,12 @@ def test_select_package_manager_falls_back_to_available_option():
     assert manager == "yum"
 
 
+def test_select_package_manager_returns_none_for_windows():
+    os_info = OSInfo(platform_id="windows", version_id="11", pretty_name="Windows 11")
+    manager = select_package_manager(os_info, available=["winget"])
+    assert manager is None
+
+
 def test_build_install_commands_adds_sudo_prefix():
     commands = build_install_commands(
         manager="apt-get",
@@ -70,3 +78,21 @@ def test_ensure_virtualenv_requests_creation_when_missing(tmp_path: Path):
     expected_python = venv_path / "bin" / "python"
     assert created_python == expected_python
     assert runner.commands[0][:3] == [sys.executable, "-m", "venv"]
+
+
+def test_venv_python_path_uses_windows_layout(monkeypatch, tmp_path: Path):
+    import scripts.install_prerequisites as installer
+
+    monkeypatch.setattr(installer.os, "name", "nt")
+    path = venv_python_path(tmp_path / ".venv")
+    assert path == tmp_path / ".venv" / "Scripts" / "python.exe"
+
+
+def test_install_git_hooks_runs_hook_installer_with_selected_python():
+    runner = RecordingRunner()
+
+    install_git_hooks(sys.executable, runner)
+
+    command = runner.commands[0]
+    assert command[0] == sys.executable
+    assert command[1].endswith("scripts/install_git_hooks.py")

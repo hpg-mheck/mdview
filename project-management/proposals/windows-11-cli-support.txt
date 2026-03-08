@@ -1,7 +1,7 @@
 Title: Windows 11 Command-Line Support Plan
 Author: R. Talon
 Date: 2025-12-09T05:04:57Z
-Status: Draft
+Status: Implemented
 Reviewers: Matt "Breakpoint" Heck (PM), Windows reliability lead
 Related Work: project-management/backlog.txt
 
@@ -99,4 +99,12 @@ Adoption and Rollout
   for usability.
 
 Decision Log
-- None yet.
+- 2026-03-06T22:45:00-08:00: Accepted and implemented on ``VERSIONS/0.5.0``.
+  Added Windows shell shims in ``scripts/windows`` for PowerShell and cmd.exe
+  with UTF-8 environment defaults and timeout-wrapper parity commands.
+- 2026-03-06T22:45:00-08:00: Extended ``scripts/install_prerequisites.py`` to
+  support Windows 11 command-line bootstrap behavior without requiring a
+  package manager path.
+- 2026-03-06T22:45:00-08:00: Added Windows CI coverage in
+  ``.github/workflows/windows-cli.yml`` and regression tests in
+  ``tests/test_windows_cli_shims.py`` plus installer coverage updates.

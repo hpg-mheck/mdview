@@ -1,16 +1,14 @@
 """Core rendering and paging utilities for mdview.
 
-The module keeps the Markdown-to-ANSI pipeline compact while offering a minimal
-extension point for overriding the pager command. All public functions are
-covered by unit tests to ensure reliable behavior.
+The module keeps the Markdown-to-ANSI pipeline compact and drives an internal
+text viewer path for interactive paging. All public functions are covered by
+unit tests to ensure reliable behavior.
 """
 
 import importlib.util
-import os
 import re
-import shlex
-import subprocess
 import sys
+import textwrap
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -69,6 +67,7 @@ _FORCED_BREAK_SENTINEL = "MDVIEWHEADINGBREAK"
 _ANSI_ESCAPE_PATTERN = r"\x1b\[[0-?]*[ -/]*[@-~]"
 _LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 _IMAGE_PATTERN = re.compile(r"(?<!\\)!\[([^\]]*)\]\(([^)]*)\)")
+_NUMERIC_CELL_PATTERN = re.compile(r"^[+-]?\d+(?:[.,]\d+)?%?$")
 
 
 def _add_fallback_notice(message: str) -> None:
@@ -156,17 +155,139 @@ def _format_images(text: str, has_rich: bool) -> str:
     return _IMAGE_PATTERN.sub(_replacement, text)
 
 
-def _format_table_block(lines: Sequence[str], start: int) -> Tuple[List[str], int]:
-    """Return formatted table rows and the index after the table block.
+def _table_line_width(widths: Sequence[int]) -> int:
+    """Return rendered table row width from cell widths."""
 
-    Args:
-        lines: Full document lines.
-        start: Index pointing to the header row.
+    if not widths:
+        return 0
+    return sum(widths) + (3 * len(widths)) + 1
 
-    Returns:
-        A tuple containing the formatted table lines and the index after the
-        final table row.
-    """
+
+def _fit_cell_min_width(text: str) -> int:
+    """Return aggressive fit-first practical width for one table cell."""
+
+    stripped = text.strip()
+    if not stripped:
+        return 1
+    if len(stripped) <= 4:
+        return len(stripped)
+    if _NUMERIC_CELL_PATTERN.match(stripped):
+        return min(len(stripped), 3)
+
+    if any(char.isspace() for char in stripped):
+        words = [word for word in re.split(r"\s+", stripped) if word]
+        longest = max((len(word) for word in words), default=1)
+        return min(len(stripped), max(3, min(longest, 8)))
+
+    if any(char in stripped for char in "/._-:@") and len(stripped) > 8:
+        return 6
+
+    return min(len(stripped), 5)
+
+
+def _shrink_widths_for_fit(
+    widths: Sequence[int], min_widths: Sequence[int], target_width: int
+) -> List[int]:
+    """Greedily shrink columns toward min widths until fit or exhausted."""
+
+    current = list(widths)
+    while _table_line_width(current) > target_width:
+        reducible = [
+            index for index, width in enumerate(current) if width > min_widths[index]
+        ]
+        if not reducible:
+            break
+        chosen = max(
+            reducible,
+            key=lambda index: (
+                current[index] - min_widths[index],
+                current[index],
+                -index,
+            ),
+        )
+        current[chosen] -= 1
+    return current
+
+
+def _wrap_cell_lines(text: str, width: int, *, fit_first: bool) -> List[str]:
+    """Return wrapped display lines for a single cell."""
+
+    stripped = text.strip()
+    if not stripped:
+        return [""]
+    if not fit_first:
+        return [stripped]
+    wrapped = textwrap.wrap(
+        stripped,
+        width=max(1, width),
+        break_long_words=True,
+        break_on_hyphens=True,
+        drop_whitespace=False,
+    )
+    return wrapped or [""]
+
+
+def _format_row_lines(
+    row: Sequence[str],
+    widths: Sequence[int],
+    alignments: Sequence[str],
+    *,
+    fit_first: bool,
+) -> List[str]:
+    """Format one logical row into one or more rendered lines."""
+
+    cell_lines: List[List[str]] = []
+    for column, width in enumerate(widths):
+        cell_text = row[column].strip() if column < len(row) else ""
+        cell_lines.append(_wrap_cell_lines(cell_text, width, fit_first=fit_first))
+
+    row_height = max((len(lines) for lines in cell_lines), default=1)
+    rendered: List[str] = []
+    for line_index in range(row_height):
+        padded_cells: List[str] = []
+        for column, width in enumerate(widths):
+            fragment = (
+                cell_lines[column][line_index]
+                if line_index < len(cell_lines[column])
+                else ""
+            )
+            alignment = alignments[column] if column < len(alignments) else "left"
+            if alignment == "center":
+                padded = fragment.center(width)
+            elif alignment == "right":
+                padded = fragment.rjust(width)
+            else:
+                padded = fragment.ljust(width)
+            padded_cells.append(padded)
+        rendered.append("| " + " | ".join(padded_cells) + " |")
+    return rendered
+
+
+def _format_divider_line(widths: Sequence[int], alignments: Sequence[str]) -> str:
+    """Return the Markdown divider row for the chosen widths."""
+
+    divider_cells: List[str] = []
+    for column, width in enumerate(widths):
+        alignment = alignments[column] if column < len(alignments) else "left"
+        dash_width = max(width, 3)
+        if alignment == "center":
+            cell = ":" + "-" * max(dash_width - 2, 1) + ":"
+        elif alignment == "right":
+            cell = "-" * max(dash_width - 1, 2) + ":"
+        else:
+            cell = ":" + "-" * max(dash_width - 1, 2)
+        divider_cells.append(cell)
+    return "| " + " | ".join(divider_cells) + " |"
+
+
+def _format_table_block(
+    lines: Sequence[str],
+    start: int,
+    *,
+    viewport_width: Optional[int],
+    readability_first_tables: bool,
+) -> Tuple[List[str], int]:
+    """Return formatted table rows and the index after the table block."""
 
     if start + 1 >= len(lines):
         return [], start
@@ -194,53 +315,63 @@ def _format_table_block(lines: Sequence[str], start: int) -> Tuple[List[str], in
         index += 1
 
     column_count = max(len(row) for row in rows + [alignments])
-    widths: List[int] = []
+    readability_widths: List[int] = []
+    min_widths: List[int] = []
     for column in range(column_count):
-        width = 0
+        readable_width = 0
+        fit_min = 1
         for row in rows:
             if column < len(row):
-                width = max(width, len(row[column].strip()))
+                text = row[column].strip()
+                readable_width = max(readable_width, len(text))
+                fit_min = max(fit_min, _fit_cell_min_width(text))
         if column < len(divider_cells):
-            width = max(width, len(divider_cells[column].strip(" :")))
-        widths.append(width)
+            divider_width = len(divider_cells[column].strip(" :"))
+            readable_width = max(readable_width, divider_width)
+        readable_width = max(readable_width, 3)
+        fit_min = max(min(fit_min, readable_width), 3)
+        readability_widths.append(readable_width)
+        min_widths.append(fit_min)
 
-    def _format_row(row: Sequence[str]) -> str:
-        padded_cells: List[str] = []
-        for column, width in enumerate(widths):
-            text = row[column].strip() if column < len(row) else ""
-            alignment = alignments[column] if column < len(alignments) else "left"
-            if alignment == "center":
-                padded = text.center(width)
-            elif alignment == "right":
-                padded = text.rjust(width)
-            else:
-                padded = text.ljust(width)
-            padded_cells.append(padded)
-        return "| " + " | ".join(padded_cells) + " |"
+    fit_widths = list(readability_widths)
+    if viewport_width is not None and viewport_width > 0:
+        fit_widths = _shrink_widths_for_fit(fit_widths, min_widths, viewport_width)
+    fit_can_avoid_overflow = (
+        viewport_width is None
+        or viewport_width <= 0
+        or _table_line_width(fit_widths) <= viewport_width
+    )
 
-    def _format_divider() -> str:
-        divider_cells: List[str] = []
-        for column, width in enumerate(widths):
-            alignment = alignments[column] if column < len(alignments) else "left"
-            dash_width = max(width, 3)
-            if alignment == "center":
-                cell = ":" + "-" * max(dash_width - 2, 1) + ":"
-            elif alignment == "right":
-                cell = "-" * max(dash_width - 1, 2) + ":"
-            else:
-                cell = ":" + "-" * max(dash_width - 1, 2)
-            divider_cells.append(cell)
-        return "| " + " | ".join(divider_cells) + " |"
+    if readability_first_tables:
+        chosen_widths = readability_widths
+        fit_first = False
+    elif fit_can_avoid_overflow:
+        chosen_widths = fit_widths
+        fit_first = True
+    else:
+        chosen_widths = readability_widths
+        fit_first = False
 
-    formatted_lines: List[str] = [_format_row(rows[0]), _format_divider()]
+    formatted_lines: List[str] = []
+    formatted_lines.extend(
+        _format_row_lines(rows[0], chosen_widths, alignments, fit_first=fit_first)
+    )
+    formatted_lines.append(_format_divider_line(chosen_widths, alignments))
     for row in rows[1:]:
-        formatted_lines.append(_format_row(row))
+        formatted_lines.extend(
+            _format_row_lines(row, chosen_widths, alignments, fit_first=fit_first)
+        )
 
     return formatted_lines, index
 
 
-def _format_pipe_tables(text: str) -> str:
-    """Return content with pipe tables aligned for plain-text readability."""
+def _format_pipe_tables(
+    text: str,
+    *,
+    viewport_width: Optional[int] = None,
+    readability_first_tables: bool = False,
+) -> str:
+    """Return content with pipe tables formatted under active width profile."""
 
     lines = text.splitlines()
     output: List[str] = []
@@ -269,7 +400,12 @@ def _format_pipe_tables(text: str) -> str:
             continue
 
         if "|" in line and index + 1 < len(lines) and _is_divider_row(lines[index + 1]):
-            formatted, next_index = _format_table_block(lines, index)
+            formatted, next_index = _format_table_block(
+                lines,
+                index,
+                viewport_width=viewport_width,
+                readability_first_tables=readability_first_tables,
+            )
             if formatted:
                 output.extend(formatted)
                 index = next_index
@@ -524,6 +660,7 @@ def render_to_ansi(
     width: Optional[int] = None,
     height: Optional[int] = None,
     reflow_mode: Optional[str] = None,
+    readability_first_tables: bool = False,
 ) -> str:
     """Render the given content to ANSI-decorated text.
 
@@ -539,6 +676,7 @@ def render_to_ansi(
         width: Optional line width override used when rendering through Rich.
         height: Optional line height override to mirror viewport sizing.
         reflow_mode: Active reflow policy mode (``prose``, ``all``, ``none``).
+        readability_first_tables: Force readability-first table layout profile.
 
     Returns:
         A string containing ANSI escape sequences suitable for paging.
@@ -568,7 +706,11 @@ def render_to_ansi(
         normalized = _normalize_heading_input(source_text, HAS_RICH)
         normalized = _normalize_bulleted_lists(normalized, HAS_RICH)
         normalized = _normalize_horizontal_rules(normalized, HAS_RICH)
-        formatted = _format_pipe_tables(normalized)
+        formatted = _format_pipe_tables(
+            normalized,
+            viewport_width=effective_width,
+            readability_first_tables=readability_first_tables,
+        )
         formatted = _format_images(formatted, HAS_RICH)
         formatted = _format_links(formatted, HAS_RICH)
         if trailing_newline:
@@ -706,7 +848,12 @@ def _build_formatted_text(
     return segments
 
 
-def _align_focus(window: "Window", focus: Optional[Hyperlink]) -> None:
+def _align_focus(
+    window: "Window",
+    focus: Optional[Hyperlink],
+    *,
+    visible_width: Optional[int] = None,
+) -> None:
     """Scroll the viewport to reveal the focused hyperlink if needed."""
 
     if focus is None:
@@ -721,6 +868,19 @@ def _align_focus(window: "Window", focus: Optional[Hyperlink]) -> None:
         window.vertical_scroll = focus.line
     elif focus.line > bottom:
         window.vertical_scroll = max(focus.line - max(height - 1, 0), 0)
+
+    if visible_width is None or visible_width <= 0:
+        return
+
+    current_offset = max(int(getattr(window, "horizontal_scroll", 0)), 0)
+    right_edge = current_offset + max(visible_width - 1, 0)
+    if focus.start < current_offset:
+        setattr(window, "horizontal_scroll", focus.start)
+        return
+    if focus.start > right_edge:
+        margin = 2
+        target_offset = max(focus.start - max(visible_width - margin - 1, 0), 0)
+        setattr(window, "horizontal_scroll", target_offset)
 
 
 def _scroll_window(window: "Window", amount: int, total_lines: int) -> None:
@@ -774,8 +934,20 @@ def _attempt_prompt_toolkit_pager(
         current_text.splitlines()
     )
     navigator = HyperlinkNavigator(hyperlinks)
+    document_width = max((_visible_length(line) for line in lines), default=0)
     last_known_width: Optional[int] = None
     last_known_height: Optional[int] = None
+
+    def _max_horizontal_offset(width: Optional[int]) -> int:
+        if width is None or width <= 0:
+            return 0
+        return max(document_width - width, 0)
+
+    def _set_horizontal_offset(target: int) -> None:
+        width = _window_width()
+        max_offset = _max_horizontal_offset(width)
+        clamped = min(max(target, 0), max_offset)
+        setattr(window, "horizontal_scroll", clamped)
 
     def _restore_focus(previous: Optional[Hyperlink]) -> None:
         nonlocal navigator
@@ -793,7 +965,8 @@ def _attempt_prompt_toolkit_pager(
                 break
 
     def _refresh_rendered_text(width: Optional[int], height: Optional[int]) -> None:
-        nonlocal current_text, lines, hyperlinks, hyperlinks_by_line, navigator
+        nonlocal current_text, lines, hyperlinks, hyperlinks_by_line
+        nonlocal navigator, document_width
         nonlocal last_known_width, last_known_height
 
         if width is None or width <= 0 or height is None or height <= 0:
@@ -816,9 +989,11 @@ def _attempt_prompt_toolkit_pager(
             )
             navigator = HyperlinkNavigator(hyperlinks)
             _restore_focus(previous_focus)
+            document_width = max((_visible_length(line) for line in lines), default=0)
 
         last_known_width = width
         last_known_height = height
+        _set_horizontal_offset(int(getattr(window, "horizontal_scroll", 0)))
         _recenter_on_line(window, previous_center_line, height, len(lines))
 
     def formatted_text() -> List[Tuple[str, str]]:
@@ -869,7 +1044,7 @@ def _attempt_prompt_toolkit_pager(
     @bindings.add("tab")
     def _(event) -> None:  # type: ignore[override]
         focus = navigator.focus_next(window.vertical_scroll, max(_window_height(), 1))
-        _align_focus(window, focus)
+        _align_focus(window, focus, visible_width=_window_width())
         event.app.invalidate()
 
     @bindings.add("s-tab")
@@ -877,7 +1052,21 @@ def _attempt_prompt_toolkit_pager(
         focus = navigator.focus_previous(
             window.vertical_scroll, max(_window_height(), 1)
         )
-        _align_focus(window, focus)
+        _align_focus(window, focus, visible_width=_window_width())
+        event.app.invalidate()
+
+    @bindings.add("left")
+    @bindings.add("h")
+    def _(event) -> None:  # type: ignore[override]
+        current = int(getattr(window, "horizontal_scroll", 0))
+        _set_horizontal_offset(current - 1)
+        event.app.invalidate()
+
+    @bindings.add("right")
+    @bindings.add("l")
+    def _(event) -> None:  # type: ignore[override]
+        current = int(getattr(window, "horizontal_scroll", 0))
+        _set_horizontal_offset(current + 1)
         event.app.invalidate()
 
     @bindings.add("down")
@@ -930,7 +1119,8 @@ def _attempt_prompt_toolkit_pager(
         application.run()
     except Exception as error:  # pragma: no cover - defensive fallback
         _add_fallback_notice(
-            "prompt_toolkit pager failed: falling back to basic pager. " f"({error})"
+            "prompt_toolkit pager failed: falling back to non-interactive "
+            f"output. ({error})"
         )
         return False
     return True
@@ -939,69 +1129,25 @@ def _attempt_prompt_toolkit_pager(
 def page_text(
     text: str,
     pager: Optional[Pager] = None,
-    pager_command: Optional[str] = None,
     *,
     render_on_resize: Optional[Callable[[int], str]] = None,
 ) -> None:
-    """Send text to a pager for interactive navigation.
+    """Display rendered text using the internal viewing stack.
 
     Args:
         text: Rendered ANSI text to display.
         pager: Optional callable to handle paging (primarily for testing).
-        pager_command: Optional shell-style pager command to execute instead of
-            the default ``pydoc.pager`` / ``less`` combination.
         render_on_resize: Optional callable used to regenerate the text when
             the interactive pager detects a change in the terminal width.
-
-    Raises:
-        RuntimeError: If the custom pager command fails to start or exits with
-            a non-zero status.
     """
 
     if pager:
         pager(text)
         return
 
-    if pager_command:
-        _pipe_to_command(text, pager_command)
-        return
-
     if _attempt_prompt_toolkit_pager(text, render_on_resize=render_on_resize):
         return
-
-    # Default: rely on ``pydoc.pager`` which prefers ``less`` when available.
-    # The LESS environment variable ensures ANSI escape sequences are retained.
-    os.environ.setdefault("LESS", "-R")
-    import pydoc  # Local import to keep import cost low until needed
-
-    pydoc.pager(text)
-
-
-def _pipe_to_command(text: str, command: str) -> None:
-    """Send text to an external pager command.
-
-    Args:
-        text: Rendered ANSI text to display.
-        command: Shell-style command string, e.g., ``"less -R"``.
-
-    Raises:
-        RuntimeError: If the command cannot be executed or returns a non-zero
-            exit status.
-    """
-
-    args = shlex.split(command)
-    try:
-        with subprocess.Popen(args, stdin=subprocess.PIPE) as process:
-            assert process.stdin is not None  # For type checkers
-            process.stdin.write(text.encode("utf-8"))
-            process.stdin.close()
-            return_code = process.wait()
-    except OSError as error:
-        raise RuntimeError(
-            f"Failed to execute pager command '{command}': {error}"
-        ) from error
-
-    if return_code != 0:
-        raise RuntimeError(
-            f"Pager command '{command}' exited with status {return_code}"
-        )
+    sys.stdout.write(text)
+    if text and not text.endswith("\n"):
+        sys.stdout.write("\n")
+    sys.stdout.flush()

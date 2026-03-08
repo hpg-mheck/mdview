@@ -87,10 +87,10 @@ def test_format_help_matches_expected_shape():
     help_text = cli_module.format_help()
 
     assert "usage: mdview" in help_text
-    assert "--pager COMMAND" in help_text
     assert "--reflow" in help_text
     assert "--reflow-mode {prose,all,none}" in help_text
     assert "--noreflow" in help_text
+    assert "--readability-first-tables" in help_text
     assert "Render Markdown in the terminal" in help_text
     assert "--verify-resize-detection" in help_text
 

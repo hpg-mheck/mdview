@@ -1,0 +1,68 @@
+Seven-Bit Output Mode Specification
+===================================
+
+Scope
+-----
+Define ``--7bit`` behavior for forcing rendered output into printable 7-bit
+ASCII so terminals and transport paths with strict ASCII constraints remain
+usable.
+
+Goal
+----
+Guarantee that displayed and copied output contains only bytes in the
+printable 7-bit range (plus newline and tab where required).
+
+Option Definition
+-----------------
+- ``--7bit``: convert rendered text to printable 7-bit ASCII mappings.
+
+Behavioral Requirements
+-----------------------
+- Apply conversion to rendered output, never to source file bytes.
+- Preserve text order and approximate meaning where mappings exist.
+- Preserve line boundaries unless active reflow policy changes them.
+- Keep conversion deterministic with a versioned mapping table.
+
+Seven-Bit Conversion Rules
+--------------------------
+- Printable ASCII range (``0x20`` to ``0x7E``): preserve as-is.
+- Tabs and newlines: preserve for layout behavior.
+- Control characters outside tab/newline: replace with ``?``.
+- Extended 8-bit characters (``0x80`` to ``0xFF``):
+  - Map to nearest printable ASCII sequence where possible.
+  - Examples:
+    - ``\xa0`` (NBSP) -> space
+    - ``\xa9`` -> ``(c)``
+    - ``\xb0`` -> ``deg``
+    - ``\xdf`` -> ``ss``
+  - If no safe approximation exists, replace with ``?``.
+- Non-8-bit Unicode code points:
+  - Without ``--flatten-unicode``: replace with ``?``.
+  - With ``--flatten-unicode``: process through flattening first, then apply
+    7-bit conversion to the flattened result.
+
+Combined Behavior with ``--flatten-unicode``
+--------------------------------------------
+- When both flags are present, apply in this order:
+  1. ``--flatten-unicode`` normalization and symbol fallback.
+  2. ``--7bit`` enforcement pass.
+- ``--7bit`` is the final gate: resulting output must remain within 7-bit
+  printable ASCII plus tab/newline.
+
+Markdown and Link Handling
+--------------------------
+- Preserve Markdown-rendered structure after conversion (headings, list
+  markers, table separators).
+- Hyperlink targets remain unchanged for navigation; only visible text is
+  converted.
+
+Testing Guidance
+----------------
+- Add fixtures covering:
+  - Extended 8-bit Latin-1 input.
+  - Unicode symbols with and without ``--flatten-unicode``.
+  - Mixed Markdown with links and tables.
+- Verify output byte set constraints under:
+  - ``--7bit`` only.
+  - ``--flatten-unicode`` only.
+  - Combined ``--flatten-unicode --7bit``.

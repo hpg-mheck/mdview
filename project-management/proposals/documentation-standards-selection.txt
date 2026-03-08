@@ -1,9 +1,10 @@
 Title: Documentation Standards Adoption for Source Code Coverage
 Author: R. Talon
 Date: 2025-12-12T01:13:33Z
-Status: Proposed
+Status: Implemented
 Reviewers: Matt "Breakpoint" Heck (review lead), documentation team
-Related Work: User request to standardize function/module/line documentation
+Related Work: User request to standardize function/module/line documentation;
+docs/specifications/documentation_standard_profile.txt
 
 Problem Statement
 -----------------
@@ -20,7 +21,8 @@ Goals
   coverage and supportive of Chicago-style clarity.
 - Present at least one military-grade option to satisfy rigor requirements.
 - Recommend a shortlist and ask maintainers to select a standard for adoption.
-- Align any choice with existing workflow orders (proposals, backlog, testing).
+- Align any choice with existing workflow orders (proposals, backlog,
+  testing).
 
 Non-Goals
 ---------
@@ -61,9 +63,9 @@ Proposed Approach
   - IEEE Std 1063-2001 (Software User Documentation) as a lighter-weight
     alternative for user-facing materials when full ISO 26514 compliance is
     excessive.
-- Request maintainers to choose a primary standard and, if desired, a secondary
-  reference (e.g., ISO/IEC/IEEE 15289 paired with IEEE 1063) for balancing rigor
-  and practicality.
+- Request maintainers to choose a primary standard and, if desired, a
+  secondary reference (e.g., ISO/IEC/IEEE 15289 paired with IEEE 1063) for
+  balancing rigor and practicality.
 - After selection, draft a specification mapping the chosen standard to
   docstring templates, module headers, inline comment expectations, and review
   checklists.
@@ -96,8 +98,8 @@ Alternatives Considered
 Open Questions
 --------------
 - Which standard best balances rigor and maintainability for this repository?
-- Should we pair a heavy standard (MIL-STD-498) with a lighter enforcement tier
-  for small modules?
+- Should we pair a heavy standard (MIL-STD-498) with a lighter enforcement
+  tier for small modules?
 - Who will maintain the internal checklist and training notes once adopted?
 
 Milestones
@@ -118,4 +120,10 @@ Adoption and Rollout
 
 Decision Log
 ------------
-- Pending maintainer review and selection.
+- 2026-03-06T22:55:00-08:00: Accepted with a tailored standards profile.
+  Selected IEEE Std 1063-2001 as the primary operational baseline, Chicago
+  style for prose, and MIL-STD-498-inspired traceability practices for
+  project-management records.
+- 2026-03-06T22:55:00-08:00: Implemented by adding
+  ``docs/specifications/documentation_standard_profile.txt`` and aligning
+  repository guidance to this profile.

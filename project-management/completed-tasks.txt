@@ -6,6 +6,154 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Added proposal hold-area governance for debated architecture work.
+  Recorded at 2026-03-08T04:09:42-07:00 by Codex (GPT-5) from direct
+  operator instruction. Created
+  `project-management/proposals/under-review/`, moved
+  `content-element-style-hierarchy-plan.txt` into that directory, and updated
+  `AGENTS.md` with a standing rule that AI agents must not auto-implement
+  proposals in `under-review` unless the operator explicitly moves them out.
+
+* Implemented adaptive two-profile table width strategy with a
+  readability-first CLI override. Recorded at 2026-03-08T03:52:58-07:00 by
+  Codex (GPT-5) from direct operator instruction. Added specification
+  `docs/specifications/table_width_profile_selection.txt`, updated table and
+  overview specs, added `--readability-first-tables` in `src/mdview/cli.py`,
+  and implemented fit-first/readability-first profile selection in
+  `src/mdview/rendering.py` for Markdown table formatting. Added coverage in
+  `tests/test_markdown_tables.py` and updated CLI help assertions in
+  `tests/test_cli.py`. Validation: wrapper-based black, ruff, compileall,
+  entropy_check, entropy_tripwire_verify, and pytest all passed
+  (`251 passed`).
+
+* Drafted the WSL2 mirrored Linux-validation specification and operator
+  documentation set; deferred execution/implementation testing to real
+  Windows hosts only. Recorded at 2026-03-08T03:31:02-07:00 by Codex (GPT-5)
+  from direct operator instruction. Added
+  `docs/specifications/testing/linux_validation_from_windows_wsl2.txt` and
+  `docs/testing/wsl2/{README,maintenance,troubleshooting}.txt`, and updated
+  AGENTS and test/deployment docs with explicit non-Windows-host execution
+  restrictions and CI authority boundaries.
+
+* Closed six hardening gaps in entropy-tripwire and push-gate automation, and
+  added parse-stable JSON scanner output. Recorded at
+  2026-03-08T03:02:01-07:00 by Codex (GPT-5) from direct operator
+  instruction. Added `--json-output` with schema key ordering/versioning in
+  `dev-utils/security/entropy-check.py`, migrated
+  `verify_entropy_tripwire.py` to JSON parsing, hardened
+  `scripts/install_git_hooks.py` with wrapper-based preservation for existing
+  unmanaged hooks plus managed `pre-push`, and completed cache-backed quality
+  gating via `scripts/run_quality_gate_cached.py` and
+  `scripts/git_standard_commit_push.py`. Added and updated regression tests
+  for JSON output, hook wrapping, dry-run behavior, and cache invalidation.
+  Validation: wrapper-based `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and `pytest` all passed (`247 passed`).
+
+* Added standardized git commit/push and veteran-pull utilities with
+  mandatory entropy tripwire push gating. Recorded at
+  2026-03-08T01:14:43-08:00 by Codex (GPT-5) from direct operator
+  instruction. Added `scripts/git_standard_commit_push.py` and
+  `scripts/git_veteran_pull.py`, plus tripwire verifier
+  `dev-utils/security/verify_entropy_tripwire.py`. Push gating now enforces:
+  sentinel detection, clean harness scan after sentinel exclusion, and
+  independent scan-count verification. Added timeout-wrapper key
+  `entropy_tripwire_verify`, expanded docs in
+  `docs/security/entropy-checks.txt`,
+  `docs/security/git-tripwire-operations.txt`,
+  `docs/development-workflow.txt`, `docs/installation.txt`,
+  `docs/running-tests.txt`, and `project-management/git-flow.txt`, and added
+  specification
+  `docs/specifications/security_entropy_tripwire_git_workflow.txt`.
+  Validation: wrapper-based `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and `pytest` all passed (`241 passed`).
+
+* Added entropy-check security harness, managed pre-commit hook installer,
+  and setup/documentation wiring. Recorded at 2026-03-08T01:00:39-08:00 by
+  Codex (GPT-5) from direct operator instruction. Added
+  `dev-utils/security/entropy-check.py`,
+  `dev-utils/security/run_entropy_harness.py`, and
+  `scripts/install_git_hooks.py`; wired setup flow through
+  `scripts/install_prerequisites.py` and `scripts/tool_timeouts.json` key
+  `entropy_check`; and documented procedures in
+  `docs/security/entropy-checks.txt`, `docs/installation.txt`,
+  `docs/development-workflow.txt`, and `project-management/git-flow.txt`.
+  Added regression coverage in `tests/test_entropy_check.py`,
+  `tests/test_entropy_harness.py`, and `tests/test_install_git_hooks.py`.
+  Validation: wrapper-based `black`, `ruff`, `compileall`, and `pytest`
+  all passed (`231 passed`), and harness run on repository root reports
+  zero findings after intentional-test exclusions.
+
+* Added an AI-to-human request queue and standing maintenance orders.
+  Recorded at 2026-03-07T22:31:55-08:00 by Codex (GPT-5) from direct
+  operator instruction. Added
+  `/project-management/ai-human-requests.txt` with pending/active/completed
+  sections plus formatting guidance, and updated `AGENTS.md` and
+  `docs/human-orders-for-AI-agents.txt` so agents log requests as pending,
+  help reconcile stale states, and ask for human confirmation when possible
+  before auto-closing likely completed entries.
+  Validation: wrapper-based `black`, `ruff`, `compileall`, and `pytest`
+  all passed (`229 passed`).
+
+* Implemented and documented layered Linux-side Windows shim validation.
+  Recorded at 2026-03-07T22:26:43-08:00 by Codex (GPT-5) from direct
+  operator instruction. Added
+  `scripts/windows/verify-windows-shims-linux.sh` as the orchestrator for
+  Podman+Wine preflight and host-Wine fallback, plus
+  `docs/testing/windows/` runbook, maintenance, and troubleshooting docs.
+  Added `docs/specifications/testing/windows_shim_validation_from_linux.txt`,
+  updated AGENTS standing orders and AI operator command guidance, and added
+  timeout-wrapper tool key `windows_shims_linux`.
+  Validation: `black`, `ruff`, `compileall`, `pytest` all passed via timeout
+  wrapper, and `windows_shims_linux` executed with expected `SKIP` output for
+  host policy/no-Wine conditions.
+
+* Updated timeout management for static-analysis tooling after repeated black
+  bailout cutoffs. Recorded at 2026-03-06T22:43:04-08:00 by Codex (GPT-5).
+  Updated ``scripts/tool_timeouts.json`` so black runs with ``--no-cache`` and
+  a 120-second bailout window before retry. Verified formatter stability on
+  all touched Python files, and re-ran wrapper-based ruff, compileall, and
+  pytest.
+
+* Completed proposal-status reconciliation for core architecture proposals and
+  closed remaining internal-viewer implementation gaps. Recorded at
+  2026-03-06T22:43:04-08:00 by Codex (GPT-5). Marked
+  ``internal-document-object-model``, ``three-pass-intake-parser``, and
+  ``internal-viewer-engine`` as implemented with decision-log history.
+  Removed external pager execution paths from ``src/mdview/rendering.py`` and
+  ``src/mdview/cli.py``, added internal horizontal panning bindings, and
+  updated fallback/prerequisite behavior.
+  Validation: repeated full-suite runs via
+  ``python scripts/run_tool_with_timeout.py pytest`` (pass; ``226 passed``).
+
+* Implemented Windows 11 command-line support per
+  ``project-management/proposals/windows-11-cli-support.txt``. Recorded at
+  2026-03-06T22:43:04-08:00 by Codex (GPT-5). Added PowerShell and cmd.exe
+  shims under ``scripts/windows`` for bootstrap and timeout-wrapper checks,
+  extended ``scripts/install_prerequisites.py`` for Windows bootstrap flow,
+  added ``.github/workflows/windows-cli.yml`` for CI coverage, and updated
+  Windows deployment/testing documentation.
+  Validation: ``python scripts/run_tool_with_timeout.py pytest`` (pass).
+
+* Drafted ``docs/specifications/flatten_unicode.txt`` for
+  ``--flatten-unicode`` behavior. Recorded at 2026-03-06T22:43:04-08:00 by
+  Codex (GPT-5) while clearing the related backlog item. The specification
+  defines deterministic Unicode-to-ASCII-compatible mappings, reflow-width
+  interaction, markdown/link handling, and testing guidance.
+
+* Drafted ``docs/specifications/7bit_mode.txt`` for ``--7bit`` behavior.
+  Recorded at 2026-03-06T22:43:04-08:00 by Codex (GPT-5) while clearing the
+  related backlog item. The specification defines printable 7-bit enforcement,
+  8-bit mapping rules, and ordered combined behavior with
+  ``--flatten-unicode``.
+
+* Drafted the multi-version maintenance workflow proposal at
+  ``project-management/proposals/``
+  ``version-management-multi-version-support.txt``.
+  Recorded at 2026-03-06T22:43:04-08:00 by Codex (GPT-5) while clearing the
+  low-priority backlog item. The proposal covers version-line branching,
+  backport and cherry-pick policy, bug linkage across versions, and release
+  note traceability requirements.
+
 * Drafted docs/specifications/visual_mode_selection.txt covering vi-style
   visual mode selection. Recorded at 2026-03-06T22:19:07-08:00 by Codex
   (GPT-5) while clearing the visual-mode spec backlog item on

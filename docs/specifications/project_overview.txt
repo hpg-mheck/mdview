@@ -47,8 +47,9 @@ Functional Requirements
     Markdown reflows prose-like blocks to current viewport width by
     default under ``--reflow-mode prose`` semantics.
     ``--reflow`` is redundant for standard Markdown workflows.
-    Markdown tables may remain wider than the viewport because of minimum
-    sizing constraints and must retain readable column structure.
+    Markdown tables follow two-profile width selection defined in
+    ``docs/specifications/table_width_profile_selection.txt`` and may remain
+    wider than the viewport when overflow is unavoidable.
   - Plain text (``*.txt``): follows
     ``docs/specifications/plain_text_reflow_behavior.txt``. Default behavior
     preserves source line breaks with no reflow. ``--reflow`` enables
@@ -67,7 +68,8 @@ Functional Requirements
   - Options: ``--version`` for program version; ``--reflow`` to enable
     reflow processing; ``--noreflow`` to disable reflow; and
     ``--reflow-mode prose|all|none`` to select policy behavior as defined in
-    ``docs/specifications/reflow_mode.txt``.
+    ``docs/specifications/reflow_mode.txt``. ``--readability-first-tables``
+    forces readability-first table layout profile selection.
 
 Quality Attributes
 ------------------

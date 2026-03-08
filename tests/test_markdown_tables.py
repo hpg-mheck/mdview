@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import mdview.rendering as rendering_module
 from mdview.intake import ingest_content
 from mdview.rendering import _format_pipe_tables, render_to_ansi
 from mdview.viewer import ViewerSession
@@ -42,3 +43,100 @@ def test_render_to_ansi_keeps_fenced_content_literal_when_table_present() -> Non
 
     assert "| not | a | table |" in rendered
     assert "| --- | --- | --- |" in rendered
+
+
+def test_auto_table_profile_uses_fit_first_when_it_can_fit() -> None:
+    content = "\n".join(
+        [
+            "| k | value |",
+            "| :--- | :--- |",
+            "| A | abcdefghijklmnop |",
+            "",
+        ]
+    )
+
+    formatted = _format_pipe_tables(content, viewport_width=18)
+    lines = formatted.splitlines()
+
+    assert len(lines) > 3
+    assert "abcdefghijklmnop" not in formatted
+
+
+def test_readability_first_flag_keeps_unbroken_wide_cell_content() -> None:
+    content = "\n".join(
+        [
+            "| k | value |",
+            "| :--- | :--- |",
+            "| A | abcdefghijklmnop |",
+            "",
+        ]
+    )
+
+    formatted = _format_pipe_tables(
+        content,
+        viewport_width=18,
+        readability_first_tables=True,
+    )
+    lines = formatted.splitlines()
+
+    assert len(lines) == 3
+    assert "abcdefghijklmnop" in formatted
+
+
+def test_auto_profile_falls_back_to_readability_when_fit_cannot_avoid_overflow() -> (
+    None
+):
+    content = "\n".join(
+        [
+            "| c1 | c2 | c3 | c4 | c5 | c6 |",
+            "| :-- | :-- | :-- | :-- | :-- | :-- |",
+            "| a | b | c | d | e | abcdefghijklmnop |",
+            "",
+        ]
+    )
+
+    formatted = _format_pipe_tables(content, viewport_width=20)
+
+    assert "abcdefghijklmnop" in formatted
+
+
+def test_render_to_ansi_honors_readability_first_table_flag(monkeypatch) -> None:
+    calls = []
+
+    def _spy_table_formatter(
+        text: str,
+        *,
+        viewport_width=None,
+        readability_first_tables=False,
+    ):
+        calls.append(
+            {
+                "viewport_width": viewport_width,
+                "readability_first_tables": readability_first_tables,
+            }
+        )
+        return text
+
+    monkeypatch.setattr(rendering_module, "_format_pipe_tables", _spy_table_formatter)
+
+    content = "\n".join(
+        [
+            "| k | value |",
+            "| :--- | :--- |",
+            "| A | abcdefghijklmnop |",
+            "",
+        ]
+    )
+
+    render_to_ansi(content, markdown=True, width=18)
+    render_to_ansi(
+        content,
+        markdown=True,
+        width=18,
+        readability_first_tables=True,
+    )
+
+    assert calls[0]["viewport_width"] == 18
+    assert calls[0]["readability_first_tables"] is False
+    assert calls[1]["viewport_width"] == 18
+    assert calls[1]["readability_first_tables"] is True

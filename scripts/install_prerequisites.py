@@ -3,7 +3,8 @@ Installer for mdview prerequisites across supported environments.
 
 This script installs system dependencies, provisions a virtual environment, and
 installs the project with development extras. It supports Rocky Linux 9.6,
-Fedora 43, Ubuntu 24.x, Linux Mint, Debian, and modern macOS versions.
+Fedora 43, Ubuntu 24.x, Linux Mint, Debian, modern macOS versions, and
+Windows 11 command-line environments.
 """
 
 from __future__ import annotations
@@ -63,6 +64,9 @@ def load_os_release(path: Path = Path("/etc/os-release")) -> Dict[str, str]:
 
 def detect_os_info() -> OSInfo:
     system = platform.system().lower()
+    if system == "windows":
+        version = platform.version()
+        return OSInfo("windows", version, "Windows")
     if system == "darwin":
         version = platform.mac_ver()[0]
         return OSInfo("macos", version, "macOS")
@@ -81,6 +85,9 @@ def select_package_manager(
     os_info: OSInfo, available: Optional[Iterable[str]] = None
 ) -> Optional[str]:
     """Choose the best-fit package manager for the detected platform."""
+
+    if os_info.platform_id == "windows":
+        return None
 
     preferred: List[str] = []
     if os_info.platform_id in {"ubuntu", "debian", "linuxmint", "mint"}:
@@ -195,6 +202,11 @@ def install_project(python_executable: str, dev: bool, runner: CommandRunner) ->
     runner.run([python_executable, "-m", "pip", "install", "-e", target])
 
 
+def install_git_hooks(python_executable: str, runner: CommandRunner) -> None:
+    hook_installer = Path(__file__).resolve().with_name("install_git_hooks.py")
+    runner.run([python_executable, str(hook_installer)])
+
+
 def validate_platform(os_info: OSInfo) -> None:
     supported = {
         "ubuntu",
@@ -204,12 +216,15 @@ def validate_platform(os_info: OSInfo) -> None:
         "rocky",
         "fedora",
         "macos",
+        "windows",
     }
     if os_info.platform_id not in supported:
         raise RuntimeError(
             "Unsupported platform: {platform}. Supported platforms include "
             "Rocky Linux 9.6, Fedora 43, Ubuntu 24.x, Linux Mint, Debian, and "
-            "modern macOS releases.".format(platform=os_info.pretty_name)
+            "modern macOS releases, plus Windows 11 command-line shells.".format(
+                platform=os_info.pretty_name
+            )
         )
 
 
@@ -243,22 +258,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     os_info = detect_os_info()
     validate_platform(os_info)
 
-    manager = select_package_manager(os_info)
-    if manager is None:
-        raise RuntimeError("No supported package manager found for this platform.")
-
-    packages = system_packages_for(manager)
-    use_sudo = should_use_sudo()
-    commands = build_install_commands(manager, packages, use_sudo)
     print(
         f"Detected platform: {os_info.pretty_name} ({os_info.platform_id} {os_info.version_id})"
     )
-    execute_commands(commands, runner)
+
+    manager = select_package_manager(os_info)
+    if manager is not None:
+        packages = system_packages_for(manager)
+        use_sudo = should_use_sudo()
+        commands = build_install_commands(manager, packages, use_sudo)
+        execute_commands(commands, runner)
+    elif os_info.platform_id != "windows":
+        raise RuntimeError("No supported package manager found for this platform.")
+    else:
+        print("Windows detected: skipping system package manager bootstrap.")
 
     venv_path = Path(args.venv).resolve()
     venv_python = ensure_virtualenv(args.python, venv_path, runner)
     upgrade_pip_tooling(str(venv_python), runner)
     install_project(str(venv_python), dev=not args.production, runner=runner)
+    install_git_hooks(str(venv_python), runner=runner)
     print(f"Environment ready in {venv_path}")
     return 0
 

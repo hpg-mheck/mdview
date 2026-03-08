@@ -3,13 +3,10 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
-import pytest
-
 import mdview.rendering as rendering
 from mdview.rendering import (
     HAS_RICH,
     _format_pipe_tables,
-    _pipe_to_command,
     is_markdown_file,
     page_text,
     render_to_ansi,
@@ -206,19 +203,7 @@ def test_page_text_uses_custom_pager() -> None:
     assert captured == ["hello"]
 
 
-def test_pipe_to_command_handles_missing_command() -> None:
-    with pytest.raises(RuntimeError):
-        _pipe_to_command("content", "nonexistent-pager")
-
-
-def test_page_text_with_shell_command_captures_output(capsys) -> None:
-    text = "pager-body"
-    # Child process output is not captured by capsys, but the command should
-    # execute successfully without raising a RuntimeError.
-    page_text(text, pager_command="cat")
-
-
-def test_page_text_records_prompt_toolkit_fallback(monkeypatch) -> None:
+def test_page_text_records_prompt_toolkit_fallback(monkeypatch, capsys) -> None:
     original_find_spec = importlib.util.find_spec
     monkeypatch.setattr(
         importlib.util,
@@ -229,17 +214,13 @@ def test_page_text_records_prompt_toolkit_fallback(monkeypatch) -> None:
     import mdview.rendering as rendering
 
     reloaded = importlib.reload(rendering)
-    captured: List[str] = []
-
-    import pydoc
-
-    monkeypatch.setattr(pydoc, "pager", lambda text: captured.append(text))
 
     try:
         reloaded.page_text("sample")
+        captured = capsys.readouterr()
         notices = reloaded.get_fallback_notices()
         assert any("prompt_toolkit" in notice for notice in notices)
-        assert captured == ["sample"]
+        assert captured.out == "sample\n"
     finally:
         monkeypatch.undo()
         importlib.reload(rendering)
@@ -545,3 +526,101 @@ def test_prompt_toolkit_pager_recenters_on_resize(monkeypatch) -> None:
     assert resized_widths == [50]
     application = app_registry[-1]
     assert application.window.vertical_scroll == 2
+
+
+def test_prompt_toolkit_pager_supports_horizontal_panning(monkeypatch) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(10, 6)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+            self.rendered: List[List[Tuple[str, str]]] = []
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(10, 6)
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def __init__(self) -> None:
+            self.handlers = {}
+
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                for key in keys:
+                    self.handlers[key] = func
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyEvent:
+        def __init__(self, app) -> None:
+            self.app = app
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.key_bindings = key_bindings
+            self.invalidate_called = 0
+            self.output = DummyOutput()
+            self.window: DummyWindow
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            self.invalidate_called += 1
+
+        def run(self) -> None:
+            self.window = self.layout.container
+            self.window.content.rendered.append(self.window.content.text_func())
+            event = DummyEvent(self)
+            self.key_bindings.handlers["right"](event)
+            self.key_bindings.handlers["right"](event)
+            self.key_bindings.handlers["left"](event)
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+    assert rendering._attempt_prompt_toolkit_pager("0123456789abcdefghij")
+    assert app_registry[-1].window.horizontal_scroll == 1

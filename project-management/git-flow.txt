@@ -52,7 +52,16 @@ Run all required checks via timeout wrapper:
 - `python scripts/run_tool_with_timeout.py black`
 - `python scripts/run_tool_with_timeout.py ruff`
 - `python scripts/run_tool_with_timeout.py compileall`
+- `python scripts/run_tool_with_timeout.py entropy_check`
+- `python scripts/run_tool_with_timeout.py entropy_tripwire_verify`
 - `python scripts/run_tool_with_timeout.py pytest`
+- Standardized push path:
+  - `python scripts/git_standard_commit_push.py -m "<message>"`
+  This command blocks push unless the cached quality gate passes, including
+  entropy tripwire verification.
+- Standardized pull path:
+  - `python scripts/git_veteran_pull.py`
+  This command enforces a guarded fast-forward pull workflow.
 
 If known failures are already tracked and unchanged, document that explicitly
 in completion notes and merge summaries.
@@ -77,6 +86,8 @@ Operational Notes
 -----------------
 - Use the repository's configured SSH host alias for remote operations, as
   documented in local operator notes.
+- Keep the managed git pre-commit hook installed; setup scripts maintain it
+  through `scripts/install_git_hooks.py`.
 - Keep local working trees clean before broad integration work when practical.
 - Record significant merge operations and outcomes in project-management logs
   when they affect backlog status, bug status, or delivery traceability.

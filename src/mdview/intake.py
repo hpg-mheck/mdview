@@ -50,9 +50,7 @@ def _line_feature_vector(text: str) -> Dict[str, float]:
     display_width = float(_display_width(text))
     letter_or_digit = sum(1 for char in text if char.isalnum())
     spaces = sum(1 for char in text if char.isspace())
-    delimiters = sum(
-        1 for char in text if char in "|-_=+*/:\\[]{}()<>#`~.,;!?"
-    )
+    delimiters = sum(1 for char in text if char in "|-_=+*/:\\[]{}()<>#`~.,;!?")
     box_chars = _box_char_count(text)
     prose_ratio = (letter_or_digit + spaces) / char_count if char_count else 0.0
     delimiter_ratio = delimiters / char_count if char_count else 0.0
@@ -111,7 +109,9 @@ def _initial_block_scores(lines: Sequence[Line]) -> Dict[str, float]:
     delimiter_ratio = _average(lines, "delimiter_ratio")
     table_pipe_ratio = _line_ratio(lines, "table_pipe_count")
     repeated_spacing_ratio = _line_ratio(lines, "repeated_spacing")
-    list_ratio = _line_ratio(lines, "bullet_marker") + _line_ratio(lines, "ordered_marker")
+    list_ratio = _line_ratio(lines, "bullet_marker") + _line_ratio(
+        lines, "ordered_marker"
+    )
     heading_ratio = _line_ratio(lines, "heading_marker")
     separator_ratio = _line_ratio(lines, "is_separator")
     fence_ratio = _line_ratio(lines, "code_fence")

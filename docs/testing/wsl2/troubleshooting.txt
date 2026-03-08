@@ -1,0 +1,42 @@
+WSL2 Linux Validation Troubleshooting
+=====================================
+
+Symptom: WSL2 unavailable on host
+---------------------------------
+Meaning:
+- Windows host is missing WSL2 feature enablement, distro installation, or
+  policy allows no WSL access.
+
+Action:
+- Treat as SKIP for local workflow.
+- Use Linux CI as the authoritative gate.
+
+Symptom: Wrapper cannot resolve repository path inside WSL2
+-----------------------------------------------------------
+Meaning:
+- Path conversion between Windows and WSL contexts failed.
+
+Action:
+- Confirm repository location is accessible from WSL2 filesystem mappings.
+- Verify wrapper path-conversion logic on a real Windows host.
+
+Symptom: Checks fail inside WSL2 but pass in native Linux CI
+-------------------------------------------------------------
+Meaning:
+- Environment mismatch (toolchain, dependency set, locale, or mount behavior)
+  may exist between local WSL2 and CI.
+
+Action:
+- Reconcile Python/tool versions and dependency installation steps.
+- Keep CI as the final source of truth while documenting the mismatch.
+
+Symptom: Local WSL2 checks pass but CI fails
+--------------------------------------------
+Meaning:
+- Local pass is advisory only; CI found a real portability or environment
+  issue.
+
+Action:
+- Reproduce with focused tests and align local environment with CI where
+  feasible.
+- Fix code/tests and rerun full required checks.

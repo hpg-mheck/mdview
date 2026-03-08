@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser = argparse.ArgumentParser(
         prog="mdview",
-        description="Render Markdown in the terminal with less-like navigation.",
+        description="Render Markdown in the terminal with integrated navigation.",
         formatter_class=formatter,
         add_help=True,
         allow_abbrev=False,
@@ -42,15 +42,6 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Path to a Markdown or text file to view. Required unless "
             "--verify-resize-detection is used."
-        ),
-    )
-    parser.add_argument(
-        "--pager",
-        dest="pager_command",
-        metavar="COMMAND",
-        help=(
-            "Optional pager command to override the default less/pydoc pager "
-            "(e.g., 'less -R')."
         ),
     )
     parser.add_argument(
@@ -73,14 +64,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--reflow-mode",
         choices=("prose", "all", "none"),
         help=(
-            "Select reflow policy mode explicitly. Applies even without "
-            "--reflow."
+            "Select reflow policy mode explicitly. Applies even without " "--reflow."
         ),
     )
     parser.add_argument(
         "--noreflow",
         action="store_true",
         help="Disable reflow in all cases (equivalent to --reflow-mode none).",
+    )
+    parser.add_argument(
+        "--readability-first-tables",
+        action="store_true",
+        help=(
+            "Always use readability-first table layout, even when fit-first "
+            "could fit the viewport."
+        ),
     )
     parser.add_argument(
         "-V",
@@ -170,17 +168,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         content,
         markdown=is_markdown,
         reflow_mode=active_reflow_mode,
+        readability_first_tables=args.readability_first_tables,
     )
 
     try:
         page_text(
             ansi_text,
-            pager_command=args.pager_command,
             render_on_resize=lambda width: render_to_ansi(
                 content,
                 markdown=is_markdown,
                 width=width,
                 reflow_mode=active_reflow_mode,
+                readability_first_tables=args.readability_first_tables,
             ),
         )
     except RuntimeError as error:

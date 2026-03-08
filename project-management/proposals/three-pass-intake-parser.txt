@@ -1,7 +1,7 @@
 Title: Three-Pass Intake Parser and Block Classifier Plan
 Author: R. Talon
 Date: 2026-03-07T03:04:20Z
-Status: Draft
+Status: Implemented
 Reviewers: Matt "Breakpoint" Heck (Operator), Core QA Team
 Related Work: docs/specifications/unified_content_intake_model.txt;
 project-management/proposals/internal-document-object-model.txt
@@ -109,4 +109,11 @@ Adoption and Rollout
 
 Decision Log
 ------------
-- None yet.
+- 2026-03-06T21:04:58-08:00: Accepted and implemented with deterministic
+  three-pass analysis in ``src/mdview/intake.py`` and corresponding model
+  extensions in ``src/mdview/dom.py``.
+- 2026-03-06T21:04:58-08:00: Added parser regression coverage for pass-level
+  diagnostics, score-band behavior, and deterministic outputs in
+  ``tests/test_intake_parser.py``.
+- 2026-03-07T00:00:00-08:00: Proposal closed as implemented on
+  ``VERSIONS/0.5.0`` after full-suite regression validation.

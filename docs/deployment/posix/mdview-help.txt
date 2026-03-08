@@ -1,14 +1,26 @@
-usage: mdview [-h] [--reflow] [--reflow-mode MODE] [--noreflow] [-V] path
+usage: mdview [-h] [--verify-resize-detection] [--reflow]
+              [--reflow-mode {prose,all,none}] [--noreflow] [-V]
+              [path]
 
-Render Markdown in the terminal with an internal viewer.
+Render Markdown in the terminal with integrated navigation.
 
 positional arguments:
-  path             Path to a Markdown or text file to view.
+  path                      Path to a Markdown or text file to view. Required
+                            unless --verify-resize-detection is used.
+                            (default: None)
 
-options:
-  -h, --help       show this help message and exit
-  --reflow         Enable reflow processing; defaults to reflow-mode prose.
-  --reflow-mode MODE
-                   Select reflow policy mode: prose, all, or none.
-  --noreflow       Disable reflow in all cases (equivalent to mode none).
-  -V, --version    Show the mdview version and exit.
+optional arguments:
+  -h, --help                show this help message and exit
+  --verify-resize-detection
+                            Guide a manual resize sequence, acknowledging
+                            detected events and reporting pass/fail results.
+                            (default: False)
+  --reflow                  Enable reflow processing. If no explicit mode is
+                            supplied, defaults to --reflow-mode prose.
+                            (default: False)
+  --reflow-mode {prose,all,none}
+                            Select reflow policy mode explicitly. Applies even
+                            without --reflow. (default: None)
+  --noreflow                Disable reflow in all cases (equivalent to
+                            --reflow-mode none). (default: False)
+  -V, --version             Show the mdview version and exit.

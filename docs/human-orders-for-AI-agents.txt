@@ -17,6 +17,17 @@ Use the following command phrases in prompts to direct AI agents that follow
   in-progress file, adding the current ISO 8601 timestamp and owner details.
 - Close <item>: Move the named task or bug into the corresponding completed or
   closed file with a timestamp and a concise resolution summary.
+- Verify Windows shims from Linux: run
+  `python scripts/run_tool_with_timeout.py windows_shims_linux`, summarize
+  whether local paths returned PASS or SKIP, and confirm Windows CI still acts
+  as the authoritative gate.
+- Verify Linux workflow from Windows WSL2: run the WSL2 wrapper workflow only
+  from a real Windows host, summarize PASS/SKIP/FAIL, and confirm Linux CI
+  remains the authoritative compatibility gate.
+- Review AI-human requests: inspect
+  `/project-management/ai-human-requests.txt`, add any newly discovered
+  operator actions to `Pending Requests`, and report likely-complete entries
+  that still need human confirmation before closure.
 
 When issuing these orders, provide context, acceptance criteria, and any
 constraints so the agent can complete the cycle without unnecessary

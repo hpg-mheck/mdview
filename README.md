@@ -40,8 +40,6 @@ Optional flags:
   unless another mode is specified.
 - `--reflow-mode prose|all|none` to select policy behavior.
 - `--noreflow` to disable reflow in all cases (`--reflow-mode none`).
-- `--pager "<command>"` to override the pager (defaults to `less -R` through
-  `pydoc.pager`).
 - `--verify-resize-detection` to run an interactive resize checklist that
   acknowledges detected events and reports PASS/FAIL per step.
 - `--version` to display the current version.
@@ -55,6 +53,19 @@ active and left/right arrow keys pan the viewport.
 For plain-text (`.txt`) files without explicit reflow flags, mdview preserves
 source line breaks by default. Reflow for `.txt` content is opt-in via
 `--reflow` or explicit `--reflow-mode`.
+
+Windows 11 workflow shortcuts:
+- Bootstrap environment:
+  - PowerShell:
+    `powershell -ExecutionPolicy Bypass -File scripts/windows/bootstrap.ps1`
+  - cmd.exe:
+    `scripts\\windows\\bootstrap.bat`
+- Run required checks:
+  - PowerShell:
+    `powershell -ExecutionPolicy Bypass -File scripts/windows/run-tool.ps1`
+    `pytest`
+  - cmd.exe:
+    `scripts\\windows\\run-tool.bat pytest`
 
 ## Project Structure
 - `src/mdview/` – Library code for rendering and paging.

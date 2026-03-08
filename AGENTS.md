@@ -56,6 +56,17 @@ environment notes that must not be committed.
 - Treat the three project management files as living documents. Update them
   immediately when work status changes, and keep descriptions concise and
   actionable per Chicago Manual of Style guidance.
+- Maintain `/project-management/ai-human-requests.txt` as the queue for
+  non-blocking requests that AI agents need human operators to handle. Keep
+  entries in the `Pending Requests`, `Active Requests`, and
+  `Completed Requests` sections.
+- AI agents should add new items to `Pending Requests` by default, using the
+  same asterisk-plus-blank-line style and including concise context, owner,
+  and ISO 8601 timestamps.
+- Human operators are expected to move requests to `Completed Requests`, but
+  AI agents should help keep the file current when completion is evident.
+  If an AI believes a request is done but not updated, the AI should ask for
+  operator confirmation when possible before moving the entry to completed.
 - When an operator directs that a feature be deferred, move the item from
   `project-management/backlog.txt` or
   `project-management/tasks-in-progress.txt` into
@@ -66,6 +77,11 @@ environment notes that must not be committed.
   containing only `>>BEGIN>>`, ends with a line containing only `>>END>>`, and
   includes every line of the original text prefixed by `> `, including blank
   lines.
+- Treat `/project-management/proposals/under-review/` as a hold area for
+  debated proposals. AI agents must not auto-implement any proposal in that
+  directory under any circumstances. Work in that directory is limited to
+  proposal editing, review, and operator-directed status changes unless the
+  operator explicitly moves the proposal out of `under-review`.
 
 ## Backlog Iteration Orders
 - When instructed to "Iterate the backlog" or simply "iterate," follow the
@@ -102,14 +118,51 @@ environment notes that must not be committed.
 - Store reusable test fixtures as static files under `resources/tests/` so
   automated scenarios can rely on consistent inputs.
 
+## Cross-platform Windows Shim Verification Orders
+- When changing Windows wrapper scripts (`scripts/windows/*.bat`,
+  `scripts/windows/*.ps1`, or related Linux verification scripts), run:
+  `python scripts/run_tool_with_timeout.py windows_shims_linux`
+- Use the orchestrated Linux workflow in
+  `docs/testing/windows/README.txt` and treat Windows CI as the final
+  compatibility gate.
+- Preferred local strategy on Linux: run rootless Podman + Wine preflight
+  first, then run host Wine checks with a disposable `WINEPREFIX`.
+- For AI agents: do not skip this workflow silently. If it returns `SKIP`,
+  report the reason and proceed with normal checks so CI can verify on native
+  Windows.
+
+## Cross-platform Linux-from-Windows (WSL2) Verification Orders
+- Treat `docs/specifications/testing/linux_validation_from_windows_wsl2.txt`
+  as the contract for the mirrored Windows-host workflow.
+- Do not execute WSL2 Linux-validation commands unless running on a real
+  Windows host with WSL2 available.
+- On non-Windows hosts, limit this area to specification and documentation
+  changes only, and clearly report that execution validation is deferred.
+
 ## Required Local Checks (run before submitting any change)
 1. Format and lint:
    - `python scripts/run_tool_with_timeout.py black`
    - `python scripts/run_tool_with_timeout.py ruff`
 2. Static sanity:
    - `python scripts/run_tool_with_timeout.py compileall`
+   - `python scripts/run_tool_with_timeout.py entropy_check`
+   - `python scripts/run_tool_with_timeout.py entropy_tripwire_verify`
 3. Tests:
    - `python scripts/run_tool_with_timeout.py pytest`
+
+Additional cross-platform smoke check when Windows wrappers are touched:
+- `python scripts/run_tool_with_timeout.py windows_shims_linux`
+
+For standardized Git operations, prefer:
+- `python scripts/git_standard_commit_push.py -m "<message>"` for commit/push
+  (runs cached quality gate checks, including entropy tripwire verification,
+  before push).
+- `python scripts/git_veteran_pull.py` for guarded pull operations.
+- Managed git hooks installed by `scripts/install_git_hooks.py` must include
+  both `pre-commit` and `pre-push`; do not bypass them silently.
+- Quality-gate cache path: `.git/mdview-quality-cache.json`. Use
+  `--no-quality-cache` or `MDVIEW_QUALITY_GATE_NO_CACHE=1` only when an
+  uncached rerun is explicitly required.
 
 Use `python scripts/run_tool_with_timeout.py pytest -- -k <pattern>` to focus
 on a subset of tests when iterating, but always run the full suite before

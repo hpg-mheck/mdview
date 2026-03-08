@@ -43,6 +43,8 @@ What the installer does
   package manager (with `sudo` when required).
 - Creates `.venv` if missing and upgrades `pip`, `setuptools`, and `wheel`.
 - Installs the project in editable mode with optional developer extras.
+- Installs/updates managed git `pre-commit` and `pre-push` hook wrappers via
+  `scripts/install_git_hooks.py`.
 
 Notes and expectations
 ----------------------
@@ -53,3 +55,12 @@ Notes and expectations
   required system packages manually.
 - The Python logic supports a dry run for validation: `python scripts/
   install_prerequisites.py --dry-run`.
+- Entropy-secret checks are wired into managed hooks:
+  - `pre-commit` runs entropy checks.
+  - `pre-push` runs cached quality-gate checks.
+  See `docs/security/entropy-checks.txt` for details and manual run commands.
+- Standardized git operation utilities are available after setup:
+  - `python scripts/git_standard_commit_push.py -m "<message>"`
+  - `python scripts/git_veteran_pull.py`
+  - Cache file used by push quality gate: `.git/mdview-quality-cache.json`
+  - Runbook: `docs/security/git-tripwire-operations.txt`

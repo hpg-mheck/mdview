@@ -1,0 +1,118 @@
+Entropy Secret Checks
+=====================
+
+Purpose
+-------
+Standardize entropy-based scanning for possible credential leaks in code and
+documentation before commits are created.
+
+Core tools
+----------
+- Scanner: `dev-utils/security/entropy-check.py`
+- Harness: `dev-utils/security/run_entropy_harness.py`
+- Tripwire verifier: `dev-utils/security/verify_entropy_tripwire.py`
+- Quality-gate cache runner: `scripts/run_quality_gate_cached.py`
+- Timeout wrapper keys:
+  - `entropy_check`
+  - `entropy_tripwire_verify`
+
+Detection model
+---------------
+- Determine a major file type from extension/content hints (`code`, `docs`,
+  `config`, `markup`, `data`, or generic `text`).
+- Compute Shannon entropy per eligible line.
+- Build a clipped baseline by removing the top 1 percent most-entropic lines.
+- Flag candidate lines more than 20 percent above the clipped baseline.
+- Reduce noise by requiring a high-entropy token-like substring on flagged
+  lines.
+
+Machine-readable output
+-----------------------
+Use `--json-output` to emit parse-stable scanner output.
+
+The top-level JSON object always starts with:
+- `"schema_version": "1.0.0"`
+
+Current payload shape:
+- `schema_version`: output schema version for compatibility checks.
+- `summary`: scanned file count, flagged file count, and reported line count.
+- `results`: per-file findings with path, inferred major type, thresholds, and
+  line-level details.
+
+Intentional test exclusions
+---------------------------
+The harness excludes known intentional fixtures by default:
+- `tests/test_entropy_check.py`
+
+Add more exclusions with:
+- `python dev-utils/security/run_entropy_harness.py --exclude <pattern>`
+
+Manual execution
+----------------
+- Preferred command:
+  - `python scripts/run_tool_with_timeout.py entropy_check`
+- Direct harness invocation:
+  - `python dev-utils/security/run_entropy_harness.py .`
+- Scanner JSON output:
+  - `python dev-utils/security/entropy-check.py --json-output .`
+- Harness JSON output:
+  - `python dev-utils/security/run_entropy_harness.py --json-output .`
+- Tripwire integrity verification:
+  - `python scripts/run_tool_with_timeout.py entropy_tripwire_verify`
+
+Tripwire invariants
+-------------------
+The verifier enforces three conditions before push workflows can proceed:
+1. Sentinel detection: the unexcluded raw scanner run must report
+   `tests/test_entropy_check.py`.
+2. Clean normal run: harness execution with sentinel exclusion must report
+   zero findings.
+3. Scan coverage: both raw and harness runs must report file counts that match
+   independent repository file enumeration under the same exclude rules.
+
+Git workflow integration
+------------------------
+- Standard commit+push utility:
+  - `python scripts/git_standard_commit_push.py -m "<message>"`
+  - Runs `run_quality_gate_cached.py`; this includes
+    `entropy_tripwire_verify` and blocks push on failure.
+- Veteran pull utility:
+  - `python scripts/git_veteran_pull.py`
+  - Default behavior: clean-tree check, `fetch --all --prune`,
+    `pull --ff-only`, then `entropy_check`.
+- Detailed operations and recovery guidance:
+  - `docs/security/git-tripwire-operations.txt`
+
+Exit codes
+----------
+- `0`: no suspicious lines found.
+- `1`: findings reported; inspect before committing.
+- `2`: invalid arguments or configuration error.
+
+Pre-commit and pre-push hook integration
+----------------------------------------
+- Installer script: `scripts/install_git_hooks.py`
+- Setup flow: `scripts/install_prerequisites.py` calls the hook installer, so
+  `scripts/install_prerequisites.sh` installs/updates managed hooks.
+- Managed `pre-commit` executes:
+  - `python scripts/run_tool_with_timeout.py entropy_check`
+  with a `python3` fallback when `python` is unavailable.
+- Managed `pre-push` executes:
+  - `python scripts/run_quality_gate_cached.py`
+  with a `python3` fallback.
+- Set `MDVIEW_QUALITY_GATE_NO_CACHE=1` to force uncached pre-push checks.
+
+Maintenance notes
+-----------------
+- Keep entropy thresholds conservative to avoid drowning in false positives.
+- Expand intentional exclusions only for explicit fixture files used to test
+  the detector itself.
+- If a real leak is detected, rotate the secret first, then remove it from the
+  repository and history as required by incident policy.
+- If tripwire verification starts failing unexpectedly:
+  1. Run `python dev-utils/security/verify_entropy_tripwire.py --verbose`.
+  2. Confirm the sentinel fixture still exists at
+     `tests/test_entropy_check.py`.
+  3. Confirm harness exclusions still include only intentional fixtures.
+  4. Review file-count mismatches for new generated directories that should be
+     excluded.

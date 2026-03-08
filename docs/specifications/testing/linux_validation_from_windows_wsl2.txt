@@ -1,0 +1,43 @@
+Linux workflow validation from Windows via WSL2
+===============================================
+
+Status
+------
+Drafted.
+Implementation and execution are blocked pending access to a real Windows
+host with WSL2 available.
+
+Purpose
+-------
+Define a mirrored cross-platform strategy for validating Linux-oriented test
+workflows when development is performed on Windows hosts.
+
+Requirements
+------------
+1. Validation must be executed only from a real Windows host with WSL2.
+   Linux hosts, Wine layers, and container-only environments are out of scope
+   for execution and may be used only for drafting specifications and docs.
+2. The project must provide Windows-facing command wrappers (PowerShell and
+   cmd.exe) that invoke a WSL2 workflow without requiring manual command
+   translation by operators.
+3. The WSL2 workflow must run required project checks through
+   `scripts/run_tool_with_timeout.py` inside WSL2 to preserve timeout policy.
+4. The workflow must provide explicit PASS/SKIP/FAIL semantics:
+   - PASS: checks executed and passed in WSL2
+   - SKIP: WSL2 unavailable or disabled on host
+   - FAIL: workflow executed and at least one check failed
+5. The workflow must preserve security boundaries:
+   - run as non-root inside WSL2 unless a specific command requires otherwise
+   - do not attempt host privilege escalation
+   - document guidance for dedicated, disposable, or least-privilege WSL2
+     distributions for verification work
+6. Validation from WSL2 is a local confidence signal only. Native Linux CI
+   remains the authoritative compatibility gate for Linux behavior.
+7. Documentation must include an operator runbook, maintenance guidance, and
+   troubleshooting guidance for common WSL2 setup and execution failures.
+
+Out of scope
+------------
+- Automatic WSL2 provisioning and distro installation.
+- Hyper-V or VM orchestration beyond standard WSL2 usage.
+- Replacement of Linux CI coverage.

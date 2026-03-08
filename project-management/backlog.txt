@@ -6,22 +6,15 @@ each item with an asterisk followed by a blank line for clarity. Note when
 tasks are blocked, and specify what they are blocked on, including related
 tasks, bugs, or people. Keep descriptions concise and actionable.
 
-* Implement Windows 11 command-line support per the proposal in
-  project-management/proposals/windows-11-cli-support.txt. Ensure cmd.exe and
-  PowerShell users have parity with POSIX workflows, including shims,
-  documentation, and CI coverage. Added 2025-12-09T05:04:57Z.
+*
 
-* Draft a specification for a ``--flatten-unicode`` option that maps Unicode
-  characters to classic 8-bit ASCII fallbacks for rendering, ensuring
-  predictable output while preserving intent. Added 2025-12-09T06:20:30Z.
-
-* Draft a specification for a ``--7bit`` option that converts 8-bit ASCII to
-  nearest printable 7-bit mappings and defines combined behavior with
-  ``--flatten-unicode``. Added 2025-12-09T06:20:30Z.
-
-* Draft a proposal for version-management workflow extensions covering
-  multi-version support, including bugs that affect both current and older
-  supported maintenance branches. Added 2026-03-06T22:01:06-08:00.
-  Priority: low.
-  Acceptance: proposal defines branching, backport/cherry-pick policy,
-  bug-tracking linkage across versions, and release-note traceability.
+  [LOW][BLOCKED] Implement and validate the mirrored cross-platform strategy
+  for running Linux test workflows through WSL2 when development happens on
+  Windows.
+  Specification and documentation now exist at:
+  `docs/specifications/testing/linux_validation_from_windows_wsl2.txt` and
+  `docs/testing/wsl2/`.
+  Blocked on: execution from a real Windows host with WSL2. Do not attempt
+  implementation testing from non-Windows hosts.
+  Requested by operator. Added: 2026-03-07T22:06:48-08:00. Updated:
+  2026-03-08T03:31:02-07:00.

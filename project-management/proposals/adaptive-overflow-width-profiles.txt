@@ -1,0 +1,231 @@
+Title: Adaptive Overflow Width Profiles for Tables and Structured Blocks
+Author: Codex (GPT-5)
+Date: 2026-03-08T03:44:36-07:00
+Status: Proposed
+Reviewers: Matt "Breakpoint" Heck (Operator), Rendering Maintainer
+Related Work: docs/specifications/markdown_table_rendering.txt;
+docs/specifications/reflow_mode.txt;
+docs/specifications/word_wrap_mode.txt;
+docs/specifications/horizontal_scrolling_mode.txt;
+docs/specifications/unified_content_intake_model.txt
+
+Problem Statement
+-----------------
+mdview correctly treats tables as a special case where horizontal overflow may
+be unavoidable. The remaining issue is strategy quality when a table is near
+viewport limits. Today, width pressure is effectively one-directional:
+compress as much as possible and accept overflow only when forced.
+
+That is not always the best user experience. A table may fail to fit even
+under aggressive compression, and once overflow is unavoidable, continued
+compression can reduce readability without any practical benefit. We need a
+strategy that recognizes this transition explicitly and changes behavior.
+
+Goals
+-----
+- Define a two-profile width strategy for tables and similar structured
+  blocks.
+- Use a strong fit profile first, then switch to a weaker readability profile
+  when fit cannot avoid overflow.
+- Add a CLI flag to always use readability-first for applicable blocks.
+- Keep behavior deterministic and transparent under resize, reflow, and mode
+  toggles.
+- Generalize the design beyond Markdown tables where appropriate.
+
+Non-Goals
+---------
+- Redesigning Markdown parsing rules for table detection.
+- Changing baseline behavior for plain prose paragraph wrapping.
+- Introducing lossy truncation of cell content as a default rendering path.
+- Replacing horizontal scrolling mechanics.
+
+Use Cases
+---------
+- A Markdown table with many narrow columns cannot fit even when each cell is
+  compressed to minimal display width.
+- A narrow viewport contains a mixed-content table where compression harms
+  semantic cues (numeric alignment, labels, units) but still does not fit.
+- A user prefers readability over compactness and opts into always using the
+  readability-first profile.
+- A non-table block type (for example, aligned plain-text matrix) exhibits
+  the same width-versus-readability tradeoff.
+
+Constraints and Assumptions
+---------------------------
+- Python 3.9+ portability is required.
+- Horizontal scrolling remains the fallback when rendered line width exceeds
+  viewport width.
+- Content integrity is preserved; profile changes affect layout strategy, not
+  semantic content.
+- Style can affect practical width (for example, inline code, alignment,
+  symbol density), so cell sizing cannot be one-dimensional.
+
+Proposed Approach
+-----------------
+Define two rendering profiles for overflow-capable structured blocks.
+
+1. Fit-first profile (strong compression)
+- Objective: minimize rendered width to maximize the chance of fitting in the
+  viewport.
+- Tactics may include tighter padding, aggressive wrap opportunities inside
+  cells, and conservative spacing choices that preserve content.
+- Apply this profile first in default `auto` mode.
+
+2. Readability-first profile (weaker compression)
+- Objective: maximize legibility when overflow is already unavoidable.
+- Tactics include more generous intra-cell spacing, less aggressive breaks,
+  and preserving clearer visual structure.
+- In `auto` mode, activate this profile if fit-first width still exceeds the
+  viewport.
+- If activated, render all cells in the block under readability-first rules,
+  not a mixed per-cell profile.
+
+Width decision algorithm
+------------------------
+For each overflow-capable block instance:
+1. Compute projected width using fit-first profile.
+2. If projected width <= viewport width, use fit-first.
+3. If projected width > viewport width, switch to readability-first.
+4. Recompute width under readability-first and allow horizontal overflow.
+
+This creates a clear threshold behavior: before the threshold, optimize to
+fit; after the threshold, optimize to read.
+
+Minimum practical cell width model
+----------------------------------
+The proposal rejects a single fixed minimum cell width. Instead, compute cell
+minimums from content and style signals:
+- Break opportunities: whitespace, punctuation, delimiter boundaries.
+- Unbreakable token pressure: longest required contiguous segment.
+- Type hints: numeric, prose, code-like, identifier-heavy, URL-heavy.
+- Style pressure: alignment requirements, inline-code fidelity, symbol-dense
+  cells, and decoration impacts.
+
+Each cell exposes at least two width projections:
+- `fit_min_width`: smallest practical width under fit-first policy.
+- `readable_min_width`: smallest practical width under readability-first
+  policy.
+
+Block width is then derived from column composition plus table structure
+costs (pipes, separators, padding, margins).
+
+CLI and policy controls
+-----------------------
+Add a user-facing flag:
+- `--readability-first-tables`
+
+Semantics:
+- Force readability-first profile for table-like blocks regardless of whether
+  fit-first could have fit.
+- Keep horizontal scrolling behavior unchanged when resulting width exceeds
+  viewport.
+- In future, this can be generalized to broader structured blocks via a
+  profile selector flag. Initial scope is table-like blocks to avoid policy
+  overreach.
+
+Precedence expectations:
+- This flag controls table layout profile selection.
+- It does not override `--noreflow` or other global reflow controls outside
+  table profile selection.
+- It does not disable horizontal overflow handling.
+
+Applicable block types beyond tables
+------------------------------------
+The same two-profile model may apply to:
+- Plain-text aligned matrices detected by intake (non-Markdown tables).
+- Fixed-column diagnostic reports.
+- Delimiter-heavy key-value grids.
+- Certain code-like blocks where aggressive wrapping harms readability and
+  cannot prevent overflow.
+
+Adoption should be incremental. Tables are phase 1; additional block types
+need explicit specification updates and tests.
+
+DOM and parser implications
+---------------------------
+To support this design cleanly:
+- Intake/classification should mark overflow-capable structured blocks.
+- DOM blocks should report profile-aware sizing hints:
+  - fit-first projected width
+  - readability-first projected width
+  - profile capability flags and confidence metadata
+- Viewer policy should select profile per block using viewport size and CLI
+  overrides, then pass selected profile into rendering.
+
+This avoids burying profile selection in renderer-only heuristics.
+
+Risks and Mitigations
+---------------------
+- Risk: Profile switching causes surprising visual changes on resize.
+  Mitigation: expose active profile in status/debug output and keep switching
+  deterministic.
+- Risk: Extra layout passes increase CPU cost.
+  Mitigation: cache per-block profile projections and invalidate on resize,
+  content change, or mode change only.
+- Risk: False positives in block classification apply table strategy to the
+  wrong content.
+  Mitigation: require classification confidence thresholds and provide
+  fallback-safe behavior with explicit diagnostics.
+- Risk: New CLI flag adds option complexity.
+  Mitigation: default to `auto`; document one focused override for users who
+  value readability predictability.
+
+Testing and Validation
+----------------------
+- Add fixture families for tables that:
+  - fit in fit-first mode,
+  - do not fit in fit-first but remain readable in readability-first mode,
+  - include mixed cell types (numeric, prose, code, URLs).
+- Verify deterministic profile choice under fixed viewport sizes.
+- Verify profile transitions on resize are reproducible.
+- Verify `--readability-first-tables` forces profile selection as designed.
+- Validate horizontal scrolling remains active whenever rendered width exceeds
+  viewport.
+- Extend tests to at least one non-Markdown structured block candidate once
+  phase-2 scope is accepted.
+
+Alternatives Considered
+-----------------------
+- Always use maximum compression.
+  Rejected because readability losses continue even when overflow cannot be
+  avoided.
+- Always use readability-first.
+  Rejected as default because many near-fit tables can fit cleanly with
+  compact layout and avoid horizontal scrolling entirely.
+- Per-cell mixed profiles inside one table.
+  Rejected for initial design because inconsistent per-column behavior harms
+  visual coherence and predictability.
+
+Open Questions
+--------------
+- What exact heuristics define fit-first versus readability-first spacing?
+  Owner: Rendering maintainer. Decision target: 2026-03-15.
+- Should the initial CLI flag be table-specific or already generalized to all
+  structured overflow blocks?
+  Owner: Operator + rendering maintainer. Decision target: 2026-03-15.
+- Should status/footer surface active profile per focused block by default or
+  only in debug mode?
+  Owner: UX maintainer. Decision target: 2026-03-22.
+
+Milestones
+----------
+- Milestone 1: Accept proposal and settle CLI naming and scope.
+- Milestone 2: Publish specification update for table profile semantics.
+- Milestone 3: Implement profile-aware sizing and renderer selection for
+  tables.
+- Milestone 4: Add deterministic tests for profile selection and overflow.
+- Milestone 5: Evaluate expansion to non-table structured blocks.
+
+Adoption and Rollout
+--------------------
+- Roll out in table-only scope first with conservative defaults (`auto`).
+- Provide explicit user override via `--readability-first-tables`.
+- Document profile behavior in table rendering, wrap mode, and horizontal
+  scrolling specifications.
+- Expand to additional block types only after measured validation and operator
+  review.
+
+Decision Log
+------------
+- 2026-03-08T03:44:36-07:00: Initial proposal drafted with two-profile
+  threshold behavior and readability-first CLI override request from operator.

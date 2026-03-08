@@ -14,6 +14,8 @@ Standard test run
   - `python scripts/run_tool_with_timeout.py black`
   - `python scripts/run_tool_with_timeout.py ruff`
   - `python scripts/run_tool_with_timeout.py compileall`
+  - `python scripts/run_tool_with_timeout.py entropy_check`
+  - `python scripts/run_tool_with_timeout.py entropy_tripwire_verify`
 
 Focused execution
 -----------------
@@ -36,3 +38,28 @@ Environment notes
 - For one-off overrides, pass `--timeout-seconds`, for example:
   `python scripts/run_tool_with_timeout.py pytest --timeout-seconds 300 --`
   `-k nested`
+- Windows 11 shell parity wrappers:
+  - PowerShell:
+    `powershell -ExecutionPolicy Bypass -File scripts/windows/run-tool.ps1`
+    `pytest`
+  - cmd.exe:
+    `scripts\\windows\\run-tool.bat pytest`
+- Linux-side Windows shim validation:
+  - `python scripts/run_tool_with_timeout.py windows_shims_linux`
+  - See `docs/testing/windows/README.txt` for workflow, `SKIP` handling, and
+    maintenance notes.
+- Windows-side Linux workflow validation via WSL2:
+  - Defined in `docs/testing/wsl2/README.txt` and corresponding specification.
+  - Execute only on a real Windows host with WSL2; otherwise treat as
+    documentation-only planning.
+- Entropy-based secret scanning:
+  - `python scripts/run_tool_with_timeout.py entropy_check`
+  - See `docs/security/entropy-checks.txt` for thresholds, exclusions, and
+    managed hook behavior.
+- Tripwire integrity verification:
+  - `python scripts/run_tool_with_timeout.py entropy_tripwire_verify`
+  - Included in the cached quality gate used before push.
+- Cached full quality gate (used by standardized push workflow):
+  - `python scripts/run_quality_gate_cached.py`
+  - Set `MDVIEW_QUALITY_GATE_NO_CACHE=1` or pass `--no-cache` to force an
+    uncached rerun.

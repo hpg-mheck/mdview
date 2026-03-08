@@ -32,9 +32,7 @@ def test_pass1_emits_feature_vectors_for_all_lines_and_sources() -> None:
     txt_content = (FIXTURE_ROOT / "intake_mixed_runbook.txt").read_text(
         encoding="utf-8"
     )
-    md_content = (FIXTURE_ROOT / "intake_mixed_markdown.md").read_text(
-        encoding="utf-8"
-    )
+    md_content = (FIXTURE_ROOT / "intake_mixed_markdown.md").read_text(encoding="utf-8")
 
     txt_document = ingest_content(txt_content, markdown=False)
     md_document = ingest_content(md_content, markdown=True)

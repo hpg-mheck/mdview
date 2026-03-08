@@ -1,7 +1,7 @@
 Title: Internal Dual-Scrolling Viewer Engine Plan
 Author: R. Talon
 Date: 2026-03-07T03:04:20Z
-Status: Draft
+Status: Implemented
 Reviewers: Matt "Breakpoint" Heck (Operator), UI Architecture Lead
 Related Work: project-management/proposals/internal-document-object-model.txt;
 project-management/proposals/three-pass-intake-parser.txt;
@@ -112,4 +112,14 @@ Adoption and Rollout
 
 Decision Log
 ------------
-- None yet.
+- 2026-03-06T22:09:16-08:00: Accepted for baseline implementation with the
+  viewport state engine in ``src/mdview/viewport.py`` and unit coverage in
+  ``tests/test_viewport.py``.
+- 2026-03-06T22:11:52-08:00: Viewer policy and DOM integration landed
+  through ``src/mdview/viewer.py`` with integration coverage in
+  ``tests/test_viewer.py``.
+- 2026-03-06T22:30:00-08:00: Interactive pager gained bounded horizontal key
+  panning and removed external pager execution paths so display remains
+  internal-only in ``src/mdview/rendering.py`` and ``src/mdview/cli.py``.
+- 2026-03-06T22:30:00-08:00: Proposal closed as implemented on
+  ``VERSIONS/0.5.0`` after full-suite regression validation.

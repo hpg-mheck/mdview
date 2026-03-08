@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib.util
-import shutil
 import sys
 from typing import Iterable, List
 
@@ -27,11 +26,6 @@ def detect_prerequisite_issues() -> List[str]:
         issues.append(
             "rich is not installed; run scripts/install-prerequisites or install "
             "the package to enable styled Markdown output."
-        )
-    if shutil.which("less") is None:
-        issues.append(
-            "pager 'less' is unavailable; install it or pass --pager to point at "
-            "an alternative pager."
         )
     return issues
 

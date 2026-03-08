@@ -1,7 +1,7 @@
 Title: Unified Internal Document Object Model Plan
 Author: R. Talon
 Date: 2026-03-07T03:04:20Z
-Status: Draft
+Status: Implemented
 Reviewers: Matt "Breakpoint" Heck (Operator), Core Architecture Team
 Related Work: docs/specifications/project_overview.txt;
 docs/specifications/unified_content_intake_model.txt;
@@ -105,4 +105,13 @@ Adoption and Rollout
 
 Decision Log
 ------------
-- None yet.
+- 2026-03-06T20:58:55-08:00: Accepted for implementation as the baseline
+  content model. Initial invariant and precedence tests landed in
+  ``tests/test_dom.py``.
+- 2026-03-06T21:04:58-08:00: Core model integrated with the intake pipeline
+  and rendering path through ``src/mdview/dom.py``, ``src/mdview/intake.py``,
+  and ``src/mdview/rendering.py``.
+- 2026-03-06T22:11:52-08:00: Viewer policy wiring adopted DOM constraints and
+  style hints through ``src/mdview/viewer.py``.
+- 2026-03-07T00:00:00-08:00: Proposal closed as implemented on
+  ``VERSIONS/0.5.0`` after regression validation.
