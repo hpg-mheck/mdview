@@ -615,6 +615,9 @@ _configure_heading_rendering()
 
 # Type alias for pager callables used in tests and potential future hooks.
 Pager = Callable[[str], None]
+SwitchDocument = Callable[[int, Optional[int]], Optional[str]]
+UiEventLogger = Callable[[str, Dict[str, object]], None]
+CurrentDocumentIndex = Callable[[], int]
 
 
 def get_fallback_notices() -> List[str]:
@@ -907,7 +910,13 @@ def _recenter_on_line(
 
 
 def _attempt_prompt_toolkit_pager(
-    text: str, *, render_on_resize: Optional[Callable[[int], str]] = None
+    text: str,
+    *,
+    render_on_resize: Optional[Callable[[int], str]] = None,
+    switch_document: Optional[SwitchDocument] = None,
+    ui_event_logger: Optional[UiEventLogger] = None,
+    document_count: int = 1,
+    current_document_index: Optional[CurrentDocumentIndex] = None,
 ) -> bool:
     """Return True if text was paged interactively with prompt_toolkit."""
 
@@ -937,6 +946,26 @@ def _attempt_prompt_toolkit_pager(
     document_width = max((_visible_length(line) for line in lines), default=0)
     last_known_width: Optional[int] = None
     last_known_height: Optional[int] = None
+
+    def _active_document_index() -> int:
+        if current_document_index is None:
+            return 0
+        try:
+            return max(int(current_document_index()), 0)
+        except Exception:  # pragma: no cover - defensive callback guard
+            return 0
+
+    def _emit_ui_event(action: str, **context: object) -> None:
+        if ui_event_logger is None:
+            return
+        payload: Dict[str, object] = {
+            "document_index": _active_document_index() + 1,
+            "document_count": max(document_count, 1),
+            "vertical_scroll": int(getattr(window, "vertical_scroll", 0)),
+            "horizontal_scroll": int(getattr(window, "horizontal_scroll", 0)),
+        }
+        payload.update(context)
+        ui_event_logger(action, payload)
 
     def _max_horizontal_offset(width: Optional[int]) -> int:
         if width is None or width <= 0:
@@ -995,6 +1024,31 @@ def _attempt_prompt_toolkit_pager(
         last_known_height = height
         _set_horizontal_offset(int(getattr(window, "horizontal_scroll", 0)))
         _recenter_on_line(window, previous_center_line, height, len(lines))
+        _emit_ui_event("resize", width=width, height=height)
+
+    def _switch_to_document(event, delta: int, action: str) -> None:
+        nonlocal current_text, lines, hyperlinks, hyperlinks_by_line
+        nonlocal navigator, document_width
+
+        if switch_document is None:
+            _emit_ui_event(f"{action}-blocked")
+            return
+        width = _window_width()
+        replacement = switch_document(delta, width)
+        if replacement is None:
+            _emit_ui_event(f"{action}-blocked")
+            return
+
+        current_text = replacement
+        lines, hyperlinks, hyperlinks_by_line = normalize_hyperlinks(
+            current_text.splitlines()
+        )
+        navigator = HyperlinkNavigator(hyperlinks)
+        document_width = max((_visible_length(line) for line in lines), default=0)
+        window.vertical_scroll = 0
+        setattr(window, "horizontal_scroll", 0)
+        _emit_ui_event(action, width=width)
+        event.app.invalidate()
 
     def formatted_text() -> List[Tuple[str, str]]:
         width = _window_width()
@@ -1015,6 +1069,7 @@ def _attempt_prompt_toolkit_pager(
     @bindings.add("escape")
     @bindings.add("c-c")
     def _(event) -> None:  # type: ignore[override]
+        _emit_ui_event("quit")
         event.app.exit()
 
     def _window_height() -> int:
@@ -1045,6 +1100,7 @@ def _attempt_prompt_toolkit_pager(
     def _(event) -> None:  # type: ignore[override]
         focus = navigator.focus_next(window.vertical_scroll, max(_window_height(), 1))
         _align_focus(window, focus, visible_width=_window_width())
+        _emit_ui_event("hyperlink-focus-next")
         event.app.invalidate()
 
     @bindings.add("s-tab")
@@ -1053,6 +1109,7 @@ def _attempt_prompt_toolkit_pager(
             window.vertical_scroll, max(_window_height(), 1)
         )
         _align_focus(window, focus, visible_width=_window_width())
+        _emit_ui_event("hyperlink-focus-previous")
         event.app.invalidate()
 
     @bindings.add("left")
@@ -1060,6 +1117,7 @@ def _attempt_prompt_toolkit_pager(
     def _(event) -> None:  # type: ignore[override]
         current = int(getattr(window, "horizontal_scroll", 0))
         _set_horizontal_offset(current - 1)
+        _emit_ui_event("pan-left")
         event.app.invalidate()
 
     @bindings.add("right")
@@ -1067,39 +1125,62 @@ def _attempt_prompt_toolkit_pager(
     def _(event) -> None:  # type: ignore[override]
         current = int(getattr(window, "horizontal_scroll", 0))
         _set_horizontal_offset(current + 1)
+        _emit_ui_event("pan-right")
         event.app.invalidate()
 
     @bindings.add("down")
     @bindings.add("j")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, 1, len(lines))
+        _emit_ui_event("scroll-down")
         event.app.invalidate()
 
     @bindings.add("up")
     @bindings.add("k")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, -1, len(lines))
+        _emit_ui_event("scroll-up")
         event.app.invalidate()
 
     @bindings.add("pageup")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, -max(_window_height(), 1), len(lines))
+        _emit_ui_event("page-up")
         event.app.invalidate()
 
     @bindings.add("pagedown")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, max(_window_height(), 1), len(lines))
+        _emit_ui_event("page-down")
         event.app.invalidate()
 
     @bindings.add("home")
     def _(event) -> None:  # type: ignore[override]
         window.vertical_scroll = 0
+        _emit_ui_event("jump-home")
         event.app.invalidate()
 
     @bindings.add("end")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, len(lines), len(lines))
+        _emit_ui_event("jump-end")
         event.app.invalidate()
+
+    @bindings.add("n")
+    def _(event) -> None:  # type: ignore[override]
+        _switch_to_document(event, 1, "document-next")
+
+    @bindings.add(":", "n")
+    def _(event) -> None:  # type: ignore[override]
+        _switch_to_document(event, 1, "document-next")
+
+    @bindings.add("p")
+    def _(event) -> None:  # type: ignore[override]
+        _switch_to_document(event, -1, "document-previous")
+
+    @bindings.add(":", "p")
+    def _(event) -> None:  # type: ignore[override]
+        _switch_to_document(event, -1, "document-previous")
 
     style = Style.from_dict(
         {
@@ -1131,6 +1212,10 @@ def page_text(
     pager: Optional[Pager] = None,
     *,
     render_on_resize: Optional[Callable[[int], str]] = None,
+    switch_document: Optional[SwitchDocument] = None,
+    ui_event_logger: Optional[UiEventLogger] = None,
+    document_count: int = 1,
+    current_document_index: Optional[CurrentDocumentIndex] = None,
 ) -> None:
     """Display rendered text using the internal viewing stack.
 
@@ -1139,13 +1224,25 @@ def page_text(
         pager: Optional callable to handle paging (primarily for testing).
         render_on_resize: Optional callable used to regenerate the text when
             the interactive pager detects a change in the terminal width.
+        switch_document: Optional callback to load the next/previous
+            document. Receives delta (+1/-1) and current viewport width.
+        ui_event_logger: Optional callback that receives user action events.
+        document_count: Number of open documents in the active session.
+        current_document_index: Callback returning the active 0-based index.
     """
 
     if pager:
         pager(text)
         return
 
-    if _attempt_prompt_toolkit_pager(text, render_on_resize=render_on_resize):
+    if _attempt_prompt_toolkit_pager(
+        text,
+        render_on_resize=render_on_resize,
+        switch_document=switch_document,
+        ui_event_logger=ui_event_logger,
+        document_count=document_count,
+        current_document_index=current_document_index,
+    ):
         return
     sys.stdout.write(text)
     if text and not text.endswith("\n"):

@@ -1,0 +1,43 @@
+Monkey-In-the-Loop (MIL) Troubleshooting Mode
+==============================================
+
+Purpose
+-------
+`--MIL` ("Monkey-in-the-Loop") is a human-operator diagnostics mode for
+capturing actionable interaction logs during real console sessions. It is
+intended for cases where an AI needs ground-truth operator telemetry from
+live key-driven navigation.
+
+What `--MIL` does
+-----------------
+- Emits a console log line for each user interface action handled by the
+  internal viewer.
+- Includes events such as:
+  - vertical scroll up/down and page navigation,
+  - horizontal panning,
+  - hyperlink focus movement,
+  - document switching,
+  - quit.
+- Includes compact context useful for triage, such as active document index
+  and viewport offsets.
+
+Relationship to `--verbose`
+---------------------------
+- `--verbose` focuses on high-level operational events, especially document
+  switch reporting in multi-document sessions.
+- `--MIL` focuses on per-action telemetry.
+- With both flags enabled, MIL output includes richer context per event while
+  preserving verbose switch notices.
+
+Examples
+--------
+- Single document with MIL telemetry:
+  - `mdview --MIL path/to/file.md`
+- Multi-document manual triage with verbose switch reporting:
+  - `mdview --MIL --verbose doc-a.md doc-b.md doc-c.md`
+
+Operational notes
+-----------------
+- MIL output is emitted to standard error so the rendered document stream can
+  remain readable on standard output.
+- MIL is for troubleshooting sessions; avoid enabling it for routine viewing.

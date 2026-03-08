@@ -29,10 +29,10 @@ pip install -e .[dev]
 ```
 
 ## Usage
-Render a file in your terminal with full navigation (arrows,
-Page Up/Down, `/` search, `n`/`N` next/previous, `q` to quit):
+Render one or more files in your terminal with full navigation (arrows,
+Page Up/Down, `n`/`p` or `:n`/`:p` for next/previous document, `q` quit):
 ```bash
-mdview path/to/file.md
+mdview path/to/file-a.md path/to/file-b.md
 ```
 
 Optional flags:
@@ -40,6 +40,9 @@ Optional flags:
   unless another mode is specified.
 - `--reflow-mode prose|all|none` to select policy behavior.
 - `--noreflow` to disable reflow in all cases (`--reflow-mode none`).
+- `--verbose` to report operational events such as document switches.
+- `--MIL` to emit Monkey-in-the-Loop action telemetry for live
+  troubleshooting.
 - `--verify-resize-detection` to run an interactive resize checklist that
   acknowledges detected events and reports PASS/FAIL per step.
 - `--version` to display the current version.

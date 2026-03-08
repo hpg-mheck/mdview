@@ -1,7 +1,7 @@
 import importlib
 import sys
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import mdview.rendering as rendering
 from mdview.rendering import (
@@ -624,3 +624,234 @@ def test_prompt_toolkit_pager_supports_horizontal_panning(monkeypatch) -> None:
 
     assert rendering._attempt_prompt_toolkit_pager("0123456789abcdefghij")
     assert app_registry[-1].window.horizontal_scroll == 1
+
+
+def test_prompt_toolkit_pager_switches_documents_with_n_and_p(monkeypatch) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(40, 10)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+            self.rendered: List[List[Tuple[str, str]]] = []
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(40, 10)
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def __init__(self) -> None:
+            self.handlers = {}
+
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                for key in keys:
+                    self.handlers[key] = func
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyEvent:
+        def __init__(self, app) -> None:
+            self.app = app
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.key_bindings = key_bindings
+            self.output = DummyOutput()
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            return
+
+        def run(self) -> None:
+            window = self.layout.container
+            event = DummyEvent(self)
+            window.content.rendered.append(window.content.text_func())
+            self.key_bindings.handlers["n"](event)
+            window.content.rendered.append(window.content.text_func())
+            self.key_bindings.handlers["p"](event)
+            window.content.rendered.append(window.content.text_func())
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+    active = {"index": 0}
+    documents = ["doc-zero", "doc-one"]
+    calls: List[int] = []
+
+    def switch_document(delta: int, width: int) -> Optional[str]:
+        target = active["index"] + delta
+        if target < 0 or target >= len(documents):
+            return None
+        active["index"] = target
+        calls.append(delta)
+        return documents[target]
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        documents[0],
+        switch_document=switch_document,
+    )
+
+    control = app_registry[-1].layout.container.content
+    assert [segments[0][1].strip() for segments in control.rendered] == [
+        "doc-zero",
+        "doc-one",
+        "doc-zero",
+    ]
+    assert calls == [1, -1]
+
+
+def test_prompt_toolkit_pager_emits_mil_ui_events(monkeypatch) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(20, 6)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(20, 6)
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def __init__(self) -> None:
+            self.handlers = {}
+
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                for key in keys:
+                    self.handlers[key] = func
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyEvent:
+        def __init__(self, app) -> None:
+            self.app = app
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.key_bindings = key_bindings
+            self.output = DummyOutput()
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            return
+
+        def exit(self) -> None:
+            return
+
+        def run(self) -> None:
+            event = DummyEvent(self)
+            self.layout.container.content.text_func()
+            self.key_bindings.handlers["j"](event)
+            self.key_bindings.handlers["l"](event)
+            self.key_bindings.handlers["q"](event)
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+    events = []
+
+    def logger(action: str, context: dict) -> None:
+        events.append((action, context))
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        "line-one\nline-two",
+        ui_event_logger=logger,
+        document_count=2,
+        current_document_index=lambda: 1,
+    )
+
+    actions = [action for action, _ in events]
+    assert "scroll-down" in actions
+    assert "pan-right" in actions
+    assert "quit" in actions
+    assert all(context["document_index"] == 2 for _, context in events)

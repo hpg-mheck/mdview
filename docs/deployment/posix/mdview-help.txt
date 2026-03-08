@@ -1,12 +1,13 @@
 usage: mdview [-h] [--verify-resize-detection] [--reflow]
-              [--reflow-mode {prose,all,none}] [--noreflow] [-V]
-              [path]
+              [--reflow-mode {prose,all,none}] [--noreflow] [--verbose]
+              [--MIL] [--readability-first-tables] [-V]
+              [paths ...]
 
 Render Markdown in the terminal with integrated navigation.
 
 positional arguments:
-  path                      Path to a Markdown or text file to view. Required
-                            unless --verify-resize-detection is used.
+  paths                     Path(s) to Markdown or text files to view.
+                            Required unless --verify-resize-detection is used.
                             (default: None)
 
 optional arguments:
@@ -23,4 +24,14 @@ optional arguments:
                             without --reflow. (default: None)
   --noreflow                Disable reflow in all cases (equivalent to
                             --reflow-mode none). (default: False)
+  --verbose                 Report key operational events, including document
+                            switches in multi-document sessions. (default:
+                            False)
+  --MIL, --mil              Enable Monkey-in-the-Loop telemetry: emit operator
+                            action events and targeted troubleshooting
+                            context. (default: False)
+  --readability-first-tables
+                            Always use readability-first table layout, even
+                            when fit-first could fit the viewport. (default:
+                            False)
   -V, --version             Show the mdview version and exit.

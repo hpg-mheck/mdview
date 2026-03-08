@@ -6,6 +6,19 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Implemented multi-document CLI viewing with next/previous navigation and
+  Monkey-in-the-Loop telemetry mode. Recorded at 2026-03-08T06:59:47-07:00
+  by Codex (GPT-5) from direct operator instruction. Added specification
+  `docs/specifications/multi_document_navigation_and_mil.txt`, implemented
+  multi-path loading and per-document policy rendering in `src/mdview/cli.py`,
+  added `n`/`p` document switching and UI event telemetry hooks in
+  `src/mdview/rendering.py`, introduced `--verbose` switch reporting and
+  `--MIL`/`--mil` action logging, updated docs including
+  `docs/testing/Monkey-In-the-Loop.txt` and canonical POSIX help text, and
+  expanded coverage in `tests/test_cli.py` and `tests/test_rendering.py`.
+  Validation: wrapper-based black, ruff, compileall, entropy_check,
+  entropy_tripwire_verify, and full pytest all passed (`255 passed`).
+
 * Replaced ad hoc interactive corpus smoke commands with a reusable PTY
   harness and completed a documented 200-file run. Recorded at
   2026-03-08T06:41:04-07:00 by Codex (GPT-5) from direct operator

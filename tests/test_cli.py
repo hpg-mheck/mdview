@@ -50,7 +50,7 @@ def test_main_requires_path_without_verification_flag(capsys):
 
     captured = capsys.readouterr()
     assert exit_code == 2
-    assert "path is required" in captured.err
+    assert "at least one path is required" in captured.err
 
 
 def test_build_parser_rejects_abbreviations(capsys):
@@ -90,6 +90,8 @@ def test_format_help_matches_expected_shape():
     assert "--reflow" in help_text
     assert "--reflow-mode {prose,all,none}" in help_text
     assert "--noreflow" in help_text
+    assert "--verbose" in help_text
+    assert "--MIL" in help_text
     assert "--readability-first-tables" in help_text
     assert "Render Markdown in the terminal" in help_text
     assert "--verify-resize-detection" in help_text
@@ -152,3 +154,48 @@ def test_resolve_reflow_mode_precedence():
         )
         == "none"
     )
+
+
+def test_main_exposes_switch_callback_for_multiple_documents(monkeypatch, tmp_path):
+    first = tmp_path / "first.md"
+    second = tmp_path / "second.md"
+    first.write_text("# First\n\none")
+    second.write_text("# Second\n\ntwo")
+
+    captured = {}
+
+    def fake_page_text(text: str, **kwargs):
+        captured["initial"] = text
+        switch_document = kwargs["switch_document"]
+        assert switch_document is not None
+        switched = switch_document(1, 80)
+        assert switched is not None
+        captured["switched"] = switched
+
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main([str(first), str(second)])
+
+    assert exit_code == 0
+    assert "First" in captured["initial"]
+    assert "Second" in captured["switched"]
+
+
+def test_main_verbose_reports_document_switch(monkeypatch, tmp_path, capsys):
+    first = tmp_path / "first.md"
+    second = tmp_path / "second.md"
+    first.write_text("# First\n\none")
+    second.write_text("# Second\n\ntwo")
+
+    def fake_page_text(text: str, **kwargs):
+        switch_document = kwargs["switch_document"]
+        assert switch_document is not None
+        _ = switch_document(1, 100)
+
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main(["--verbose", str(first), str(second)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "switched to [2/2]" in captured.err

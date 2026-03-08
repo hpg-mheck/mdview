@@ -1,0 +1,80 @@
+Title: Multi-Document Navigation and Monkey-in-the-Loop Telemetry
+Status: Accepted
+Date: 2026-03-08
+
+Purpose
+-------
+Extend the CLI and internal viewer so operators can load multiple input files
+in one invocation, move between documents with familiar pager/editor
+navigation, and emit operator-action telemetry for troubleshooting sessions.
+
+Scope
+-----
+- Accept multiple input paths on the command line.
+- Keep existing single-document behavior unchanged when one path is provided.
+- Add in-view navigation between loaded documents.
+- Add `--verbose` switch reporting for document transitions.
+- Add `--MIL` telemetry mode for human-in-the-loop diagnostics.
+
+CLI Contract
+------------
+- Positional input accepts one or more document paths.
+- `--verify-resize-detection` remains a standalone operational mode.
+- `--verbose`:
+  - Reports document switch events with index and path.
+- `--MIL`:
+  - Enables operator-action telemetry for user interface actions.
+  - Emits action records for key-driven interactions such as scrolling,
+    panning, hyperlink focus movement, document switching, and quitting.
+  - Includes concise runtime context useful for AI-assisted troubleshooting.
+- `--verbose` and `--MIL` are additive:
+  - `--MIL` alone emits compact action records.
+  - `--verbose` alone emits switch-event reports.
+  - Combined mode emits switch reports and richer per-action context.
+
+Multi-Document Navigation
+-------------------------
+- Viewer loads all requested files into one document session.
+- Navigation keys for document cycling must align with established pager and
+  editor expectations:
+  - `n`: next document.
+  - `p`: previous document.
+  - `:n`: next document (compatibility with less/vi/vim command style).
+  - `:p`: previous document (compatibility with less/vi/vim command style).
+  - `q`: quit viewer.
+- On a successful document switch:
+  - Current viewport offsets reset to document-local defaults.
+  - Rendered content updates immediately for the new active document.
+  - Resize-aware re-rendering continues to apply to the active document.
+- Attempting to move past first/last document is a no-op.
+
+Rendering and Policy Rules
+--------------------------
+- Each document resolves Markdown/plain-text mode independently.
+- Existing reflow precedence and table-profile behavior remains unchanged per
+  document (`--reflow`, `--reflow-mode`, `--noreflow`,
+  `--readability-first-tables`).
+- Viewer remains internal-only; external pagers are not introduced.
+
+Telemetry Output Requirements
+-----------------------------
+- Telemetry is emitted to console output suitable for capture in remote
+  terminal logs.
+- Action records are line-oriented and human-readable.
+- Records include at minimum:
+  - action name,
+  - active document index and total count when available,
+  - relevant viewport or interaction state when available.
+
+Testing Requirements
+--------------------
+- CLI tests:
+  - validate argument parsing for multiple paths,
+  - validate `--verbose` and `--MIL` parser exposure,
+  - validate document-switch reporting behavior.
+- Pager tests:
+  - verify next/previous document key bindings trigger callback-driven
+    switching,
+  - verify telemetry callback receives action events.
+- Regression:
+  - preserve existing render, resize, hyperlink, and panning tests.

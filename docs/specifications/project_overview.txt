@@ -26,15 +26,16 @@ Goals and Non-Goals
 
 User Workflow
 -------------
-1. Invoke ``mdview <path>``.
-2. mdview determines if the file is Markdown or plain text.
+1. Invoke ``mdview <path...>`` with one or more files.
+2. mdview determines per file whether content is Markdown or plain text.
 3. mdview ingests content into the common internal content model using
    the three-pass classification pipeline described in
    ``docs/specifications/unified_content_intake_model.txt``.
-4. mdview renders content with ``rich`` (Markdown markup or plain text
-   under the unified reflow policy and reflow-mode semantics).
-5. The internal viewer presents the rendered document, including vertical
-   and horizontal navigation when content exceeds viewport width.
+4. mdview renders active content with ``rich`` (Markdown markup or plain
+   text under the unified reflow policy and reflow-mode semantics).
+5. The internal viewer presents rendered content, including vertical and
+   horizontal navigation when content exceeds viewport width and
+   next/previous document switching in multi-file sessions.
 
 Functional Requirements
 -----------------------
@@ -63,13 +64,17 @@ Functional Requirements
     exceeds viewport width.
   - Uses left and right arrow keys to move the viewport horizontally
     across the rendered virtual document.
+  - Supports multi-document sessions with ``n``/``p`` and compatible
+    ``:n``/``:p`` commands for next/previous document.
 - CLI
-  - Command: ``mdview <path>``.
+  - Command: ``mdview <path...>``.
   - Options: ``--version`` for program version; ``--reflow`` to enable
     reflow processing; ``--noreflow`` to disable reflow; and
     ``--reflow-mode prose|all|none`` to select policy behavior as defined in
     ``docs/specifications/reflow_mode.txt``. ``--readability-first-tables``
-    forces readability-first table layout profile selection.
+    forces readability-first table layout profile selection. ``--verbose``
+    reports document switches, and ``--MIL`` enables Monkey-in-the-Loop
+    per-action troubleshooting telemetry.
 
 Quality Attributes
 ------------------

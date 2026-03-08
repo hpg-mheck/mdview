@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -20,6 +21,16 @@ from mdview.rendering import (
 from mdview.resize_verifier import ResizeDetectionVerifier
 
 
+@dataclass(frozen=True)
+class _LoadedDocument:
+    """Preloaded source and render policy metadata for one input path."""
+
+    path: Path
+    content: str
+    markdown: bool
+    reflow_mode: str
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the mdview argument parser with predictable ``--help`` output."""
 
@@ -36,11 +47,11 @@ def build_parser() -> argparse.ArgumentParser:
         allow_abbrev=False,
     )
     parser.add_argument(
-        "path",
+        "paths",
         type=Path,
-        nargs="?",
+        nargs="*",
         help=(
-            "Path to a Markdown or text file to view. Required unless "
+            "Path(s) to Markdown or text files to view. Required unless "
             "--verify-resize-detection is used."
         ),
     )
@@ -71,6 +82,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--noreflow",
         action="store_true",
         help="Disable reflow in all cases (equivalent to --reflow-mode none).",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help=(
+            "Report key operational events, including document switches in "
+            "multi-document sessions."
+        ),
+    )
+    parser.add_argument(
+        "--MIL",
+        "--mil",
+        dest="mil",
+        action="store_true",
+        help=(
+            "Enable Monkey-in-the-Loop telemetry: emit operator action "
+            "events and targeted troubleshooting context."
+        ),
     )
     parser.add_argument(
         "--readability-first-tables",
@@ -122,6 +151,12 @@ def _emit_fallback_notices() -> None:
         print(f"  - {notice}", file=sys.stderr)
 
 
+def _emit_log(message: str) -> None:
+    """Write a single status line to standard error."""
+
+    print(message, file=sys.stderr)
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """Entry point for the ``mdview`` CLI."""
 
@@ -135,52 +170,102 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         _emit_fallback_notices()
         return 0 if report.overall_passed else 1
 
-    path: Optional[Path] = args.path
-    if path is None:
+    paths = list(args.paths)
+    if not paths:
         print(
-            "mdview: path is required unless --verify-resize-detection is used",
+            "mdview: at least one path is required unless "
+            "--verify-resize-detection is used",
             file=sys.stderr,
         )
         _emit_fallback_notices()
         return 2
-    if not path.exists() or not path.is_file():
-        print(f"mdview: path does not exist or is not a file: {path}", file=sys.stderr)
-        exit_code = 2
-        _emit_fallback_notices()
-        return exit_code
 
-    try:
-        content = read_text(path)
-    except (OSError, UnicodeDecodeError) as error:
-        print(f"mdview: failed to read '{path}': {error}", file=sys.stderr)
-        exit_code = 3
-        _emit_fallback_notices()
-        return exit_code
+    loaded_documents: list[_LoadedDocument] = []
+    for path in paths:
+        if not path.exists() or not path.is_file():
+            print(
+                f"mdview: path does not exist or is not a file: {path}",
+                file=sys.stderr,
+            )
+            exit_code = 2
+            _emit_fallback_notices()
+            return exit_code
 
-    is_markdown = is_markdown_file(path)
-    active_reflow_mode = resolve_reflow_mode(
-        markdown=is_markdown,
-        reflow=args.reflow,
-        reflow_mode=args.reflow_mode,
-        noreflow=args.noreflow,
-    )
-    ansi_text = render_to_ansi(
-        content,
-        markdown=is_markdown,
-        reflow_mode=active_reflow_mode,
-        readability_first_tables=args.readability_first_tables,
-    )
+        try:
+            content = read_text(path)
+        except (OSError, UnicodeDecodeError) as error:
+            print(f"mdview: failed to read '{path}': {error}", file=sys.stderr)
+            exit_code = 3
+            _emit_fallback_notices()
+            return exit_code
+
+        markdown = is_markdown_file(path)
+        reflow_mode = resolve_reflow_mode(
+            markdown=markdown,
+            reflow=args.reflow,
+            reflow_mode=args.reflow_mode,
+            noreflow=args.noreflow,
+        )
+        loaded_documents.append(
+            _LoadedDocument(
+                path=path,
+                content=content,
+                markdown=markdown,
+                reflow_mode=reflow_mode,
+            )
+        )
+
+    current_index = 0
+
+    def _render_document(index: int, width: Optional[int] = None) -> str:
+        document = loaded_documents[index]
+        return render_to_ansi(
+            document.content,
+            markdown=document.markdown,
+            width=width,
+            reflow_mode=document.reflow_mode,
+            readability_first_tables=args.readability_first_tables,
+        )
+
+    ansi_text = _render_document(current_index, width=None)
+
+    def _render_on_resize(width: int) -> str:
+        return _render_document(current_index, width=width)
+
+    def _switch_document(delta: int, width: Optional[int]) -> Optional[str]:
+        nonlocal current_index
+        target_index = current_index + delta
+        if target_index < 0 or target_index >= len(loaded_documents):
+            return None
+        current_index = target_index
+        active_path = loaded_documents[current_index].path
+        if args.verbose:
+            _emit_log(
+                "mdview: switched to "
+                f"[{current_index + 1}/{len(loaded_documents)}] {active_path}"
+            )
+        return _render_document(current_index, width=width)
+
+    def _ui_event_logger(action: str, context: dict[str, object]) -> None:
+        if not args.mil:
+            return
+        if args.verbose:
+            ordered = ", ".join(
+                f"{key}={value}" for key, value in sorted(context.items())
+            )
+            suffix = f" ({ordered})" if ordered else ""
+            _emit_log(f"mdview[MIL]: {action}{suffix}")
+            return
+        _emit_log(f"mdview[MIL]: {action}")
 
     try:
         page_text(
             ansi_text,
-            render_on_resize=lambda width: render_to_ansi(
-                content,
-                markdown=is_markdown,
-                width=width,
-                reflow_mode=active_reflow_mode,
-                readability_first_tables=args.readability_first_tables,
-            ),
+            render_on_resize=_render_on_resize,
+            switch_document=_switch_document if len(loaded_documents) > 1 else None,
+            ui_event_logger=_ui_event_logger if args.mil else None,
+            document_count=len(loaded_documents),
+            current_document_index=lambda: current_index,
         )
     except RuntimeError as error:
         print(f"mdview: pager error: {error}", file=sys.stderr)
