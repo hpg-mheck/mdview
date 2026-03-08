@@ -6,6 +6,19 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Replaced ad hoc interactive corpus smoke commands with a reusable PTY
+  harness and completed a documented 200-file run. Recorded at
+  2026-03-08T06:41:04-07:00 by Codex (GPT-5) from direct operator
+  instruction. Added `dev-utils/smoke/interactive_markdown_smoke.py`,
+  documented workflow and maintenance in
+  `docs/testing/interactive-markdown-smoke.txt`, added timeout-wrapper key
+  `interactive_markdown_smoke`, and updated `AGENTS.md` plus
+  `docs/development-workflow.txt` to require reusable smoke workflows. Ran
+  `python dev-utils/smoke/interactive_markdown_smoke.py --sample-count 200
+  --progress-interval 25 --seed 20260308` with unrestricted PTY access:
+  first-pass failures `0`, persistent failures `0`, output bundle
+  `/tmp/mdview-random-md-smoke-20260308-064005/`.
+
 * Added proposal hold-area governance for debated architecture work.
   Recorded at 2026-03-08T04:09:42-07:00 by Codex (GPT-5) from direct
   operator instruction. Created

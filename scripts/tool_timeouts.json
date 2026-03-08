@@ -65,6 +65,22 @@
       "command": [
         "scripts/windows/verify-windows-shims-linux.sh"
       ]
+    },
+    "interactive_markdown_smoke": {
+      "timeout_seconds": 240,
+      "timeout_retries": 0,
+      "cleanup_patterns": [
+        "dev-utils/smoke/interactive_markdown_smoke.py",
+        "python -m mdview.cli"
+      ],
+      "command": [
+        "python",
+        "dev-utils/smoke/interactive_markdown_smoke.py",
+        "--sample-count",
+        "50",
+        "--progress-interval",
+        "10"
+      ]
     }
   }
 }

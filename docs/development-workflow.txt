@@ -60,6 +60,10 @@ documentation standards and the required checks. Run
 ready. If progress stalls, move the entry back to the backlog with an
 explanation and timestamp.
 
+For broad exploratory smoke runs, avoid ad hoc shell snippets. Implement
+repeatable checks as formal tests or reusable scripts under `dev-utils/`, and
+document usage in `docs/testing/` so they can be rerun consistently.
+
 The managed pre-commit hook installed by setup scripts runs
 `entropy_check` automatically. Keep that hook installed on developer machines
 and CI-adjacent sandboxes where commits are authored.

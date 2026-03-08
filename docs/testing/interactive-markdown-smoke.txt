@@ -1,0 +1,72 @@
+Interactive Markdown Smoke Harness
+==================================
+
+Purpose
+-------
+Provide a repeatable, disposable workflow for broad interactive pager smoke
+checks without relying on one-off shell snippets.
+
+The harness:
+- collects random `.md`/`.markdown` files from candidate roots,
+- copies them into an isolated output bundle under `/tmp` by default,
+- runs `mdview` in a PTY for each sample,
+- sends navigation keys (`j/k/h/l`, page up/down, home/end, `q`), and
+- records failures, retry results, and output tails in JSON artifacts.
+
+Primary utility script
+----------------------
+- `python dev-utils/smoke/interactive_markdown_smoke.py`
+
+Default behavior
+----------------
+- Samples 200 Markdown files.
+- Searches `/usr/share` and `/home/mheck/codebase`.
+- Runs first pass with per-file timeout, then retries failures once.
+- Writes:
+  - `manifest.json`
+  - `smoke-results.json`
+  into a timestamped output directory such as
+  `/tmp/mdview-random-md-smoke-YYYYMMDD-HHMMSS/`.
+
+Key options
+-----------
+- `--sample-count <N>`: number of files to test.
+- `--seed <int>`: deterministic sampling.
+- `--candidate-root <path>` (repeatable): custom search roots.
+- `--output-root <path>` or `--output-dir <path>`: artifact location.
+- `--readability-first-every <N>`: periodic
+  `--readability-first-tables` coverage.
+- `--per-file-timeout-seconds <float>` and
+  `--retry-timeout-seconds <float>`.
+
+Timeout-wrapper integration
+---------------------------
+The wrapper key `interactive_markdown_smoke` is defined in
+`scripts/tool_timeouts.json` for shorter default smoke runs:
+- `python scripts/run_tool_with_timeout.py interactive_markdown_smoke`
+
+Pass-through arguments are supported through `--`:
+- `python scripts/run_tool_with_timeout.py interactive_markdown_smoke --`
+  `--sample-count 200 --seed 42`
+
+Environment requirements
+------------------------
+- PTY support must be available. Restricted sandboxes may block PTY creation.
+- If PTY allocation is unavailable, the script exits with a clear error and
+  no false pass.
+- This harness drives `mdview` internally via
+  `python -m mdview.cli` and prepends local `./src` to `PYTHONPATH` by
+  default, so local source changes are exercised.
+
+Interpretation
+--------------
+- Exit code `0`: no persistent failures after retry.
+- Exit code `1`: one or more files failed after retry.
+- Exit code `2`: invalid invocation or environment constraint
+  (for example PTY unavailable).
+
+Maintenance notes
+-----------------
+- Keep key-sequence behavior aligned with viewer navigation bindings.
+- Keep per-file timeout defaults conservative to avoid hanging sessions.
+- Treat the JSON schema in `smoke-results.json` as stable for automation.

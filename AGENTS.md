@@ -117,6 +117,9 @@ environment notes that must not be committed.
   code. Never leave regressions unresolved.
 - Store reusable test fixtures as static files under `resources/tests/` so
   automated scenarios can rely on consistent inputs.
+- For broad exploratory smoke checks (for example, large random corpus runs),
+  avoid one-off shell snippets. Use formal tests or reusable utilities under
+  `dev-utils/`, and document usage/maintenance under `docs/testing/`.
 
 ## Cross-platform Windows Shim Verification Orders
 - When changing Windows wrapper scripts (`scripts/windows/*.bat`,
