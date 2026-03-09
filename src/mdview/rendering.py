@@ -636,6 +636,7 @@ Pager = Callable[[str], None]
 SwitchDocument = Callable[[int, Optional[int]], Optional[str]]
 UiEventLogger = Callable[[str, Dict[str, object]], None]
 CurrentDocumentIndex = Callable[[], int]
+AutomationReplayEvent = Tuple[float, str]
 
 
 def get_fallback_notices() -> List[str]:
@@ -1188,6 +1189,173 @@ def _recenter_on_line(
     window.vertical_scroll = min(target_scroll, max_scroll)
 
 
+class _FallbackKeyPress:
+    """Compatibility key-press object used when prompt_toolkit is absent."""
+
+    def __init__(self, key: object, data: Optional[str] = None) -> None:
+        self.key = key
+        self.data = data
+
+
+def _normalize_automation_key_name(name: str) -> str:
+    """Normalize one automation key token into parser-friendly form."""
+
+    stripped = name.strip()
+    if not stripped:
+        raise ValueError("automation key token cannot be empty")
+    if len(stripped) == 1:
+        return stripped
+
+    normalized = stripped.lower()
+    normalized = normalized.replace("control-", "c-")
+    normalized = normalized.replace("ctrl-", "c-")
+    normalized = normalized.replace("meta-", "m-")
+    normalized = normalized.replace("alt-", "m-")
+    if normalized.startswith("c-") and len(normalized) == 3:
+        return f"c-{normalized[-1]}"
+    return normalized
+
+
+def _expand_automation_key_token(token: str) -> List[str]:
+    """Expand one automation token into one or more prompt key names."""
+
+    stripped = token.strip()
+    if not stripped:
+        raise ValueError("automation key token cannot be empty")
+
+    if "+" in stripped:
+        parts = [part.strip() for part in stripped.split("+")]
+        if any(not part for part in parts):
+            raise ValueError(f"invalid automation key token: {token!r}")
+
+        meta_count = 0
+        control = False
+        key_part: Optional[str] = None
+        for part in parts:
+            lowered = part.lower()
+            if lowered in {"m", "meta", "alt"}:
+                meta_count += 1
+                continue
+            if lowered in {"c", "ctrl", "control"}:
+                control = True
+                continue
+            if key_part is not None:
+                raise ValueError(
+                    "automation token with '+' must contain one key plus "
+                    f"modifiers: {token!r}"
+                )
+            key_part = part
+
+        if key_part is None:
+            raise ValueError(f"missing key name in automation token: {token!r}")
+
+        base = _normalize_automation_key_name(key_part)
+        if control:
+            if len(base) == 1:
+                base = f"c-{base.lower()}"
+            elif base == "space":
+                base = "c-space"
+            elif not base.startswith("c-"):
+                base = f"c-{base}"
+        return ["escape"] * meta_count + [base]
+
+    normalized = _normalize_automation_key_name(stripped)
+    if normalized == "-":
+        return [normalized]
+
+    parts = normalized.split("-")
+    meta_count = sum(1 for part in parts if part == "m")
+    if meta_count == 0:
+        return [normalized]
+
+    remainder = [part for part in parts if part != "m"]
+    if not remainder:
+        raise ValueError(f"missing key name after meta modifier: {token!r}")
+    base = "-".join(remainder)
+    return ["escape"] * meta_count + [base]
+
+
+def _parse_automation_key_token(token: str) -> object:
+    """Parse one prompt key token, using prompt_toolkit when available."""
+
+    try:
+        from prompt_toolkit.key_binding.key_bindings import _parse_key
+    except Exception:
+        if len(token) == 1:
+            return token
+        if token in {
+            "down",
+            "up",
+            "left",
+            "right",
+            "pageup",
+            "pagedown",
+            "home",
+            "end",
+            "escape",
+            "tab",
+            "s-tab",
+            "enter",
+            "space",
+        }:
+            return token
+        if re.fullmatch(r"c-[a-z]", token):
+            return token
+        if token == "c-space":
+            return token
+        raise ValueError(f"invalid automation key token: {token!r}")
+
+    try:
+        return _parse_key(token)
+    except ValueError as error:
+        raise ValueError(f"invalid automation key token: {token!r}") from error
+
+
+def _build_key_press(key: object, data: Optional[str] = None) -> object:
+    """Create a key-press object with prompt_toolkit or fallback shape."""
+
+    try:
+        from prompt_toolkit.key_binding.key_processor import KeyPress
+    except Exception:
+        return _FallbackKeyPress(key=key, data=data)
+    return KeyPress(key=key, data=data)
+
+
+def _build_automation_key_presses(key_spec: str) -> List[object]:
+    """Return parsed key presses for one automation key specification."""
+
+    spec = key_spec.strip()
+    if not spec:
+        raise ValueError("automation key spec cannot be empty")
+
+    if spec.startswith("vt100:"):
+        encoded = spec[len("vt100:") :]
+        if not encoded:
+            raise ValueError("vt100 automation key spec cannot be empty")
+        try:
+            from prompt_toolkit.input.vt100_parser import Vt100Parser
+        except Exception as error:
+            raise ValueError(
+                "vt100 automation key specs require prompt_toolkit support"
+            ) from error
+
+        parsed: List[object] = []
+        parser = Vt100Parser(parsed.append)
+        parser.feed_and_flush(encoded)
+        if not parsed:
+            raise ValueError("vt100 automation key spec produced no key presses")
+        return parsed
+
+    tokens: List[str] = []
+    for chunk in spec.split():
+        tokens.extend(_expand_automation_key_token(chunk))
+
+    if not tokens:
+        raise ValueError("automation key spec produced no key tokens")
+
+    return [_build_key_press(_parse_automation_key_token(token)) for token in tokens]
+
+
 def _attempt_prompt_toolkit_pager(
     text: str,
     *,
@@ -1197,6 +1365,7 @@ def _attempt_prompt_toolkit_pager(
     document_count: int = 1,
     current_document_index: Optional[CurrentDocumentIndex] = None,
     automation_timeout: Optional[float] = None,
+    automation_replay: Optional[Sequence[AutomationReplayEvent]] = None,
     automation_timeout_screenshot_basename: Optional[Path] = None,
     viewport_columns: Optional[int] = None,
     viewport_rows: Optional[int] = None,
@@ -1209,6 +1378,11 @@ def _attempt_prompt_toolkit_pager(
             _add_fallback_notice(
                 "Automation timeout screenshot requested, but interactive pager "
                 "is unavailable; no timeout-capture artifacts were written."
+            )
+        if automation_replay:
+            _add_fallback_notice(
+                "Automation key replay requested, but interactive pager is "
+                "unavailable; replay was skipped."
             )
         if not sys.stdout.isatty():
             _add_fallback_notice(
@@ -1530,7 +1704,78 @@ def _attempt_prompt_toolkit_pager(
             document_count=max(document_count, 1),
         )
 
-    timer: Optional[threading.Timer] = None
+    scheduled_timers: List[threading.Timer] = []
+
+    def _dispatch_on_event_loop(callback: Callable[[], None]) -> None:
+        dispatcher = getattr(application, "call_from_executor", None)
+        if callable(dispatcher):
+            dispatcher(callback)
+            return
+        callback()
+
+    if automation_replay:
+        prepared_replay: List[Tuple[float, str, List[object]]] = []
+        for event_index, (delay_seconds, key_spec) in enumerate(automation_replay):
+            try:
+                key_presses = _build_automation_key_presses(key_spec)
+            except ValueError as error:
+                raise RuntimeError(
+                    "invalid automation key spec at index " f"{event_index}: {error}"
+                ) from error
+            prepared_replay.append(
+                (max(float(delay_seconds), 0.0), key_spec, key_presses)
+            )
+
+        cumulative_delay = 0.0
+        for event_index, (delay_seconds, key_spec, key_presses) in enumerate(
+            prepared_replay
+        ):
+            cumulative_delay += delay_seconds
+
+            def _inject_replay_event(
+                *,
+                replay_index: int = event_index,
+                replay_spec: str = key_spec,
+                replay_keys: List[object] = key_presses,
+            ) -> None:
+                if getattr(application, "is_done", False):
+                    return
+                key_processor = getattr(application, "key_processor", None)
+                feed_multiple = getattr(key_processor, "feed_multiple", None)
+                process_keys = getattr(key_processor, "process_keys", None)
+                if not callable(feed_multiple) or not callable(process_keys):
+                    _emit_ui_event(
+                        "automation-replay-skipped",
+                        index=replay_index,
+                        key_spec=replay_spec,
+                        reason="key-processor-unavailable",
+                    )
+                    return
+
+                feed_multiple(list(replay_keys))
+                process_keys()
+                invalidator = getattr(application, "invalidate", None)
+                if callable(invalidator):
+                    invalidator()
+                _emit_ui_event(
+                    "automation-replay-key",
+                    index=replay_index,
+                    key_spec=replay_spec,
+                    key_count=len(replay_keys),
+                )
+
+            if cumulative_delay == 0:
+                _dispatch_on_event_loop(_inject_replay_event)
+                continue
+
+            replay_timer = threading.Timer(
+                cumulative_delay,
+                lambda callback=_inject_replay_event: _dispatch_on_event_loop(callback),
+            )
+            replay_timer.daemon = True
+            replay_timer.start()
+            scheduled_timers.append(replay_timer)
+
     if automation_timeout is not None:
         timeout_seconds = max(float(automation_timeout), 0.0)
 
@@ -1561,17 +1806,13 @@ def _attempt_prompt_toolkit_pager(
         if timeout_seconds == 0:
             _automation_quit()
         else:
-
-            def _timer_target() -> None:
-                dispatcher = getattr(application, "call_from_executor", None)
-                if callable(dispatcher):
-                    dispatcher(_automation_quit)
-                    return
-                _automation_quit()
-
-            timer = threading.Timer(timeout_seconds, _timer_target)
-            timer.daemon = True
-            timer.start()
+            timeout_timer = threading.Timer(
+                timeout_seconds,
+                lambda: _dispatch_on_event_loop(_automation_quit),
+            )
+            timeout_timer.daemon = True
+            timeout_timer.start()
+            scheduled_timers.append(timeout_timer)
 
     try:
         application.run()
@@ -1582,7 +1823,7 @@ def _attempt_prompt_toolkit_pager(
         )
         return False
     finally:
-        if timer is not None:
+        for timer in scheduled_timers:
             timer.cancel()
     return True
 
@@ -1597,6 +1838,7 @@ def page_text(
     document_count: int = 1,
     current_document_index: Optional[CurrentDocumentIndex] = None,
     automation_timeout: Optional[float] = None,
+    automation_replay: Optional[Sequence[AutomationReplayEvent]] = None,
     automation_timeout_screenshot_basename: Optional[Path] = None,
     viewport_columns: Optional[int] = None,
     viewport_rows: Optional[int] = None,
@@ -1615,6 +1857,8 @@ def page_text(
         current_document_index: Callback returning the active 0-based index.
         automation_timeout: Optional max runtime in seconds before
             synthetic quit is injected for automation flows.
+        automation_replay: Optional ordered replay events as
+            `(delay_seconds, key_spec)` tuples.
         automation_timeout_screenshot_basename: Optional output basename for
             timeout framebuffer artifacts (`.txt` and `.attrs.json`).
         viewport_columns: Optional viewport width override for automation.
@@ -1633,6 +1877,7 @@ def page_text(
         document_count=document_count,
         current_document_index=current_document_index,
         automation_timeout=automation_timeout,
+        automation_replay=automation_replay,
         automation_timeout_screenshot_basename=automation_timeout_screenshot_basename,
         viewport_columns=viewport_columns,
         viewport_rows=viewport_rows,
