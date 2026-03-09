@@ -3,25 +3,24 @@ Status: Draft
 
 Overview:
 - Allow mdview to continue operating when optional dependencies are
-missing by
-  downgrading gracefully to simpler rendering and paging strategies.
+  missing by downgrading gracefully to simpler rendering and paging
+  strategies.
 - When a fallback path is exercised, emit clear warnings on program exit so
-  users can decide whether to install missing dependencies before the
-  next run.
+  users can decide whether to install missing dependencies before the next
+  run.
 
 Operational Rules:
 - Detect optional dependencies without suppressing ImportError exceptions;
-rely
-  on importlib.util.find_spec to select between full-featured and fallback
-  implementations.
+  rely on importlib.util.find_spec to select between full-featured and
+  fallback implementations.
 - Record each triggered fallback in a session-level notice list that can be
   emitted after the primary command completes.
 - Print accumulated fallback notices to standard error immediately before
   exiting. Notices should not block or delay the primary rendering path.
 
 Supported Fallbacks:
-- Markdown rendering: When Rich is unavailable, use the plain-text
-Markdown and
+- Markdown rendering: When Rich is unavailable, use the plain-text Markdown
+  and
   Console shims to render output without styling. Advise users to install the
   "rich" package to enable ANSI-styled Markdown output.
 - Hyperlink navigation: When prompt_toolkit is unavailable or the session
@@ -30,12 +29,11 @@ Markdown and
   navigation features.
 - Pre-flight prerequisite checks: When Rich or prompt_toolkit is missing,
   print immediate warnings before argument parsing, recommending
-  scripts/install-prerequisites or the appropriate package install. These
-  warnings must appear even when execution exits early via --help.
+  scripts/install_prerequisites.sh or the appropriate package install.
+  These warnings must appear even when execution exits early via --help.
 
 Testing Guidance (post-spec):
-- Add regression tests that force dependency detection to fail and
-confirm the
-  fallback notice stream is emitted on exit.
+- Add regression tests that force dependency detection to fail and confirm
+  the fallback notice stream is emitted on exit.
 - Keep existing rendering tests intact to ensure styled output remains stable
   when optional dependencies are present.

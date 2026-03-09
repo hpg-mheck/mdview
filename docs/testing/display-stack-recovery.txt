@@ -1,0 +1,43 @@
+Display Stack Recovery Utility
+==============================
+
+Purpose
+-------
+When a Linux workstation is reachable remotely but the local display does not
+wake (blank monitor after power save, compositor stall, or DPMS mismatch), use
+the one-shot recovery utility:
+
+- `dev-utils/display/wake_display_stack.sh`
+
+This utility is intended for Wayland and X11 sessions and does not depend on
+external pagers.
+
+Usage
+-----
+- Standard wake attempt:
+  - `bash dev-utils/display/wake_display_stack.sh`
+- Stronger recovery mode:
+  - `bash dev-utils/display/wake_display_stack.sh --force`
+- Show actions without executing:
+  - `bash dev-utils/display/wake_display_stack.sh --dry-run`
+
+What it does
+------------
+- Tries session unlock and activation through `loginctl`.
+- Sends screensaver wake/unlock hints over session D-Bus.
+- Sends compositor-specific wake hints when available (`sway`, `hyprland`,
+  `wlr-randr`).
+- Uses X11 DPMS wake/reset hints when an X display is present.
+- In `--force` mode, attempts a VT flip and restart of
+  `display-manager.service` when root or passwordless sudo is available.
+
+Notes
+-----
+- `--force` is intentionally more disruptive and may terminate the active
+  graphical session.
+- If root-required actions are unavailable, the script logs a warning and
+  continues best-effort recovery.
+- Exit codes:
+  - `0`: at least one wake action succeeded.
+  - `1`: actions were attempted but none succeeded.
+  - `2`: invalid arguments or no compatible actions on this host.

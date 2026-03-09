@@ -2,13 +2,13 @@ Title: Focus-aware Pager for Hyperlink Navigation
 Status: Draft
 
 Overview:
-- Replace the current less-based paging pipeline with a focus-aware pager that
+- Extend the current internal paging pipeline with a focus-aware pager that
   can track and highlight hyperlink focus state while preserving mdview's
   Markdown rendering quality.
 - Deliver a keyboard-driven navigation loop that honors the hyperlink
   traversal rules in docs/specifications/hyperlink_navigation.txt.
-- Preserve a fallback path to the existing pager when the interactive stack is
-  unavailable or unsupported in the runtime environment.
+- Preserve a fallback path to baseline internal paging when the interactive
+  stack is unavailable or unsupported in the runtime environment.
 
 Constraints and Dependencies:
 - Maintain compatibility with Python 3.9+ and keep optional dependencies
@@ -17,8 +17,9 @@ Constraints and Dependencies:
 - Continue rendering Markdown with Rich when available so hyperlink text and
   styling remain consistent with the existing pipeline.
 - Emit user-facing fallback notices when the interactive pager cannot load and
-  mdview reverts to plain paging; update docs/specifications/fallback-
-  behavior.txt accordingly when the implementation lands.
+  mdview reverts to plain paging; update
+  docs/specifications/fallback-behavior.txt accordingly when the
+  implementation lands.
 
 Rendering Model:
 - Render Markdown to Rich segments using the current render_to_ansi pipeline,

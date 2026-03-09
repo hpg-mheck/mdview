@@ -16,7 +16,7 @@ Pending Requests
 *
 
   Summary: Review and resolve open decisions in
-  `project-management/proposals/version-management-multi-version-support.txt`.
+  `project-management/state/proposals/pending/version-management-multi-version-support.txt`.
   Why it matters: proposal status is `Draft` and still has operator-owned open
   questions about concurrent maintenance lines and patch-line merge policy.
   Requested operator action: answer open questions, then mark status as

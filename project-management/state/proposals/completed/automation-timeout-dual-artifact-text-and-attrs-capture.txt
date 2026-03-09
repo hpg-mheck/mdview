@@ -1,0 +1,101 @@
+Title: Automation Timeout Dual-Artifact Text and Attributes Capture
+Author: Codex (GPT-5)
+Date: 2026-03-08T18:43:00-07:00
+Status: Implemented
+Reviewers: Project owner (operator), AI maintainers
+Related Work: docs/specifications/automation_timeout_option.txt; operator
+  direction on 2026-03-08
+
+Problem Statement
+-----------------
+Current timeout capture writes a single JSON artifact that does not match the
+intended regression workflow. The desired contract is a deterministic text
+framebuffer output plus a separate attribute map so harnesses can diff visible
+characters and still retain per-cell styling context.
+
+Goals
+-----
+- Accept a timeout capture basename and emit two artifacts:
+  - `<basename>.txt` for column-stable ASCII framebuffer rows.
+  - `<basename>.attrs.json` for per-cell UTF-8 characters and attributes.
+- Keep timeout capture deterministic under synthetic viewport sizing.
+- Preserve non-fatal timeout-capture behavior when capture cannot be written.
+
+Non-Goals
+---------
+- Producing raster images from timeout capture as a first-class artifact.
+- Reintroducing external pager or curses dependencies.
+
+Use Cases
+---------
+- Harness pipelines diff `<basename>.txt` directly against golden references.
+- Engineers inspect `<basename>.attrs.json` to diagnose style/color drift.
+- CI archives both artifacts for failed rendering sessions.
+
+Constraints and Assumptions
+---------------------------
+- Python 3.9+ compatibility must be maintained.
+- prompt_toolkit renderer metadata may vary; capture must degrade safely.
+- Text artifact must stay ASCII-only and fixed-width by viewport columns.
+
+Proposed Approach
+-----------------
+- Retain `--automation-timeout-screenshot` option name, but redefine it to
+  accept a basename instead of a full file path.
+- Write paired artifacts on timeout:
+  - `<basename>.txt` with CRLF row endings and ASCII-only cells.
+  - `<basename>.attrs.json` with viewport metadata and per-cell attributes.
+- Keep default basename for timeout-enabled sessions when no explicit basename
+  is provided.
+- Emit MIL events with produced file paths and capture source.
+
+Risks and Mitigations
+---------------------
+- Risk: attribute fields differ across prompt_toolkit versions.
+  Mitigation: capture raw style string plus best-effort parsed fields.
+- Risk: non-ASCII glyphs collapse in text output.
+  Mitigation: map non-ASCII to stable ASCII placeholders in `.txt` while
+  preserving original UTF-8 character in `.attrs.json`.
+
+Testing and Validation
+----------------------
+- Extend CLI tests for basename option semantics and defaults.
+- Extend pager tests to validate both output files and metadata structure.
+- Run full repository quality gate before completion.
+
+Alternatives Considered
+-----------------------
+- Keep single JSON artifact and let harness derive text output later.
+  Rejected: adds downstream complexity and inconsistent normalization.
+- Produce only text output with no attribute sidecar.
+  Rejected: loses color/style diagnostics required for troubleshooting.
+
+Open Questions
+--------------
+- Which ASCII placeholder should represent non-ASCII cells in `.txt`?
+  Owner: implementation author. Decision by: 2026-03-08.
+- Should attrs JSON be dense matrix or sparse map?
+  Owner: implementation author. Decision by: 2026-03-08.
+
+Milestones
+----------
+1. Update spec and proposal records (owner: Codex, 2026-03-08).
+2. Implement dual-artifact capture behavior with tests (owner: Codex,
+   2026-03-08).
+3. Refresh docs/help and validate full quality gate (owner: Codex,
+   2026-03-08).
+
+Adoption and Rollout
+--------------------
+- Keep option name stable to reduce churn in harness scripts.
+- Document basename semantics and emitted file set clearly in user/testing
+  docs.
+- Preserve fallback notices and non-fatal timeout behavior.
+
+Decision Log
+------------
+- 2026-03-08T18:43:00-07:00: Proposal drafted from direct operator request.
+- 2026-03-08T18:49:12-07:00: Implemented. Timeout capture now emits paired
+  `.txt` and `.attrs.json` artifacts from a basename option, with per-cell
+  UTF-8/style metadata and ASCII-normalized text rows for deterministic diff
+  workflows.

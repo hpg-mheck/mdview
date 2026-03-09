@@ -6,9 +6,13 @@ unit tests to ensure reliable behavior.
 """
 
 import importlib.util
+import io
+import json
 import re
 import sys
 import textwrap
+import threading
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -50,6 +54,7 @@ class _PlainConsole:
         record: bool = False,
         width: Optional[int] = None,
         height: Optional[int] = None,
+        file: Optional[io.StringIO] = None,
     ) -> None:
         self._buffer: List[str] = []
 
@@ -65,6 +70,7 @@ _FALLBACK_NOTICES: List[str] = []
 _EMPTY_HEADING_SENTINEL = "MDVIEWEMPTYHEADING"
 _FORCED_BREAK_SENTINEL = "MDVIEWHEADINGBREAK"
 _ANSI_ESCAPE_PATTERN = r"\x1b\[[0-?]*[ -/]*[@-~]"
+_OSC_ESCAPE_PATTERN = r"\x1b\][^\x1b\x07]*(?:\x1b\\|\x07)"
 _LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 _IMAGE_PATTERN = re.compile(r"(?<!\\)!\[([^\]]*)\]\(([^)]*)\)")
 _NUMERIC_CELL_PATTERN = re.compile(r"^[+-]?\d+(?:[.,]\d+)?%?$")
@@ -463,6 +469,12 @@ def _normalize_bulleted_lists(text: str, has_rich: bool) -> str:
         else:
             output.append("")
 
+    def _is_indented_list_marker(line: str) -> bool:
+        stripped = line.lstrip()
+        if stripped.startswith("- ") or stripped.startswith("* "):
+            return True
+        return bool(re.match(r"\d+\.\s", stripped))
+
     for line in lines:
         stripped = line.lstrip()
         is_bullet = stripped.startswith("- ") or stripped.startswith("* ")
@@ -484,6 +496,12 @@ def _normalize_bulleted_lists(text: str, has_rich: bool) -> str:
                 _append_break()
                 in_list = False
                 current_marker = None
+                continue
+
+            if len(line) > len(line.lstrip(" \t")) and not _is_indented_list_marker(
+                line
+            ):
+                output.append(line)
                 continue
 
             if output and output[-1].strip() and line.strip():
@@ -703,7 +721,13 @@ def render_to_ansi(
         # Non-interactive rendering has no true viewport; prefer a wide default
         # to avoid brittle hard wraps in exported text and tests.
         effective_width = 130
-    console = Console(record=True, width=effective_width, height=height)
+    capture_stream = io.StringIO()
+    console = Console(
+        record=True,
+        width=effective_width,
+        height=height,
+        file=capture_stream,
+    )
     if markdown:
         trailing_newline = document.trailing_newline
         normalized = _normalize_heading_input(source_text, HAS_RICH)
@@ -810,7 +834,251 @@ def _prompt_toolkit_components():
 def _visible_length(text: str) -> int:
     """Return the printable length of text without ANSI escapes."""
 
-    return len(re.sub(_ANSI_ESCAPE_PATTERN, "", text))
+    sanitized = re.sub(_OSC_ESCAPE_PATTERN, "", text)
+    return len(re.sub(_ANSI_ESCAPE_PATTERN, "", sanitized))
+
+
+def _strip_terminal_escape_sequences(text: str) -> str:
+    """Return text with ANSI and OSC terminal control sequences removed."""
+
+    without_osc = re.sub(_OSC_ESCAPE_PATTERN, "", text)
+    return re.sub(_ANSI_ESCAPE_PATTERN, "", without_osc)
+
+
+def _ansi_line_to_formatted_segments(line: str) -> List[Tuple[str, str]]:
+    """Return prompt_toolkit-compatible formatted segments for one ANSI line."""
+
+    sanitized = re.sub(_OSC_ESCAPE_PATTERN, "", line)
+    try:
+        from prompt_toolkit.formatted_text import ANSI, to_formatted_text
+    except Exception:
+        return [("", re.sub(_ANSI_ESCAPE_PATTERN, "", sanitized))]
+
+    segments: List[Tuple[str, str]] = []
+    for fragment in to_formatted_text(ANSI(sanitized)):
+        if len(fragment) < 2:
+            continue
+        style = str(fragment[0] or "")
+        text = str(fragment[1] or "")
+        if text:
+            segments.append((style, text))
+    return segments
+
+
+def _normalize_cell_character(value: object) -> str:
+    """Return one printable character for a framebuffer cell snapshot."""
+
+    if value is None:
+        return " "
+    if not isinstance(value, str):
+        value = str(value)
+    if not value:
+        return " "
+    return value[0]
+
+
+def _to_ascii_cell(character: str) -> str:
+    """Return deterministic ASCII output for a captured framebuffer cell."""
+
+    if not character:
+        return " "
+    codepoint = ord(character[0])
+    if 32 <= codepoint <= 126:
+        return character[0]
+    return "?"
+
+
+def _parse_style_attributes(style_value: str) -> Dict[str, object]:
+    """Return best-effort parsed style attributes from prompt_toolkit style."""
+
+    attributes: Dict[str, object] = {
+        "foreground": None,
+        "background": None,
+        "bold": False,
+        "italic": False,
+        "underline": False,
+        "blink": False,
+        "reverse": False,
+        "hidden": False,
+        "strike": False,
+        "dim": False,
+    }
+    for token in style_value.split():
+        if token.startswith("fg:"):
+            attributes["foreground"] = token[3:]
+            continue
+        if token.startswith("bg:"):
+            attributes["background"] = token[3:]
+            continue
+        if token in attributes and isinstance(attributes[token], bool):
+            attributes[token] = True
+            continue
+        if token == "strikethrough":
+            attributes["strike"] = True
+    return attributes
+
+
+def _make_cell_snapshot(
+    *,
+    row: int,
+    column: int,
+    character: str,
+    style_value: str,
+) -> Dict[str, object]:
+    """Return standardized timeout-capture metadata for one framebuffer cell."""
+
+    normalized = _normalize_cell_character(character)
+    return {
+        "row": row,
+        "column": column,
+        "character_utf8": normalized,
+        "character_ascii": _to_ascii_cell(normalized),
+        "style": style_value,
+        "attributes": _parse_style_attributes(style_value),
+    }
+
+
+def _capture_prompt_toolkit_framebuffer(
+    application: object,
+    *,
+    width: int,
+    height: int,
+) -> Optional[List[List[Dict[str, object]]]]:
+    """Return visible rows from prompt_toolkit's renderer when available."""
+
+    if width <= 0 or height <= 0:
+        return None
+
+    renderer = getattr(application, "renderer", None)
+    screen = getattr(renderer, "last_rendered_screen", None)
+    data_buffer = getattr(screen, "data_buffer", None)
+    if data_buffer is None:
+        return None
+
+    rows: List[List[Dict[str, object]]] = []
+    for row_index in range(height):
+        row_buffer = data_buffer.get(row_index, {})
+        cells: List[Dict[str, object]] = []
+        for column_index in range(width):
+            cell = row_buffer.get(column_index)
+            character = _normalize_cell_character(getattr(cell, "char", " "))
+            style_value = ""
+            if cell is not None:
+                style_value = str(getattr(cell, "style", "") or "")
+            cells.append(
+                _make_cell_snapshot(
+                    row=row_index,
+                    column=column_index,
+                    character=character,
+                    style_value=style_value,
+                )
+            )
+        rows.append(cells)
+    return rows
+
+
+def _capture_text_buffer_framebuffer(
+    *,
+    lines: Sequence[str],
+    vertical_scroll: int,
+    horizontal_scroll: int,
+    width: int,
+    height: int,
+) -> List[List[Dict[str, object]]]:
+    """Return a synthetic viewport capture from the current text buffer."""
+
+    safe_width = max(int(width), 1)
+    safe_height = max(int(height), 1)
+    top = max(int(vertical_scroll), 0)
+    left = max(int(horizontal_scroll), 0)
+    rows: List[List[Dict[str, object]]] = []
+
+    for row_index in range(safe_height):
+        line_index = top + row_index
+        source = lines[line_index] if line_index < len(lines) else ""
+        plain = _strip_terminal_escape_sequences(source)
+        visible = plain[left : left + safe_width]
+        if len(visible) < safe_width:
+            visible += " " * (safe_width - len(visible))
+        cells: List[Dict[str, object]] = []
+        for column_index in range(safe_width):
+            cells.append(
+                _make_cell_snapshot(
+                    row=row_index,
+                    column=column_index,
+                    character=visible[column_index],
+                    style_value="",
+                )
+            )
+        rows.append(cells)
+    return rows
+
+
+def _ascii_lines_from_cells(
+    cell_rows: Sequence[Sequence[Dict[str, object]]],
+) -> List[str]:
+    """Return fixed-width ASCII lines from captured framebuffer cells."""
+
+    lines: List[str] = []
+    for row in cell_rows:
+        ascii_chars = [str(cell.get("character_ascii", " "))[:1] for cell in row]
+        lines.append("".join(ascii_chars))
+    return lines
+
+
+def _write_timeout_framebuffer_capture(
+    *,
+    target_basename: Path,
+    cell_rows: Sequence[Sequence[Dict[str, object]]],
+    width: int,
+    height: int,
+    capture_source: str,
+    vertical_scroll: int,
+    horizontal_scroll: int,
+    document_index: int,
+    document_count: int,
+) -> Tuple[Path, Path]:
+    """Write timeout framebuffer text+attrs artifacts and return their paths."""
+
+    resolved_base = target_basename.expanduser().resolve()
+    resolved_base.parent.mkdir(parents=True, exist_ok=True)
+    txt_path = resolved_base.parent / f"{resolved_base.name}.txt"
+    attrs_path = resolved_base.parent / f"{resolved_base.name}.attrs.json"
+
+    payload = {
+        "format": "mdview-timeout-framebuffer-attrs-v1",
+        "captured_at": datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
+        "capture_source": capture_source,
+        "viewport_columns": width,
+        "viewport_rows": height,
+        "vertical_scroll": vertical_scroll,
+        "horizontal_scroll": horizontal_scroll,
+        "document_index": document_index,
+        "document_count": document_count,
+        "txt_path": str(txt_path),
+        "attrs_path": str(attrs_path),
+        "rows": [
+            {
+                "row": row_index,
+                "cells": list(row_cells),
+            }
+            for row_index, row_cells in enumerate(cell_rows)
+        ],
+    }
+    ascii_lines = _ascii_lines_from_cells(cell_rows)
+    with txt_path.open("w", encoding="ascii", newline="") as text_file:
+        for line in ascii_lines:
+            text_file.write(line)
+            text_file.write("\r\n")
+
+    attrs_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return txt_path, attrs_path
 
 
 def _build_formatted_text(
@@ -824,11 +1092,22 @@ def _build_formatted_text(
 
     segments: List[Tuple[str, str]] = []
     for line_number, line in enumerate(lines):
+        line_links = hyperlinks_by_line.get(line_number, [])
+        if not line_links:
+            ansi_segments = _ansi_line_to_formatted_segments(line)
+            visible_length = sum(len(text) for _, text in ansi_segments)
+            if fill_width and fill_width > 0 and visible_length < fill_width:
+                ansi_segments.append(("", " " * (fill_width - visible_length)))
+            ansi_segments.append(("", "\n"))
+            segments.extend(ansi_segments)
+            continue
+
+        plain_line = _strip_terminal_escape_sequences(line)
         cursor = 0
         visible_length = 0
         line_segments: List[Tuple[str, str]] = []
-        for link in hyperlinks_by_line.get(line_number, []):
-            prefix = line[cursor : link.start]
+        for link in line_links:
+            prefix = plain_line[cursor : link.start]
             if prefix:
                 line_segments.append(("", prefix))
                 visible_length += _visible_length(prefix)
@@ -836,12 +1115,12 @@ def _build_formatted_text(
             style = "class:hyperlink.focused"
             if not focused or focused.index != link.index:
                 style = "class:hyperlink"
-            link_text = line[link.start : link.end]
+            link_text = plain_line[link.start : link.end]
             line_segments.append((style, link_text))
             visible_length += _visible_length(link_text)
             cursor = link.end
 
-        remainder = line[cursor:]
+        remainder = plain_line[cursor:]
         visible_length += _visible_length(remainder)
         if fill_width and fill_width > 0 and visible_length < fill_width:
             remainder += " " * (fill_width - visible_length)
@@ -917,11 +1196,20 @@ def _attempt_prompt_toolkit_pager(
     ui_event_logger: Optional[UiEventLogger] = None,
     document_count: int = 1,
     current_document_index: Optional[CurrentDocumentIndex] = None,
+    automation_timeout: Optional[float] = None,
+    automation_timeout_screenshot_basename: Optional[Path] = None,
+    viewport_columns: Optional[int] = None,
+    viewport_rows: Optional[int] = None,
 ) -> bool:
     """Return True if text was paged interactively with prompt_toolkit."""
 
     components = _prompt_toolkit_components()
     if components is None or not sys.stdout.isatty():
+        if automation_timeout is not None and automation_timeout_screenshot_basename:
+            _add_fallback_notice(
+                "Automation timeout screenshot requested, but interactive pager "
+                "is unavailable; no timeout-capture artifacts were written."
+            )
         if not sys.stdout.isatty():
             _add_fallback_notice(
                 "Interactive pager requires a TTY. Falling back to basic paging without hyperlink focus."
@@ -946,6 +1234,10 @@ def _attempt_prompt_toolkit_pager(
     document_width = max((_visible_length(line) for line in lines), default=0)
     last_known_width: Optional[int] = None
     last_known_height: Optional[int] = None
+    forced_columns = (
+        max(int(viewport_columns), 1) if viewport_columns is not None else None
+    )
+    forced_rows = max(int(viewport_rows), 1) if viewport_rows is not None else None
 
     def _active_document_index() -> int:
         if current_document_index is None:
@@ -1058,21 +1350,24 @@ def _attempt_prompt_toolkit_pager(
             lines, hyperlinks_by_line, navigator.focus, fill_width=width
         )
 
-    control = FormattedTextControl(
-        formatted_text, focusable=False, show_cursor=False, focusable_windows=False
-    )
+    control = FormattedTextControl(formatted_text, focusable=False, show_cursor=False)
     window = Window(content=control, wrap_lines=False, always_hide_cursor=True)
 
     bindings = KeyBindings()
+
+    def _request_quit(app) -> None:
+        _emit_ui_event("quit")
+        app.exit()
 
     @bindings.add("q")
     @bindings.add("escape")
     @bindings.add("c-c")
     def _(event) -> None:  # type: ignore[override]
-        _emit_ui_event("quit")
-        event.app.exit()
+        _request_quit(event.app)
 
     def _window_height() -> int:
+        if forced_rows is not None:
+            return forced_rows
         try:
             app = get_app()
             size = app.output.get_size()
@@ -1085,6 +1380,8 @@ def _attempt_prompt_toolkit_pager(
         return render_info.window_height if render_info else 0
 
     def _window_width() -> Optional[int]:
+        if forced_columns is not None:
+            return forced_columns
         try:
             app = get_app()
             size = app.output.get_size()
@@ -1196,6 +1493,86 @@ def _attempt_prompt_toolkit_pager(
         style=style,
     )
 
+    def _capture_timeout_framebuffer() -> Optional[Tuple[Path, Path]]:
+        if automation_timeout_screenshot_basename is None:
+            return None
+
+        width = _window_width() or 0
+        height = _window_height()
+        safe_width = max(int(width), 1)
+        safe_height = max(int(height), 1)
+
+        captured_cells = _capture_prompt_toolkit_framebuffer(
+            application,
+            width=safe_width,
+            height=safe_height,
+        )
+        capture_source = "prompt_toolkit-renderer"
+        if captured_cells is None:
+            capture_source = "synthetic-text-buffer"
+            captured_cells = _capture_text_buffer_framebuffer(
+                lines=lines,
+                vertical_scroll=int(getattr(window, "vertical_scroll", 0)),
+                horizontal_scroll=int(getattr(window, "horizontal_scroll", 0)),
+                width=safe_width,
+                height=safe_height,
+            )
+
+        return _write_timeout_framebuffer_capture(
+            target_basename=automation_timeout_screenshot_basename,
+            cell_rows=captured_cells,
+            width=safe_width,
+            height=safe_height,
+            capture_source=capture_source,
+            vertical_scroll=int(getattr(window, "vertical_scroll", 0)),
+            horizontal_scroll=int(getattr(window, "horizontal_scroll", 0)),
+            document_index=_active_document_index() + 1,
+            document_count=max(document_count, 1),
+        )
+
+    timer: Optional[threading.Timer] = None
+    if automation_timeout is not None:
+        timeout_seconds = max(float(automation_timeout), 0.0)
+
+        def _automation_quit() -> None:
+            if getattr(application, "is_done", False):
+                return
+            if automation_timeout_screenshot_basename is not None:
+                try:
+                    screenshot_paths = _capture_timeout_framebuffer()
+                except Exception as error:
+                    _emit_ui_event(
+                        "automation-timeout-screenshot-failed",
+                        basename=str(automation_timeout_screenshot_basename),
+                        error=str(error),
+                    )
+                else:
+                    if screenshot_paths is not None:
+                        txt_path, attrs_path = screenshot_paths
+                        _emit_ui_event(
+                            "automation-timeout-screenshot",
+                            basename=str(automation_timeout_screenshot_basename),
+                            txt_path=str(txt_path),
+                            attrs_path=str(attrs_path),
+                        )
+            _emit_ui_event("automation-timeout", seconds=timeout_seconds)
+            _request_quit(application)
+
+        if timeout_seconds == 0:
+            _automation_quit()
+        else:
+
+            def _timer_target() -> None:
+                dispatcher = getattr(application, "call_from_executor", None)
+                if callable(dispatcher):
+                    dispatcher(_automation_quit)
+                    return
+                _automation_quit()
+
+            timer = threading.Timer(timeout_seconds, _timer_target)
+            timer.daemon = True
+            timer.start()
+
     try:
         application.run()
     except Exception as error:  # pragma: no cover - defensive fallback
@@ -1204,6 +1581,9 @@ def _attempt_prompt_toolkit_pager(
             f"output. ({error})"
         )
         return False
+    finally:
+        if timer is not None:
+            timer.cancel()
     return True
 
 
@@ -1216,6 +1596,10 @@ def page_text(
     ui_event_logger: Optional[UiEventLogger] = None,
     document_count: int = 1,
     current_document_index: Optional[CurrentDocumentIndex] = None,
+    automation_timeout: Optional[float] = None,
+    automation_timeout_screenshot_basename: Optional[Path] = None,
+    viewport_columns: Optional[int] = None,
+    viewport_rows: Optional[int] = None,
 ) -> None:
     """Display rendered text using the internal viewing stack.
 
@@ -1229,6 +1613,12 @@ def page_text(
         ui_event_logger: Optional callback that receives user action events.
         document_count: Number of open documents in the active session.
         current_document_index: Callback returning the active 0-based index.
+        automation_timeout: Optional max runtime in seconds before
+            synthetic quit is injected for automation flows.
+        automation_timeout_screenshot_basename: Optional output basename for
+            timeout framebuffer artifacts (`.txt` and `.attrs.json`).
+        viewport_columns: Optional viewport width override for automation.
+        viewport_rows: Optional viewport height override for automation.
     """
 
     if pager:
@@ -1242,6 +1632,10 @@ def page_text(
         ui_event_logger=ui_event_logger,
         document_count=document_count,
         current_document_index=current_document_index,
+        automation_timeout=automation_timeout,
+        automation_timeout_screenshot_basename=automation_timeout_screenshot_basename,
+        viewport_columns=viewport_columns,
+        viewport_rows=viewport_rows,
     ):
         return
     sys.stdout.write(text)

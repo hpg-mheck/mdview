@@ -35,12 +35,15 @@ class CommandRunner:
     def __init__(self, dry_run: bool = False) -> None:
         self.dry_run = dry_run
 
-    def run(self, command: Sequence[str]) -> None:
+    def run(self, command: Sequence[str], cwd: Optional[Path] = None) -> None:
         printable = " ".join(command)
-        print(f"-> {printable}")
+        if cwd is None:
+            print(f"-> {printable}")
+        else:
+            print(f"-> (cd {cwd} && {printable})")
         if self.dry_run:
             return
-        subprocess.run(command, check=True)
+        subprocess.run(command, check=True, cwd=str(cwd) if cwd else None)
 
 
 def parse_os_release(content: str) -> Dict[str, str]:
@@ -197,14 +200,57 @@ def upgrade_pip_tooling(python_executable: str, runner: CommandRunner) -> None:
     )
 
 
-def install_project(python_executable: str, dev: bool, runner: CommandRunner) -> None:
-    target = ".[dev]" if dev else "."
-    runner.run([python_executable, "-m", "pip", "install", "-e", target])
+def is_project_root(path: Path) -> bool:
+    return (path / "pyproject.toml").exists() or (path / "setup.py").exists()
 
 
-def install_git_hooks(python_executable: str, runner: CommandRunner) -> None:
+def resolve_project_root(explicit: Optional[str] = None) -> Path:
+    if explicit:
+        candidate = Path(explicit).expanduser().resolve()
+        if is_project_root(candidate):
+            return candidate
+        raise RuntimeError(
+            f"Invalid --project-root: {candidate}. Expected pyproject.toml "
+            "or setup.py in that directory."
+        )
+
+    candidate = Path(__file__).resolve().parent.parent
+    if is_project_root(candidate):
+        return candidate
+
+    for parent in [Path.cwd().resolve(), *Path.cwd().resolve().parents]:
+        if is_project_root(parent):
+            return parent
+
+    raise RuntimeError(
+        "Unable to resolve project root. Pass --project-root to a directory "
+        "containing pyproject.toml or setup.py."
+    )
+
+
+def resolve_venv_path(venv_value: str, project_root: Path) -> Path:
+    venv_path = Path(venv_value).expanduser()
+    if not venv_path.is_absolute():
+        venv_path = project_root / venv_path
+    return venv_path.resolve()
+
+
+def install_project(
+    python_executable: str, dev: bool, runner: CommandRunner, project_root: Path
+) -> None:
+    target = ".[dev,interactive]" if dev else ".[interactive]"
+    runner.run(
+        [python_executable, "-m", "pip", "install", "-e", target], cwd=project_root
+    )
+
+
+def install_git_hooks(
+    python_executable: str, runner: CommandRunner, project_root: Path
+) -> None:
     hook_installer = Path(__file__).resolve().with_name("install_git_hooks.py")
-    runner.run([python_executable, str(hook_installer)])
+    runner.run(
+        [python_executable, str(hook_installer), "--repo-root", str(project_root)]
+    )
 
 
 def validate_platform(os_info: OSInfo) -> None:
@@ -231,8 +277,13 @@ def validate_platform(os_info: OSInfo) -> None:
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Install mdview prerequisites.")
     parser.add_argument(
+        "--project-root",
+        default=str(Path(__file__).resolve().parent.parent),
+        help="Repository root containing pyproject.toml or setup.py.",
+    )
+    parser.add_argument(
         "--venv",
-        default=str(Path(__file__).resolve().parent.parent / ".venv"),
+        default=".venv",
         help="Virtual environment path.",
     )
     parser.add_argument(
@@ -248,12 +299,18 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--dry-run", action="store_true", help="Print commands without executing them."
     )
+    parser.add_argument(
+        "--skip-system-packages",
+        action="store_true",
+        help="Skip apt/dnf/yum/brew bootstrap and only configure Python tooling.",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     runner = CommandRunner(dry_run=args.dry_run)
+    project_root = resolve_project_root(args.project_root)
 
     os_info = detect_os_info()
     validate_platform(os_info)
@@ -262,22 +319,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"Detected platform: {os_info.pretty_name} ({os_info.platform_id} {os_info.version_id})"
     )
 
-    manager = select_package_manager(os_info)
-    if manager is not None:
-        packages = system_packages_for(manager)
-        use_sudo = should_use_sudo()
-        commands = build_install_commands(manager, packages, use_sudo)
-        execute_commands(commands, runner)
-    elif os_info.platform_id != "windows":
-        raise RuntimeError("No supported package manager found for this platform.")
+    if args.skip_system_packages:
+        print("Skipping system package manager bootstrap (--skip-system-packages).")
     else:
-        print("Windows detected: skipping system package manager bootstrap.")
+        manager = select_package_manager(os_info)
+        if manager is not None:
+            packages = system_packages_for(manager)
+            use_sudo = should_use_sudo()
+            commands = build_install_commands(manager, packages, use_sudo)
+            execute_commands(commands, runner)
+        elif os_info.platform_id != "windows":
+            raise RuntimeError("No supported package manager found for this platform.")
+        else:
+            print("Windows detected: skipping system package manager bootstrap.")
 
-    venv_path = Path(args.venv).resolve()
+    venv_path = resolve_venv_path(args.venv, project_root)
     venv_python = ensure_virtualenv(args.python, venv_path, runner)
     upgrade_pip_tooling(str(venv_python), runner)
-    install_project(str(venv_python), dev=not args.production, runner=runner)
-    install_git_hooks(str(venv_python), runner=runner)
+    install_project(
+        str(venv_python),
+        dev=not args.production,
+        runner=runner,
+        project_root=project_root,
+    )
+    install_git_hooks(str(venv_python), runner=runner, project_root=project_root)
     print(f"Environment ready in {venv_path}")
     return 0
 

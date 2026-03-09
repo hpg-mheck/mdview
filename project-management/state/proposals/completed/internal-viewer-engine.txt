@@ -3,8 +3,8 @@ Author: R. Talon
 Date: 2026-03-07T03:04:20Z
 Status: Implemented
 Reviewers: Matt "Breakpoint" Heck (Operator), UI Architecture Lead
-Related Work: project-management/proposals/internal-document-object-model.txt;
-project-management/proposals/three-pass-intake-parser.txt;
+Related Work: project-management/state/proposals/completed/internal-document-object-model.txt;
+project-management/state/proposals/completed/three-pass-intake-parser.txt;
 docs/specifications/horizontal_scrolling_mode.txt;
 docs/specifications/word_wrap_mode.txt
 

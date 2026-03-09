@@ -1,3 +1,23 @@
-#!/bin/bash
-pandoc "\$1" -f markdown -t html -s -o /tmp/view_md.html
-xdg-open /tmp/view_md.html
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_PYTHON="${ROOT_DIR}/.venv/bin/python"
+
+if [[ -x "${VENV_PYTHON}" ]]; then
+  exec "${VENV_PYTHON}" -m mdview.cli "$@"
+fi
+
+if command -v python3 >/dev/null 2>&1; then
+  export PYTHONPATH="${ROOT_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
+  exec python3 -m mdview.cli "$@"
+fi
+
+if command -v python >/dev/null 2>&1; then
+  export PYTHONPATH="${ROOT_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
+  exec python -m mdview.cli "$@"
+fi
+
+echo "mdview launcher error: no python interpreter found." >&2
+echo "Run ./scripts/install_prerequisites.sh to bootstrap this repository." >&2
+exit 1

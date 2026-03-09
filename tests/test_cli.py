@@ -1,4 +1,5 @@
 import importlib
+import os
 
 import pytest
 
@@ -93,6 +94,10 @@ def test_format_help_matches_expected_shape():
     assert "--verbose" in help_text
     assert "--MIL" in help_text
     assert "--readability-first-tables" in help_text
+    assert "--automation-timeout" in help_text
+    assert "--automation-timeout-screenshot" in help_text
+    assert "--viewport-columns" in help_text
+    assert "--viewport-rows" in help_text
     assert "Render Markdown in the terminal" in help_text
     assert "--verify-resize-detection" in help_text
 
@@ -199,3 +204,157 @@ def test_main_verbose_reports_document_switch(monkeypatch, tmp_path, capsys):
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "switched to [2/2]" in captured.err
+
+
+def test_parser_rejects_negative_automation_timeout(capsys):
+    parser = cli_module.build_parser()
+
+    with pytest.raises(SystemExit) as excinfo:
+        parser.parse_args(["--automation-timeout", "-1", "sample.md"])
+
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert "automation timeout must be a non-negative finite number" in captured.err
+
+
+def test_main_passes_automation_timeout_to_page_text(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = {}
+
+    def fake_page_text(text: str, **kwargs):
+        captured["timeout"] = kwargs.get("automation_timeout")
+        captured["screenshot_basename"] = kwargs.get(
+            "automation_timeout_screenshot_basename"
+        )
+
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main(["--automation-timeout", "3.5", str(document)])
+
+    assert exit_code == 0
+    assert captured["timeout"] == 3.5
+    assert captured["screenshot_basename"] == cli_module.Path(
+        "mdview-automation-timeout-framebuffer"
+    )
+
+
+def test_main_rejects_timeout_screenshot_without_timeout(tmp_path, capsys):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+
+    exit_code = cli_module.main(
+        [
+            "--automation-timeout-screenshot",
+            "capture",
+            str(document),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert (
+        "--automation-timeout-screenshot requires --automation-timeout" in captured.err
+    )
+
+
+def test_main_passes_viewport_overrides_to_page_text(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = {}
+
+    def fake_page_text(text: str, **kwargs):
+        captured["columns"] = kwargs.get("viewport_columns")
+        captured["rows"] = kwargs.get("viewport_rows")
+
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main(
+        [
+            "--viewport-columns",
+            "120",
+            "--viewport-rows",
+            "33",
+            str(document),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["columns"] == 120
+    assert captured["rows"] == 33
+
+
+def test_main_uses_terminal_width_for_initial_render(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = {"widths": []}
+
+    def fake_render_to_ansi(content: str, markdown: bool, **kwargs):
+        captured["widths"].append(kwargs.get("width"))
+        return "rendered"
+
+    monkeypatch.setattr(cli_module.sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(
+        cli_module.shutil,
+        "get_terminal_size",
+        lambda: os.terminal_size((72, 24)),
+    )
+    monkeypatch.setattr(cli_module, "render_to_ansi", fake_render_to_ansi)
+    monkeypatch.setattr(cli_module, "page_text", lambda text, **kwargs: None)
+
+    exit_code = cli_module.main([str(document)])
+
+    assert exit_code == 0
+    assert captured["widths"] == [72]
+
+
+def test_main_uses_viewport_columns_for_initial_render(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = {"widths": []}
+
+    def fake_render_to_ansi(content: str, markdown: bool, **kwargs):
+        captured["widths"].append(kwargs.get("width"))
+        return "rendered"
+
+    monkeypatch.setattr(cli_module.sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(
+        cli_module.shutil,
+        "get_terminal_size",
+        lambda: os.terminal_size((40, 24)),
+    )
+    monkeypatch.setattr(cli_module, "render_to_ansi", fake_render_to_ansi)
+    monkeypatch.setattr(cli_module, "page_text", lambda text, **kwargs: None)
+
+    exit_code = cli_module.main(
+        [
+            "--viewport-columns",
+            "120",
+            str(document),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["widths"] == [120]
+
+
+def test_parser_rejects_non_positive_viewport_columns(capsys):
+    parser = cli_module.build_parser()
+
+    with pytest.raises(SystemExit) as excinfo:
+        parser.parse_args(["--viewport-columns", "0", "sample.md"])
+
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert "value must be a positive integer" in captured.err
+
+
+def test_parser_rejects_non_positive_viewport_rows(capsys):
+    parser = cli_module.build_parser()
+
+    with pytest.raises(SystemExit) as excinfo:
+        parser.parse_args(["--viewport-rows", "-5", "sample.md"])
+
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert "value must be a positive integer" in captured.err

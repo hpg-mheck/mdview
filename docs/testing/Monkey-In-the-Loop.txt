@@ -17,6 +17,7 @@ What `--MIL` does
   - horizontal panning,
   - hyperlink focus movement,
   - document switching,
+  - automation timeout and timeout-screenshot events when enabled,
   - quit.
 - Includes compact context useful for triage, such as active document index
   and viewport offsets.

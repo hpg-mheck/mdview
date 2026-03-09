@@ -4,7 +4,7 @@ Date: 2026-03-07T03:04:20Z
 Status: Implemented
 Reviewers: Matt "Breakpoint" Heck (Operator), Core QA Team
 Related Work: docs/specifications/unified_content_intake_model.txt;
-project-management/proposals/internal-document-object-model.txt
+project-management/state/proposals/completed/internal-document-object-model.txt
 
 Problem Statement
 -----------------

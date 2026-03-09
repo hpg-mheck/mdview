@@ -35,6 +35,12 @@ Page Up/Down, `n`/`p` or `:n`/`:p` for next/previous document, `q` quit):
 mdview path/to/file-a.md path/to/file-b.md
 ```
 
+When developing from a clone, prefer the repository-local launcher so PATH
+shims from other Python environments cannot interfere:
+```bash
+./mdview path/to/file-a.md
+```
+
 Optional flags:
 - `--reflow` to enable reflow processing using `--reflow-mode prose`
   unless another mode is specified.
@@ -43,6 +49,14 @@ Optional flags:
 - `--verbose` to report operational events such as document switches.
 - `--MIL` to emit Monkey-in-the-Loop action telemetry for live
   troubleshooting.
+- `--automation-timeout <seconds>` to inject synthetic quit after a bounded
+  viewer runtime during unattended automation.
+- `--automation-timeout-screenshot <basename>` to store timeout-exit
+  framebuffer artifacts as `<basename>.txt` and `<basename>.attrs.json`
+  (defaults to `./mdview-automation-timeout-framebuffer` when timeout is
+  enabled).
+- `--viewport-columns <int>` and `--viewport-rows <int>` to enforce synthetic
+  viewport dimensions for deterministic automation captures.
 - `--verify-resize-detection` to run an interactive resize checklist that
   acknowledges detected events and reports PASS/FAIL per step.
 - `--version` to display the current version.

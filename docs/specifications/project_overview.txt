@@ -72,9 +72,15 @@ Functional Requirements
     reflow processing; ``--noreflow`` to disable reflow; and
     ``--reflow-mode prose|all|none`` to select policy behavior as defined in
     ``docs/specifications/reflow_mode.txt``. ``--readability-first-tables``
-    forces readability-first table layout profile selection. ``--verbose``
-    reports document switches, and ``--MIL`` enables Monkey-in-the-Loop
-    per-action troubleshooting telemetry.
+    forces readability-first table layout profile selection.
+    ``--automation-timeout <seconds>`` injects synthetic quit after a bounded
+    viewer runtime for unattended automation.
+    ``--automation-timeout-screenshot <basename>`` writes timeout-exit
+    artifacts as ``<basename>.txt`` and ``<basename>.attrs.json``, and
+    ``--viewport-columns``/``--viewport-rows`` provide synthetic viewport
+    size overrides for deterministic automation.
+    ``--verbose`` reports document switches, and ``--MIL`` enables
+    Monkey-in-the-Loop per-action troubleshooting telemetry.
 
 Quality Attributes
 ------------------

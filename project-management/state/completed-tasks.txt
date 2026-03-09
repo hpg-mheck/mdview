@@ -6,6 +6,52 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Fixed first-frame Markdown heading centering in interactive sessions by
+  rendering the initial document with active viewport width. Recorded at
+  2026-03-08T19:33:45-07:00 by Codex (GPT-5) from operator-reported Termius
+  behavior. Updated `src/mdview/cli.py` to detect startup width from
+  `--viewport-columns` or terminal columns before initial render, and added
+  regression coverage in `tests/test_cli.py` for terminal-width startup and
+  viewport-override precedence. Updated
+  `docs/specifications/testing/markdown_heading_rendering.txt` with an
+  explicit first-frame width requirement. Validation: wrapper-based black,
+  ruff, compileall, entropy_check, entropy_tripwire_verify, and full pytest
+  all passed (`273 passed`).
+
+* Replaced timeout-capture artifact format with basename-driven dual outputs
+  for deterministic text and style regression workflows. Recorded at
+  2026-03-08T18:49:12-07:00 by Codex (GPT-5) from direct operator
+  instruction. Added proposal
+  `project-management/state/proposals/completed/automation-timeout-dual-artifact-text-and-attrs-capture.txt`,
+  updated specification
+  `docs/specifications/automation_timeout_option.txt`, changed
+  `--automation-timeout-screenshot` semantics to basename output in
+  `src/mdview/cli.py`, and implemented paired artifact capture in
+  `src/mdview/rendering.py` as `<basename>.txt` (ASCII, CR row endings) plus
+  `<basename>.attrs.json` (per-cell UTF-8 character and style metadata).
+  Updated docs/help/manpages and sandbox guidance, including
+  `docs/testing/sandbox-synthetic-viewport-and-framebuffer-capture.txt`, and
+  expanded regression coverage in `tests/test_cli.py` and
+  `tests/test_rendering.py`. Validation: wrapper-based black, ruff,
+  compileall, entropy_check, entropy_tripwire_verify, and full pytest all
+  passed (`271 passed`).
+
+* Implemented automation-timeout framebuffer screenshot capture with
+  deterministic synthetic viewport controls. Recorded at
+  2026-03-08T17:57:07-07:00 by Codex (GPT-5) from direct operator
+  instruction. Added proposal
+  `project-management/state/proposals/completed/automation-timeout-framebuffer-screenshots-and-synthetic-viewport-controls.txt`,
+  expanded specification
+  `docs/specifications/automation_timeout_option.txt`, implemented new CLI
+  options (`--automation-timeout-screenshot`, `--viewport-columns`,
+  `--viewport-rows`) in `src/mdview/cli.py`, added timeout-exit viewport
+  framebuffer artifact capture and viewport override handling in
+  `src/mdview/rendering.py`, updated CLI/manpage/user docs including
+  `docs/testing/sandbox-synthetic-viewport-and-framebuffer-capture.txt`, and
+  expanded coverage in `tests/test_cli.py` and `tests/test_rendering.py`.
+  Validation: wrapper-based black, ruff, compileall, entropy_check,
+  entropy_tripwire_verify, and full pytest all passed (`271 passed`).
+
 * Implemented multi-document CLI viewing with next/previous navigation and
   Monkey-in-the-Loop telemetry mode. Recorded at 2026-03-08T06:59:47-07:00
   by Codex (GPT-5) from direct operator instruction. Added specification
@@ -35,7 +81,7 @@ summarize how the blocker was resolved.
 * Added proposal hold-area governance for debated architecture work.
   Recorded at 2026-03-08T04:09:42-07:00 by Codex (GPT-5) from direct
   operator instruction. Created
-  `project-management/proposals/under-review/`, moved
+  `project-management/state/proposals/under-review/`, moved
   `content-element-style-hierarchy-plan.txt` into that directory, and updated
   `AGENTS.md` with a standing rule that AI agents must not auto-implement
   proposals in `under-review` unless the operator explicitly moves them out.
@@ -112,7 +158,7 @@ summarize how the blocker was resolved.
 * Added an AI-to-human request queue and standing maintenance orders.
   Recorded at 2026-03-07T22:31:55-08:00 by Codex (GPT-5) from direct
   operator instruction. Added
-  `/project-management/ai-human-requests.txt` with pending/active/completed
+  `/project-management/state/ai-human-requests.txt` with pending/active/completed
   sections plus formatting guidance, and updated `AGENTS.md` and
   `docs/human-orders-for-AI-agents.txt` so agents log requests as pending,
   help reconcile stale states, and ask for human confirmation when possible
@@ -152,7 +198,7 @@ summarize how the blocker was resolved.
   ``python scripts/run_tool_with_timeout.py pytest`` (pass; ``226 passed``).
 
 * Implemented Windows 11 command-line support per
-  ``project-management/proposals/windows-11-cli-support.txt``. Recorded at
+  ``project-management/state/proposals/completed/windows-11-cli-support.txt``. Recorded at
   2026-03-06T22:43:04-08:00 by Codex (GPT-5). Added PowerShell and cmd.exe
   shims under ``scripts/windows`` for bootstrap and timeout-wrapper checks,
   extended ``scripts/install_prerequisites.py`` for Windows bootstrap flow,
@@ -173,7 +219,7 @@ summarize how the blocker was resolved.
   ``--flatten-unicode``.
 
 * Drafted the multi-version maintenance workflow proposal at
-  ``project-management/proposals/``
+  ``project-management/state/proposals/``
   ``version-management-multi-version-support.txt``.
   Recorded at 2026-03-06T22:43:04-08:00 by Codex (GPT-5) while clearing the
   low-priority backlog item. The proposal covers version-line branching,
@@ -274,7 +320,7 @@ summarize how the blocker was resolved.
   ``python scripts/run_tool_with_timeout.py ruff -- src/mdview/intake.py``
   ``src/mdview/dom.py tests/test_intake_parser.py`` (pass), and full
   ``python scripts/run_tool_with_timeout.py pytest`` still reports the known
-  18 pre-existing failures tracked in project-management/bugs/known-bugs.txt.
+  18 pre-existing failures tracked in project-management/state/bugs/known-bugs.txt.
 
 * Added DOM unit coverage for invariants and behavior precedence. Recorded at
   2026-03-06T20:58:55-08:00 by Codex (GPT-5) while clearing the top backlog
@@ -306,7 +352,7 @@ summarize how the blocker was resolved.
   reports the known 18 failing tests.
 
 * Implemented the unified internal document object model baseline from
-  project-management/proposals/internal-document-object-model.txt. Recorded at
+  project-management/state/proposals/completed/internal-document-object-model.txt. Recorded at
   2026-03-07T03:58:54Z by Codex (GPT-5) while clearing the top backlog item.
   Added src/mdview/dom.py with Document/Block/Line and constraint/style
   profiles, added src/mdview/intake.py ingestion helpers, and routed
@@ -315,13 +361,13 @@ summarize how the blocker was resolved.
   tests/test_dom.py and intake-consumption coverage in
   tests/test_rendering.py.
   Validation: black/ruff/compileall passed; pytest remains blocked by the
-  known 18-failure cluster tracked in project-management/bugs/known-bugs.txt.
+  known 18-failure cluster tracked in project-management/state/bugs/known-bugs.txt.
 
-* Populated project-management/bugs/known-bugs.txt with actionable entries
+* Populated project-management/state/bugs/known-bugs.txt with actionable entries
   for the current failing-test cluster and linked them back to the backlog
   stabilization gate (BUG-2026-03-07-01 through BUG-2026-03-07-03). Recorded
   at 2026-03-07T03:42:51Z by Codex (GPT-5) while clearing the top backlog
-  item. Updated project-management/backlog.txt to include related-bug links in
+  item. Updated project-management/state/backlog.txt to include related-bug links in
   the stabilization gate task. Blockers: none.
 
 * Drafted docs/specifications/reflow_mode.txt as the dedicated

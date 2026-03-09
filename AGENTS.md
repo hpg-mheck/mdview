@@ -36,19 +36,20 @@ environment notes that must not be committed.
   `resources/testing`, verify they comply with the 78-column wrap rule.
 
 ## Project Management Orders
-- Maintain `/project-management/backlog.txt` as the ordered source of pending
-  work. The top item is always next up; the bottom item waits the longest.
+- Maintain `/project-management/state/backlog.txt` as the ordered source of
+  pending work. The top item is always next up; the bottom item waits the
+  longest.
   Mark each task with an asterisk followed by a blank line for clarity.
   Explicitly note when a task is blocked and identify what or whom it depends
   on. Include a timestamp in ISO 8601 format indicating when the item was
   added.
-- Keep `/project-management/tasks-in-progress.txt` nearly empty. Use it only
-  for tasks actively being implemented, following the same asterisk and
+- Keep `/project-management/state/tasks-in-progress.txt` nearly empty. Use it
+  only for tasks actively being implemented, following the same asterisk and
   blank-line formatting. Include brief status notes and cite blockers. Move
   entries back to the backlog or into completed tasks as soon as possible.
   Record the timestamp for when the task entered this list.
-- Record finished work in `/project-management/completed-tasks.txt`, placing
-  the most recently completed item at the top. Preserve the
+- Record finished work in `/project-management/state/completed-tasks.txt`,
+  placing the most recently completed item at the top. Preserve the
   asterisk-plus-blank-line formatting, and include concise context such as
   dates, responsible
   contributors, and how any blockers were cleared. Stamp each completion with
@@ -56,10 +57,15 @@ environment notes that must not be committed.
 - Treat the three project management files as living documents. Update them
   immediately when work status changes, and keep descriptions concise and
   actionable per Chicago Manual of Style guidance.
-- Maintain `/project-management/ai-human-requests.txt` as the queue for
+- Maintain `/project-management/state/ai-human-requests.txt` as the queue for
   non-blocking requests that AI agents need human operators to handle. Keep
   entries in the `Pending Requests`, `Active Requests`, and
   `Completed Requests` sections.
+- Keep proposal files in status folders under
+  `/project-management/state/proposals/`:
+  `pending/`, `accepted/`, `completed/`, `rejected/`, `superseded/`, and
+  `under-review/`. Use `pending/` for new proposals unless an operator
+  directs another initial state.
 - AI agents should add new items to `Pending Requests` by default, using the
   same asterisk-plus-blank-line style and including concise context, owner,
   and ISO 8601 timestamps.
@@ -68,20 +74,20 @@ environment notes that must not be committed.
   If an AI believes a request is done but not updated, the AI should ask for
   operator confirmation when possible before moving the entry to completed.
 - When an operator directs that a feature be deferred, move the item from
-  `project-management/backlog.txt` or
-  `project-management/tasks-in-progress.txt` into
-  `project-management/deferred.txt`, preserving the asterisk-plus-blank-line
-  formatting and recording why the deferral happened. Copy the original task
-  language into a quoted block inside the deferred entry so it can return to
-  the backlog verbatim when re-enabled. The quoted block starts with a line
-  containing only `>>BEGIN>>`, ends with a line containing only `>>END>>`, and
-  includes every line of the original text prefixed by `> `, including blank
-  lines.
-- Treat `/project-management/proposals/under-review/` as a hold area for
-  debated proposals. AI agents must not auto-implement any proposal in that
-  directory under any circumstances. Work in that directory is limited to
-  proposal editing, review, and operator-directed status changes unless the
-  operator explicitly moves the proposal out of `under-review`.
+  `project-management/state/backlog.txt` or
+  `project-management/state/tasks-in-progress.txt` into
+  `project-management/state/deferred.txt`, preserving the
+  asterisk-plus-blank-line formatting and recording why the deferral
+  happened. Copy the original task language into a quoted block inside the
+  deferred entry so it can return to the backlog verbatim when re-enabled.
+  The quoted block starts with a line containing only `>>BEGIN>>`, ends with
+  a line containing only `>>END>>`, and includes every line of the original
+  text prefixed by `> `, including blank lines.
+- Treat `/project-management/state/proposals/under-review/` as a hold area
+  for debated proposals. AI agents must not auto-implement any proposal in
+  that directory under any circumstances. Work in that directory is limited
+  to proposal editing, review, and operator-directed status changes unless
+  the operator explicitly moves the proposal out of `under-review`.
 
 ## Backlog Iteration Orders
 - When instructed to "Iterate the backlog" or simply "iterate," follow the
@@ -90,16 +96,17 @@ environment notes that must not be committed.
   buglist").
 
 ## Bug Tracking Orders
-- Maintain `/project-management/bugs/known-bugs.txt` as the ordered source of
-  confirmed issues awaiting work. Use the same asterisk-plus-blank-line
-  formatting, include concise context, and stamp each entry with the time it
-  was added.
-- Track active remediation in `/project-management/bugs/bugs-in-progress.txt`
-  with the same formatting, timestamping entries as they move into progress,
-  and noting current owners and blockers.
-- Record resolved items in `/project-management/bugs/closed-bugs.txt`, adding
-  the newest items to the top, preserving the formatting, and including the
-  completion timestamp and short resolution notes.
+- Maintain `/project-management/state/bugs/known-bugs.txt` as the ordered
+  source of confirmed issues awaiting work. Use the same
+  asterisk-plus-blank-line formatting, include concise context, and stamp
+  each entry with the time it was added.
+- Track active remediation in
+  `/project-management/state/bugs/bugs-in-progress.txt` with the same
+  formatting, timestamping entries as they move into progress, and noting
+  current owners and blockers.
+- Record resolved items in `/project-management/state/bugs/closed-bugs.txt`,
+  adding the newest items to the top, preserving the formatting, and
+  including the completion timestamp and short resolution notes.
 - Treat the three bug-tracking files as living documents. Update them as
   status changes, keeping entries succinct and actionable in line with the
   Chicago Manual of Style.

@@ -6,6 +6,13 @@
 # the fix was recorded, the resolution summary, and links to commits or tests
 # when available.
 
+* 2026-03-08T19:33:45-07:00 Resolved first-frame heading-centering drift in
+  interactive sessions (reported from Termius) by rendering the initial
+  document with active terminal width or `--viewport-columns` override.
+  Validation: added `tests/test_cli.py` coverage for startup width selection
+  and passed wrapper-based full checks (`black`, `ruff`, `compileall`,
+  `entropy_check`, `entropy_tripwire_verify`, `pytest`). Owner: Codex (GPT-5).
+
 * 2026-03-06T22:13:44-08:00 Closed BUG-2026-03-07-01 by normalizing Rich
   markdown export behavior to remove right-padding drift and reduce brittle
   hard wraps in non-interactive render paths. Validation: full ``pytest``

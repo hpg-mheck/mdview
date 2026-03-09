@@ -9,7 +9,7 @@ package installation to `scripts/install_prerequisites.py`.
 Quick start
 -----------
 
-From the repository root:
+From anywhere inside the repository (or via an absolute path):
 
 ```
 ./scripts/install_prerequisites.sh
@@ -20,10 +20,14 @@ extras. Pass `--production` through to the Python installer when you want to
 skip developer dependencies:
 
 ```
-./scripts/install_prerequisites.sh -- --production
+./scripts/install_prerequisites.sh --production
 ```
 
-The `--` separator ensures arguments reach the Python installer unchanged.
+Legacy forwarding also remains supported:
+
+```
+./scripts/install_prerequisites.sh -- --production
+```
 
 Supported platforms
 -------------------
@@ -42,17 +46,22 @@ What the installer does
 - Installs `python3`, `venv` tooling, `less`, and `git` using the native
   package manager (with `sudo` when required).
 - Creates `.venv` if missing and upgrades `pip`, `setuptools`, and `wheel`.
-- Installs the project in editable mode with optional developer extras.
+- Installs the project in editable mode with:
+  - `interactive` extras by default in all modes (for `prompt_toolkit` pager),
+  - `dev` extras when not using `--production`.
 - Installs/updates managed git `pre-commit` and `pre-push` hook wrappers via
   `scripts/install_git_hooks.py`.
 
 Notes and expectations
 ----------------------
 
-- Run the installer from the repository root to ensure relative paths resolve
-  correctly.
+- The installer resolves project root from script location and always installs
+  the editable project from that root, regardless of current working
+  directory.
 - If the host lacks `sudo`, run the script as a privileged user or install the
   required system packages manually.
+- Use `--skip-system-packages` when system dependencies are already present or
+  when package-manager access is intentionally restricted.
 - The Python logic supports a dry run for validation: `python scripts/
   install_prerequisites.py --dry-run`.
 - Entropy-secret checks are wired into managed hooks:

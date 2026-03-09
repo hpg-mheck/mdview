@@ -1,6 +1,9 @@
 usage: mdview [-h] [--verify-resize-detection] [--reflow]
               [--reflow-mode {prose,all,none}] [--noreflow] [--verbose]
-              [--MIL] [--readability-first-tables] [-V]
+              [--MIL] [--readability-first-tables]
+              [--automation-timeout SECONDS]
+              [--automation-timeout-screenshot BASENAME]
+              [--viewport-columns COLUMNS] [--viewport-rows ROWS] [-V]
               [paths ...]
 
 Render Markdown in the terminal with integrated navigation.
@@ -34,4 +37,18 @@ optional arguments:
                             Always use readability-first table layout, even
                             when fit-first could fit the viewport. (default:
                             False)
+  --automation-timeout SECONDS
+                            Inject synthetic quit after the given viewer
+                            runtime for automation runs. (default: None)
+  --automation-timeout-screenshot BASENAME
+                            Write timeout-exit framebuffer artifacts using
+                            BASENAME, producing BASENAME.txt and
+                            BASENAME.attrs.json. Defaults to ./mdview-
+                            automation-timeout-framebuffer when --automation-
+                            timeout is set. (default: None)
+  --viewport-columns COLUMNS
+                            Override detected viewport width with a synthetic
+                            value. (default: None)
+  --viewport-rows ROWS      Override detected viewport height with a synthetic
+                            value. (default: None)
   -V, --version             Show the mdview version and exit.

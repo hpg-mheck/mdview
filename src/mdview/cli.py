@@ -1,6 +1,8 @@
 """Command-line interface for mdview."""
 
 import argparse
+import math
+import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +31,36 @@ class _LoadedDocument:
     content: str
     markdown: bool
     reflow_mode: str
+
+
+def _non_negative_seconds(value: str) -> float:
+    """Return a validated non-negative timeout value in seconds."""
+
+    try:
+        seconds = float(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            f"invalid timeout seconds value: {value!r}"
+        ) from error
+    if not math.isfinite(seconds) or seconds < 0:
+        raise argparse.ArgumentTypeError(
+            "automation timeout must be a non-negative finite number"
+        )
+    return seconds
+
+
+def _positive_int(value: str) -> int:
+    """Return a validated positive integer option value."""
+
+    try:
+        parsed = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            f"invalid positive integer value: {value!r}"
+        ) from error
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("value must be a positive integer")
+    return parsed
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -110,6 +142,38 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--automation-timeout",
+        metavar="SECONDS",
+        type=_non_negative_seconds,
+        help=(
+            "Inject synthetic quit after the given viewer runtime for "
+            "automation runs."
+        ),
+    )
+    parser.add_argument(
+        "--automation-timeout-screenshot",
+        metavar="BASENAME",
+        type=Path,
+        help=(
+            "Write timeout-exit framebuffer artifacts using BASENAME, "
+            "producing BASENAME.txt and BASENAME.attrs.json. Defaults to "
+            "./mdview-automation-timeout-framebuffer when "
+            "--automation-timeout is set."
+        ),
+    )
+    parser.add_argument(
+        "--viewport-columns",
+        metavar="COLUMNS",
+        type=_positive_int,
+        help="Override detected viewport width with a synthetic value.",
+    )
+    parser.add_argument(
+        "--viewport-rows",
+        metavar="ROWS",
+        type=_positive_int,
+        help="Override detected viewport height with a synthetic value.",
+    )
+    parser.add_argument(
         "-V",
         "--version",
         action="version",
@@ -157,6 +221,20 @@ def _emit_log(message: str) -> None:
     print(message, file=sys.stderr)
 
 
+def _initial_viewport_width(*, viewport_columns: Optional[int]) -> Optional[int]:
+    """Return the startup render width for interactive terminal sessions."""
+
+    if viewport_columns is not None:
+        return viewport_columns
+    if not sys.stdout.isatty():
+        return None
+    try:
+        columns = shutil.get_terminal_size().columns
+    except (OSError, ValueError):
+        return None
+    return columns if columns > 0 else None
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """Entry point for the ``mdview`` CLI."""
 
@@ -175,6 +253,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(
             "mdview: at least one path is required unless "
             "--verify-resize-detection is used",
+            file=sys.stderr,
+        )
+        _emit_fallback_notices()
+        return 2
+
+    if args.automation_timeout_screenshot and args.automation_timeout is None:
+        print(
+            "mdview: --automation-timeout-screenshot requires " "--automation-timeout",
             file=sys.stderr,
         )
         _emit_fallback_notices()
@@ -227,7 +313,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             readability_first_tables=args.readability_first_tables,
         )
 
-    ansi_text = _render_document(current_index, width=None)
+    initial_width = _initial_viewport_width(viewport_columns=args.viewport_columns)
+    ansi_text = _render_document(current_index, width=initial_width)
 
     def _render_on_resize(width: int) -> str:
         return _render_document(current_index, width=width)
@@ -258,6 +345,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return
         _emit_log(f"mdview[MIL]: {action}")
 
+    timeout_screenshot_basename = args.automation_timeout_screenshot
+    if args.automation_timeout is not None and timeout_screenshot_basename is None:
+        timeout_screenshot_basename = Path("mdview-automation-timeout-framebuffer")
+
     try:
         page_text(
             ansi_text,
@@ -266,6 +357,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             ui_event_logger=_ui_event_logger if args.mil else None,
             document_count=len(loaded_documents),
             current_document_index=lambda: current_index,
+            automation_timeout=args.automation_timeout,
+            automation_timeout_screenshot_basename=timeout_screenshot_basename,
+            viewport_columns=args.viewport_columns,
+            viewport_rows=args.viewport_rows,
         )
     except RuntimeError as error:
         print(f"mdview: pager error: {error}", file=sys.stderr)

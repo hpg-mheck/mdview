@@ -18,6 +18,8 @@ macOS versions, and Windows 11.
   validate logic without mutating the host.
 - Keep logic compatible with Python 3.9+ and avoid non-portable shell
   features.
+- Ensure repository launchers invoke mdview's internal CLI and never depend on
+  external renderers such as `pandoc` or GUI openers.
 
 ## System package expectations
 - Debian/Ubuntu/Mint: install `python3`, `python3-venv`, `python3-pip`,
@@ -31,11 +33,18 @@ macOS versions, and Windows 11.
   pip installation.
 
 ## Virtual environment strategy
-- Use `.venv` at the repository root, created by `python -m venv` if
-  missing.
+- Use `.venv` at the repository root, created by `python -m venv` if missing.
+- Resolve project root independently of caller working directory so the
+  installer can run from subdirectories such as `scripts/` and still install
+  from repository root.
+  installer from `scripts/` (or any other subdirectory) still installs the
+  editable project from repository root.
 - Upgrade `pip`, `setuptools`, and `wheel` inside the environment.
-- Install the project in editable mode with `.[dev]` extras by default;
-  allow a production-only option.
+- Install the project in editable mode with `interactive` extras in all modes
+  and include `dev` extras by default. Allow `--production` to skip only `dev`
+  extras.
+- Provide an option to skip system package installation when host packages are
+  already present or package-manager access is intentionally restricted.
 
 ## Safety and usability
 - Prefer `sudo` for system package operations when not running as root.

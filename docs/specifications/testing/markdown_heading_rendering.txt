@@ -37,6 +37,10 @@ Rendering Expectations
 ----------------------
 - All headings emit a trailing newline after the heading block so that
   following text begins on a new line.
+- In interactive viewer sessions, the first rendered frame must use the
+  active viewport width (or an explicit synthetic viewport override) rather
+  than fallback export widths so heading centering is correct from first
+  paint.
 - Level 1 and level 2 headings render with stronger visual cues (e.g., bold or
   underline tokens) than deeper levels. When Rich is unavailable, prefixes and
   spacing still signal hierarchy.

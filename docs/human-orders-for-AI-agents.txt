@@ -5,12 +5,12 @@ Use the following command phrases in prompts to direct AI agents that follow
 `AGENTS.md`:
 
 - Iterate the backlog: Run one cycle from `docs/AI-backlog-iteration.txt` on
-  the top item in `/project-management/backlog.txt` unless the prompt
+  the top item in `/project-management/state/backlog.txt` unless the prompt
   specifies a different target.
 - Iterate on the buglist: Apply the backlog-style iteration steps to the top
-  entry in `/project-management/bugs/known-bugs.txt`, updating the bug
+  entry in `/project-management/state/bugs/known-bugs.txt`, updating the bug
   tracking files with ISO 8601 timestamps when moving items between lists.
-- Start bug triage: Review `/project-management/bugs/known-bugs.txt` for
+- Start bug triage: Review `/project-management/state/bugs/known-bugs.txt` for
   completeness, reproductions, owners, and timestamps. Reorder or prune items
   as needed while preserving the oldest entries at the bottom.
 - Start work on <item>: Move the named backlog or bug entry into the relevant
@@ -25,7 +25,7 @@ Use the following command phrases in prompts to direct AI agents that follow
   from a real Windows host, summarize PASS/SKIP/FAIL, and confirm Linux CI
   remains the authoritative compatibility gate.
 - Review AI-human requests: inspect
-  `/project-management/ai-human-requests.txt`, add any newly discovered
+  `/project-management/state/ai-human-requests.txt`, add any newly discovered
   operator actions to `Pending Requests`, and report likely-complete entries
   that still need human confirmation before closure.
 

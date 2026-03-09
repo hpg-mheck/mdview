@@ -4,8 +4,8 @@ Date: 2026-03-08T03:59:22-07:00
 Status: Proposed
 Reviewers: Matt "Breakpoint" Heck (Operator), Core Architecture Team,
 Rendering Maintainer
-Related Work: project-management/proposals/internal-document-object-model.txt;
-project-management/proposals/internal-viewer-engine.txt;
+Related Work: project-management/state/proposals/completed/internal-document-object-model.txt;
+project-management/state/proposals/completed/internal-viewer-engine.txt;
 docs/specifications/unified_content_intake_model.txt;
 docs/specifications/style_strategies.txt;
 docs/specifications/style_ranks.txt;

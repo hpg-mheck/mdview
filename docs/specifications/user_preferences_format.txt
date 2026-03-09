@@ -38,8 +38,9 @@ Recognized Sections and Keys
   - ``wrap_column``: integer; column at which to soft-wrap rendered
     output. Default ``0`` means no additional wrapping beyond the pager.
 - ``[pager]``
-  - ``command``: string; explicit pager executable (e.g., ``less -R``).
-    Default empty to use built-in selection logic.
+  - ``mode``: enum; currently ``internal`` only. Reserved so future
+    viewer modes can be added without changing the file shape.
+    Default ``internal``.
   - ``follow_stdin``: boolean; when ``true``, forces paging even if
     mdview is run in a pipeline. Default ``false``.
 - ``[rendering]``
@@ -71,7 +72,7 @@ commented out. This mirrors the style of ``/etc/default`` files and
   # wrap_column = 0
 
   # [pager]
-  # command =
+  # mode = internal
   # follow_stdin = false
 
   # [rendering]
