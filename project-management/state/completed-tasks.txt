@@ -6,6 +6,18 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Fixed viewport movement key handling after operator report that arrow keys
+  were not reliably moving the document. Recorded at
+  2026-03-08T21:33:02-07:00 by Codex (GPT-5) from direct operator
+  instruction. Updated `src/mdview/rendering.py` to avoid `Esc` as a quit
+  binding (preventing escape-sequence conflicts), broadened movement bindings
+  to include modified arrow/page keys, and hardened zero-delay automation
+  replay startup scheduling so `--automation-json '[[0.0, ...]]'` no longer
+  raises event-loop errors and is applied before timeout captures. Added
+  regression coverage in `tests/test_rendering.py`, including modified key
+  bindings and zero-delay replay behavior when `call_from_executor` reports
+  no running loop.
+
 * Implemented viewport-only navigation controls and `--automation-json`
   replay for deterministic viewer movement testing. Recorded at
   2026-03-08T20:34:56-07:00 by Codex (GPT-5) from direct operator

@@ -1534,7 +1534,6 @@ def _attempt_prompt_toolkit_pager(
         app.exit()
 
     @bindings.add("q")
-    @bindings.add("escape")
     @bindings.add("c-c")
     def _(event) -> None:  # type: ignore[override]
         _request_quit(event.app)
@@ -1600,6 +1599,9 @@ def _attempt_prompt_toolkit_pager(
         event.app.invalidate()
 
     @bindings.add("down")
+    @bindings.add("s-down")
+    @bindings.add("c-down")
+    @bindings.add("c-s-down")
     @bindings.add("j")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, 1, len(lines))
@@ -1607,6 +1609,9 @@ def _attempt_prompt_toolkit_pager(
         event.app.invalidate()
 
     @bindings.add("up")
+    @bindings.add("s-up")
+    @bindings.add("c-up")
+    @bindings.add("c-s-up")
     @bindings.add("k")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, -1, len(lines))
@@ -1614,12 +1619,18 @@ def _attempt_prompt_toolkit_pager(
         event.app.invalidate()
 
     @bindings.add("pageup")
+    @bindings.add("s-pageup")
+    @bindings.add("c-pageup")
+    @bindings.add("c-s-pageup")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, -max(_window_height(), 1), len(lines))
         _emit_ui_event("page-up")
         event.app.invalidate()
 
     @bindings.add("pagedown")
+    @bindings.add("s-pagedown")
+    @bindings.add("c-pagedown")
+    @bindings.add("c-s-pagedown")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, max(_window_height(), 1), len(lines))
         _emit_ui_event("page-down")
@@ -1705,12 +1716,17 @@ def _attempt_prompt_toolkit_pager(
         )
 
     scheduled_timers: List[threading.Timer] = []
+    pre_run_replay_callbacks: List[Callable[[], None]] = []
 
     def _dispatch_on_event_loop(callback: Callable[[], None]) -> None:
         dispatcher = getattr(application, "call_from_executor", None)
         if callable(dispatcher):
-            dispatcher(callback)
-            return
+            try:
+                dispatcher(callback)
+                return
+            except RuntimeError:
+                # prompt_toolkit may not have started an event loop yet.
+                pass
         callback()
 
     if automation_replay:
@@ -1765,7 +1781,7 @@ def _attempt_prompt_toolkit_pager(
                 )
 
             if cumulative_delay == 0:
-                _dispatch_on_event_loop(_inject_replay_event)
+                pre_run_replay_callbacks.append(_inject_replay_event)
                 continue
 
             replay_timer = threading.Timer(
@@ -1813,6 +1829,25 @@ def _attempt_prompt_toolkit_pager(
             timeout_timer.daemon = True
             timeout_timer.start()
             scheduled_timers.append(timeout_timer)
+
+    if pre_run_replay_callbacks:
+        startup_delay_seconds = 0.05
+
+        def _run_pre_run_replay_callbacks() -> None:
+            for callback in list(pre_run_replay_callbacks):
+                replay_timer = threading.Timer(
+                    startup_delay_seconds,
+                    lambda pending=callback: _dispatch_on_event_loop(pending),
+                )
+                replay_timer.daemon = True
+                replay_timer.start()
+                scheduled_timers.append(replay_timer)
+
+        pre_run_callables = getattr(application, "pre_run_callables", None)
+        if isinstance(pre_run_callables, list):
+            pre_run_callables.append(_run_pre_run_replay_callbacks)
+        else:
+            _run_pre_run_replay_callbacks()
 
     try:
         application.run()
