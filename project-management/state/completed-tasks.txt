@@ -13,10 +13,14 @@ summarize how the blocker was resolved.
   binding (preventing escape-sequence conflicts), broadened movement bindings
   to include modified arrow/page keys, and hardened zero-delay automation
   replay startup scheduling so `--automation-json '[[0.0, ...]]'` no longer
-  raises event-loop errors and is applied before timeout captures. Added
-  regression coverage in `tests/test_rendering.py`, including modified key
-  bindings and zero-delay replay behavior when `call_from_executor` reports
-  no running loop.
+  raises event-loop errors and is applied before timeout captures. Tuned
+  prompt_toolkit escape-sequence flush timing (`ttimeoutlen`/`timeoutlen`)
+  for high-latency terminal links so arrow-key sequences are less likely to
+  fragment into non-navigation keypresses. Added regression coverage in
+  `tests/test_rendering.py`, including modified key bindings and zero-delay
+  replay behavior when `call_from_executor` reports no running loop.
+  Validation: wrapper-based black, ruff, compileall, entropy_check,
+  entropy_tripwire_verify, and full pytest all passed (`285 passed`).
 
 * Implemented viewport-only navigation controls and `--automation-json`
   replay for deterministic viewer movement testing. Recorded at

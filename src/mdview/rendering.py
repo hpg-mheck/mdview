@@ -1677,6 +1677,11 @@ def _attempt_prompt_toolkit_pager(
         full_screen=True,
         style=style,
     )
+    # Remote/mobile terminals can deliver escape-sequence bytes with jitter.
+    # Keep both parser and key-buffer flush timeouts long enough that cursor
+    # key sequences are not split into stray characters.
+    application.ttimeoutlen = 1.5
+    application.timeoutlen = 1.5
 
     def _capture_timeout_framebuffer() -> Optional[Tuple[Path, Path]]:
         if automation_timeout_screenshot_basename is None:
