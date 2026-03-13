@@ -3,4 +3,3 @@
 #
 # Track bugs actively being remediated in this file. Use the same formatting
 # as `known-bugs.txt`, including timestamps and owners.
-

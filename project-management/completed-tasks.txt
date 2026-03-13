@@ -6,6 +6,17 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Installed the resolved-bugs guidance and working copy derived from
+  TheKnowledge. Recorded at 2026-03-13T09:08:05Z by Codex (GPT-5) from
+  direct operator instruction. Updated AGENTS.md and
+  docs/human-orders-for-AI-agents.txt so bug closures now target
+  `project-management/bugs/resolved-bugs.txt` with `Root cause:` and
+  `Resolution:` notes, migrated the historical resolved bug records out of
+  `project-management/bugs/closed-bugs.txt`, and returned
+  BUG-2026-03-13-01 from bugs-in-progress to known-bugs after the operator
+  redirected work before remediation completed. Validation: 78-column wrap
+  checks passed for the updated mdview text files.
+
 * Added installer prompting for arbitrary-directory `mdview` resolution and
   PATH detection reporting. Recorded at 2026-03-13T08:04:46Z by Codex
   (GPT-5) from direct operator instruction. Updated the prerequisite

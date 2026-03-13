@@ -79,9 +79,10 @@ environment notes that must not be committed.
 - Track active remediation in `/project-management/bugs/bugs-in-progress.txt`
   with the same formatting, timestamping entries as they move into progress,
   and noting current owners and blockers.
-- Record resolved items in `/project-management/bugs/closed-bugs.txt`, adding
-  the newest items to the top, preserving the formatting, and including the
-  completion timestamp and short resolution notes.
+- Record resolved items in `/project-management/bugs/resolved-bugs.txt`,
+  adding the newest items to the top, preserving the formatting, and
+  including the completion timestamp, `Root cause:` analysis, and concise
+  `Resolution:` notes.
 - Treat the three bug-tracking files as living documents. Update them as
   status changes, keeping entries succinct and actionable in line with the
   Chicago Manual of Style.

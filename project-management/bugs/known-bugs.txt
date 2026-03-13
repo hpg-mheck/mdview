@@ -11,7 +11,10 @@
   `tests`, and `scripts`, blocking the required formatting check.
   Reproduction: run `.venv/bin/python scripts/run_tool_with_timeout.py black`
   after bootstrap and observe repeated timeout expiry while `ruff`,
-  `compileall`, and targeted pytest runs succeed.
+  `compileall`, and targeted pytest runs succeed. Partial isolation on
+  2026-03-13 showed direct directory-level `black` invocations hang too, but
+  remediation paused when the operator redirected work to the resolved-bug
+  guidance update.
   Owner: unassigned. Blockers: none. Related work: prerequisite/bootstrap
   guidance task recorded in project-management/completed-tasks.txt on
   2026-03-13.
