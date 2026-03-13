@@ -109,4 +109,6 @@ def test_document_export_snapshot_is_deterministic_for_mixed_content() -> None:
 
     assert first.to_source_text() == expected_snapshot
     assert second.to_source_text() == expected_snapshot
-    assert [line.source_text for line in first.lines] == [line.source_text for line in second.lines]
+    assert [line.source_text for line in first.lines] == [
+        line.source_text for line in second.lines
+    ]
