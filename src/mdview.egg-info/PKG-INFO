@@ -34,23 +34,26 @@ Classifier: Topic :: Utilities
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 License-File: LICENSE
+Requires-Dist: prompt_toolkit>=3.0
 Requires-Dist: rich>=13.7.0
 Provides-Extra: dev
+Requires-Dist: black>=24.0; extra == "dev"
 Requires-Dist: pytest>=7.4; extra == "dev"
+Requires-Dist: ruff>=0.6.0; extra == "dev"
 Dynamic: license-file
 
 # mdview
 
-A console-first Markdown viewer that pipes styled output into a familiar
-`less`-like interface. mdview renders headings, emphasis, and code blocks with
-ANSI styling so Markdown reads naturally in the terminal.
+A console-first Markdown viewer with an internal rendering and viewing
+engine. mdview renders headings, emphasis, and code blocks with ANSI styling
+so Markdown reads naturally in the terminal.
 
 ## Features
 - Renders Markdown using the
   [`rich`](https://github.com/Textualize/rich) library for readable terminal
   formatting.
-- Delegates navigation and search to `less` (via `pydoc.pager`) for
-  muscle-memory-friendly controls.
+- Uses an internal viewport with integrated vertical and horizontal
+  navigation.
 - Supports `.md`, `.markdown`, and `.txt` input out of the box.
 - Minimal runtime dependencies; packaged for Python 3.9+.
 - Graceful fallback to plain-text output if `rich` is unavailable in the
@@ -70,20 +73,32 @@ pip install -e .[dev]
 ```
 
 ## Usage
-Render a file in your terminal with full `less` navigation (arrows,
+Render a file in your terminal with full navigation (arrows,
 Page Up/Down, `/` search, `n`/`N` next/previous, `q` to quit):
 ```bash
 mdview path/to/file.md
 ```
 
 Optional flags:
+- `--reflow` to enable reflow processing using `--reflow-mode prose`
+  unless another mode is specified.
+- `--reflow-mode prose|all|none` to select policy behavior.
+- `--noreflow` to disable reflow in all cases (`--reflow-mode none`).
 - `--pager "<command>"` to override the pager (defaults to `less -R` through
   `pydoc.pager`).
+- `--verify-resize-detection` to run an interactive resize checklist that
+  acknowledges detected events and reports PASS/FAIL per step.
 - `--version` to display the current version.
 
-If `less` is unavailable, mdview falls back to the default pager provided
-by the Python standard library; output remains readable though navigation may
-be more limited.
+Markdown content reflows to current window dimensions by default.
+`--reflow` is therefore redundant for Markdown. The exception is Markdown
+tables: they may exceed viewport width when minimum table sizing requires it.
+When any rendered line exceeds viewport width, a horizontal scrollbar becomes
+active and left/right arrow keys pan the viewport.
+
+For plain-text (`.txt`) files without explicit reflow flags, mdview preserves
+source line breaks by default. Reflow for `.txt` content is opt-in via
+`--reflow` or explicit `--reflow-mode`.
 
 ## Project Structure
 - `src/mdview/` – Library code for rendering and paging.

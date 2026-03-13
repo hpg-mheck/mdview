@@ -3,12 +3,15 @@ README.md
 pyproject.toml
 src/mdview/__init__.py
 src/mdview/cli.py
+src/mdview/dom.py
 src/mdview/hyperlinks.py
+src/mdview/intake.py
 src/mdview/iteration_exit.py
 src/mdview/mode_switching.py
 src/mdview/preferences.py
 src/mdview/prerequisites.py
 src/mdview/rendering.py
+src/mdview/resize_verifier.py
 src/mdview.egg-info/PKG-INFO
 src/mdview.egg-info/SOURCES.txt
 src/mdview.egg-info/dependency_links.txt
@@ -16,8 +19,11 @@ src/mdview.egg-info/entry_points.txt
 src/mdview.egg-info/requires.txt
 src/mdview.egg-info/top_level.txt
 tests/test_cli.py
+tests/test_dom.py
+tests/test_framebuffer_helpers.py
 tests/test_hyperlinks.py
 tests/test_install_prerequisites.py
+tests/test_intake_parser.py
 tests/test_markdown_blockquote.py
 tests/test_markdown_bold.py
 tests/test_markdown_bold_italic.py
@@ -36,3 +42,5 @@ tests/test_preferences.py
 tests/test_prerequisites_module.py
 tests/test_project_metadata.py
 tests/test_rendering.py
+tests/test_resize_verifier.py
+tests/test_run_tool_with_timeout.py
