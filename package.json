@@ -1,0 +1,28 @@
+{
+  "name": "mdview",
+  "version": "1.0.0",
+  "description": "A console-first Markdown viewer with an internal rendering and viewing engine. mdview renders headings, emphasis, and code blocks with ANSI styling so Markdown reads naturally in the terminal.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hpg-mheck/mdview.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/hpg-mheck/mdview/issues"
+  },
+  "homepage": "https://github.com/hpg-mheck/mdview#readme",
+  "dependencies": {
+    "@openai/codex": "^0.114.0"
+  }
+}
