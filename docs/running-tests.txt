@@ -4,27 +4,34 @@ Running Tests
 Prerequisites
 -------------
 - Python 3.9 or newer available on your PATH.
-- Project dependencies installed in an isolated environment.
+- Run `./scripts/install_prerequisites.sh` from the repository root before
+  first use in a fresh checkout or environment.
+- The installer provisions `.venv/` in the checkout, installs required system
+  tools when available, and installs the project with development extras in
+  an isolated environment.
+- After bootstrap, run commands with `.venv/bin/python` or activate `.venv`
+  before using `python`.
 
 Standard test run
 -----------------
 - Execute the full suite from the repository root:
-  - `python scripts/run_tool_with_timeout.py pytest`
+  - `.venv/bin/python scripts/run_tool_with_timeout.py pytest`
 - For sanity checks before commits, also run:
-  - `python scripts/run_tool_with_timeout.py black`
-  - `python scripts/run_tool_with_timeout.py ruff`
-  - `python scripts/run_tool_with_timeout.py compileall`
+  - `.venv/bin/python scripts/run_tool_with_timeout.py black`
+  - `.venv/bin/python scripts/run_tool_with_timeout.py ruff`
+  - `.venv/bin/python scripts/run_tool_with_timeout.py compileall`
 
 Focused execution
 -----------------
 - To target specific tests while iterating, use `-k` to match a substring:
-  - `python scripts/run_tool_with_timeout.py pytest -- -k plain_text`
+  - `.venv/bin/python scripts/run_tool_with_timeout.py pytest -- -k`
+    `plain_text`
 - To rerun a single file or test function:
-  - `python scripts/run_tool_with_timeout.py pytest --`
+  - `.venv/bin/python scripts/run_tool_with_timeout.py pytest --`
     `tests/test_rendering.py::`
     `test_render_to_ansi_preserves_five_line_plain_text`
 
-Environment notes
+Environment Notes
 -----------------
 - Tests rely on static fixtures stored under `resources/tests/`. Keep these
   files in sync with their user stories.
@@ -34,5 +41,7 @@ Environment notes
   short. Increase a timeout only when a shorter value is confirmed to
   interrupt a legitimate run.
 - For one-off overrides, pass `--timeout-seconds`, for example:
-  `python scripts/run_tool_with_timeout.py pytest --timeout-seconds 300 --`
-  `-k nested`
+  `.venv/bin/python scripts/run_tool_with_timeout.py pytest
+  --timeout-seconds 300 -- -k nested`
+- If `.venv/bin/python` cannot import `black`, `ruff`, or `pytest`, stop and
+  repair the local bootstrap before trusting any test result.

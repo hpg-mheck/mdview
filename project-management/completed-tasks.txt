@@ -6,6 +6,58 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Added installer prompting for arbitrary-directory `mdview` resolution and
+  PATH detection reporting. Recorded at 2026-03-13T08:04:46Z by Codex
+  (GPT-5) from direct operator instruction. Updated the prerequisite
+  installation specification, installation and workflow docs, and AGENTS
+  guidance so interactive bootstrap runs report whether another `mdview`
+  command appears on PATH before asking whether the checkout-local copy
+  should win. Added `--mdview-command {prompt,local,system}` handling in
+  scripts/install_prerequisites.py, managed user-local shim creation/removal
+  at `~/.local/bin/mdview`, unmanaged-command protection, and shell-wrapper
+  support for forwarding `--` arguments. Expanded
+  tests/test_install_prerequisites.py to cover PATH probing, prompt
+  messaging, and shim lifecycle behavior. Validation:
+  `.venv/bin/python scripts/run_tool_with_timeout.py ruff --`
+  `tests/test_install_prerequisites.py scripts/install_prerequisites.py`
+  passed, `.venv/bin/python scripts/run_tool_with_timeout.py compileall`
+  passed, `.venv/bin/python scripts/run_tool_with_timeout.py pytest --`
+  `tests/test_install_prerequisites.py tests/test_project_metadata.py`
+  `tests/test_run_tool_with_timeout.py tests/test_prerequisites_module.py`
+  passed, and `.venv/bin/python scripts/run_tool_with_timeout.py pytest`
+  still reports only the known 18 pre-existing failures tracked in
+  project-management/bugs/known-bugs.txt. Follow-up: repository-wide black
+  still hangs through the timeout wrapper, consistent with
+  BUG-2026-03-13-01.
+
+* Added checkout-local bootstrap guidance and enforced mandatory local-check
+  tool installation. Recorded at 2026-03-13T07:41:13Z by Codex (GPT-5) from
+  direct operator instruction. Updated AGENTS.md plus workflow, installation,
+  sandbox, and test-running docs to require
+  `./scripts/install_prerequisites.sh` and `.venv/bin/python` (or an
+  activated `.venv`) for local checks; fixed
+  prerequisite warnings to reference the canonical installer; updated
+  pyproject.toml so bootstrap installs `prompt_toolkit` plus the mandatory
+  `black`, `pytest`, and `ruff` dev tools; taught
+  scripts/install_prerequisites.py to skip package-manager work when the
+  required system tools already exist; and made
+  scripts/run_tool_with_timeout.py fail fast when mandatory tools are missing
+  from the active interpreter.
+  Added regression coverage in tests/test_install_prerequisites.py,
+  tests/test_project_metadata.py, and tests/test_run_tool_with_timeout.py.
+  Validation: `./scripts/install_prerequisites.sh` completed after network
+  approval and skipped unnecessary system package installation,
+  `.venv/bin/python scripts/run_tool_with_timeout.py ruff` passed,
+  `.venv/bin/python scripts/run_tool_with_timeout.py compileall` passed,
+  `.venv/bin/python scripts/run_tool_with_timeout.py pytest --`
+  `tests/test_install_prerequisites.py tests/test_prerequisites_module.py`
+  `tests/test_project_metadata.py tests/test_run_tool_with_timeout.py`
+  `tests/test_cli.py` passed, and
+  `.venv/bin/python scripts/run_tool_with_timeout.py pytest` still reports
+  the known 18 pre-existing failures tracked in
+  project-management/bugs/known-bugs.txt. Follow-up: filed
+  BUG-2026-03-13-01 for the unresolved repository-wide `black` hang.
+
 * Cleared the three-pass intake parser backlog group and finalized DOM-linked
   parser integration. Recorded at 2026-03-06T21:04:58-08:00 by Codex (GPT-5)
   from direct operator instruction. Implemented pass-1 line analysis, pass-2

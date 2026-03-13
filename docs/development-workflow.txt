@@ -50,13 +50,21 @@ the relevant specification or proposal so reviewers can verify scope. While
 executing, keep notes concise and dated.
 
 Implement the specification, keeping code and tests aligned with Chicago style
-documentation standards and the required checks. Run
-`python scripts/run_tool_with_timeout.py black`,
-`python scripts/run_tool_with_timeout.py ruff`,
-`python scripts/run_tool_with_timeout.py compileall`, and
-`python scripts/run_tool_with_timeout.py pytest` before declaring the work
-ready. If progress stalls, move the entry back to the backlog with an
-explanation and timestamp.
+documentation standards and the required checks. After running
+`./scripts/install_prerequisites.sh`, use `.venv/bin/python` (or activate
+`.venv`) and run `.venv/bin/python scripts/run_tool_with_timeout.py black`,
+`.venv/bin/python scripts/run_tool_with_timeout.py ruff`,
+`.venv/bin/python scripts/run_tool_with_timeout.py compileall`, and
+`.venv/bin/python scripts/run_tool_with_timeout.py pytest` before declaring
+the work ready. If black, ruff, or pytest is missing, treat that as an
+environment failure and fix the bootstrap before proceeding. Interactive
+bootstrap runs report whether another `mdview` command appears on PATH before
+prompting whether arbitrary-directory `mdview` invocations should prefer the
+checkout-local copy. In non-interactive sessions, pass
+`./scripts/install_prerequisites.sh -- --mdview-command local` or
+`./scripts/install_prerequisites.sh -- --mdview-command system` when command
+resolution matters. If progress stalls, move the entry back to the backlog
+with an explanation and timestamp.
 
 Clearing
 --------

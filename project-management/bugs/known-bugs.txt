@@ -6,6 +6,16 @@
 # Include a concise summary, reproduction notes when available, the ISO 8601
 # timestamp for when the bug was logged, and any blockers or owners.
 
+* BUG-2026-03-13-01 Added 2026-03-13T07:41:13Z. Repository-local `black`
+  execution hangs beyond the configured bailout even when scoped to `src`,
+  `tests`, and `scripts`, blocking the required formatting check.
+  Reproduction: run `.venv/bin/python scripts/run_tool_with_timeout.py black`
+  after bootstrap and observe repeated timeout expiry while `ruff`,
+  `compileall`, and targeted pytest runs succeed.
+  Owner: unassigned. Blockers: none. Related work: prerequisite/bootstrap
+  guidance task recorded in project-management/completed-tasks.txt on
+  2026-03-13.
+
 * BUG-2026-03-07-01 Added 2026-03-07T03:42:15Z. Rich-rendered emphasis paths
   introduce wrap-join spacing drift that breaks boundary assertions for bold,
   italic, bold+italic, and strikethrough suites.

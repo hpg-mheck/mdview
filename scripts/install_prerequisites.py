@@ -11,12 +11,13 @@ from __future__ import annotations
 import argparse
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence
+from typing import Callable, Dict, Iterable, List, Optional, Sequence, TextIO
 
 
 @dataclass
@@ -158,10 +159,211 @@ def execute_commands(commands: Iterable[Sequence[str]], runner: CommandRunner) -
         runner.run(list(command))
 
 
+MANAGED_MDVIEW_SHIM_MARKER = "# mdview-managed-local-shim"
+
+
+def _python_module_available(python_executable: str, module_name: str) -> bool:
+    try:
+        result = subprocess.run(
+            [python_executable, "-c", f"import {module_name}"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        return False
+    return result.returncode == 0
+
+
+def collect_missing_system_tools(python_executable: str) -> List[str]:
+    missing: List[str] = []
+    if not _python_module_available(python_executable, "venv"):
+        missing.append("venv")
+    if not _python_module_available(python_executable, "pip"):
+        missing.append("pip")
+    if shutil.which("less") is None:
+        missing.append("less")
+    if shutil.which("git") is None:
+        missing.append("git")
+    return missing
+
+
 def venv_python_path(venv_path: Path) -> Path:
     bin_dir = "Scripts" if os.name == "nt" else "bin"
     executable = "python.exe" if os.name == "nt" else "python"
     return venv_path.joinpath(bin_dir, executable)
+
+
+def venv_command_path(venv_path: Path, command_name: str) -> Path:
+    bin_dir = "Scripts" if os.name == "nt" else "bin"
+    executable = f"{command_name}.exe" if os.name == "nt" else command_name
+    return venv_path.joinpath(bin_dir, executable)
+
+
+def default_mdview_command_path(home: Optional[Path] = None) -> Path:
+    base_home = Path.home() if home is None else home
+    executable = "mdview.exe" if os.name == "nt" else "mdview"
+    return base_home / ".local" / "bin" / executable
+
+
+def _is_managed_mdview_shim(path: Path) -> bool:
+    if not path.exists() or not path.is_file():
+        return False
+    try:
+        return MANAGED_MDVIEW_SHIM_MARKER in path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+
+def detect_noncheckout_mdview(
+    local_mdview: Path,
+    *,
+    path_env: Optional[str] = None,
+    command_path: Optional[Path] = None,
+) -> Optional[Path]:
+    search_path = os.environ.get("PATH", "") if path_env is None else path_env
+    managed_command = (
+        default_mdview_command_path() if command_path is None else command_path
+    )
+    local_resolved = local_mdview.resolve(strict=False)
+    executable = managed_command.name
+
+    for raw_entry in search_path.split(os.pathsep):
+        if not raw_entry:
+            continue
+        candidate = Path(raw_entry) / executable
+        if not candidate.exists() or not os.access(candidate, os.X_OK):
+            continue
+        if candidate == managed_command and _is_managed_mdview_shim(candidate):
+            continue
+        if candidate.resolve(strict=False) == local_resolved:
+            continue
+        return candidate
+
+    return None
+
+
+def resolve_mdview_command_mode(
+    requested_mode: str,
+    *,
+    interactive: bool,
+    alternate_mdview: Optional[Path],
+    input_func: Callable[[str], str] = input,
+    output: Optional[TextIO] = None,
+) -> str:
+    stream = sys.stdout if output is None else output
+
+    if alternate_mdview is None:
+        print(
+            "No other mdview command detected on PATH outside this checkout.",
+            file=stream,
+        )
+    else:
+        print(
+            f"Another mdview command appears on PATH at {alternate_mdview}.",
+            file=stream,
+        )
+
+    if requested_mode in {"local", "system"}:
+        return requested_mode
+
+    if not interactive:
+        print(
+            "Non-interactive install: leaving mdview PATH resolution unchanged. "
+            "Use --mdview-command local or --mdview-command system to override.",
+            file=stream,
+        )
+        return "system"
+
+    prompt = (
+        "When you type 'mdview' outside this checkout, use the local "
+        "development copy instead of the other PATH result? [y/N]: "
+    )
+    if alternate_mdview is None:
+        prompt = (
+            "When you type 'mdview' outside this checkout, install a managed "
+            "local shim so the development copy wins? [y/N]: "
+        )
+
+    response = input_func(prompt).strip()
+    return "local" if response.lower() in {"y", "yes"} else "system"
+
+
+def _managed_mdview_shim_contents(local_mdview: Path) -> str:
+    quoted_target = shlex.quote(str(local_mdview))
+    return "\n".join(
+        [
+            "#!/usr/bin/env bash",
+            MANAGED_MDVIEW_SHIM_MARKER,
+            f"TARGET={quoted_target}",
+            'if [ ! -x "$TARGET" ]; then',
+            '  echo "mdview shim target missing: $TARGET" >&2',
+            "  exit 1",
+            "fi",
+            'exec "$TARGET" "$@"',
+            "",
+        ]
+    )
+
+
+def apply_mdview_command_mode(
+    mode: str,
+    local_mdview: Path,
+    *,
+    command_path: Optional[Path] = None,
+    dry_run: bool = False,
+    output: Optional[TextIO] = None,
+) -> None:
+    stream = sys.stdout if output is None else output
+    shim_path = default_mdview_command_path() if command_path is None else command_path
+
+    if mode == "local":
+        if shim_path.exists() and not _is_managed_mdview_shim(shim_path):
+            raise RuntimeError(
+                f"Refusing to overwrite unmanaged mdview command at {shim_path}."
+            )
+        if not dry_run and not local_mdview.exists():
+            raise RuntimeError(
+                f"Local development mdview entry point does not exist: {local_mdview}"
+            )
+        if dry_run:
+            print(
+                f"Would install managed mdview shim at {shim_path} -> {local_mdview}",
+                file=stream,
+            )
+            return
+
+        shim_path.parent.mkdir(parents=True, exist_ok=True)
+        shim_path.write_text(
+            _managed_mdview_shim_contents(local_mdview), encoding="utf-8"
+        )
+        shim_path.chmod(0o755)
+        print(
+            f"Installed managed mdview shim at {shim_path} -> {local_mdview}",
+            file=stream,
+        )
+        return
+
+    if mode != "system":
+        raise ValueError(f"Unsupported mdview command mode: {mode}")
+
+    if not shim_path.exists():
+        print("Leaving mdview PATH resolution unchanged.", file=stream)
+        return
+
+    if not _is_managed_mdview_shim(shim_path):
+        print(
+            f"Leaving existing unmanaged mdview command untouched at {shim_path}.",
+            file=stream,
+        )
+        return
+
+    if dry_run:
+        print(f"Would remove managed mdview shim at {shim_path}", file=stream)
+        return
+
+    shim_path.unlink()
+    print(f"Removed managed mdview shim at {shim_path}", file=stream)
 
 
 def ensure_virtualenv(
@@ -233,6 +435,16 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--dry-run", action="store_true", help="Print commands without executing them."
     )
+    parser.add_argument(
+        "--mdview-command",
+        choices=("prompt", "local", "system"),
+        default="prompt",
+        help=(
+            "Select whether typing mdview outside this checkout should use "
+            "the local development copy, leave PATH resolution unchanged, or "
+            "prompt when interactive."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -247,18 +459,33 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if manager is None:
         raise RuntimeError("No supported package manager found for this platform.")
 
-    packages = system_packages_for(manager)
-    use_sudo = should_use_sudo()
-    commands = build_install_commands(manager, packages, use_sudo)
     print(
         f"Detected platform: {os_info.pretty_name} ({os_info.platform_id} {os_info.version_id})"
     )
-    execute_commands(commands, runner)
+    missing_tools = collect_missing_system_tools(args.python)
+    if missing_tools:
+        packages = system_packages_for(manager)
+        use_sudo = should_use_sudo()
+        commands = build_install_commands(manager, packages, use_sudo)
+        print(f"Missing system tools detected: {', '.join(missing_tools)}")
+        execute_commands(commands, runner)
+    else:
+        print(
+            "System prerequisites already available; skipping package-manager install."
+        )
 
     venv_path = Path(args.venv).resolve()
     venv_python = ensure_virtualenv(args.python, venv_path, runner)
     upgrade_pip_tooling(str(venv_python), runner)
     install_project(str(venv_python), dev=not args.production, runner=runner)
+    local_mdview = venv_command_path(venv_path, "mdview")
+    alternate_mdview = detect_noncheckout_mdview(local_mdview)
+    command_mode = resolve_mdview_command_mode(
+        args.mdview_command,
+        interactive=sys.stdin.isatty() and sys.stdout.isatty(),
+        alternate_mdview=alternate_mdview,
+    )
+    apply_mdview_command_mode(command_mode, local_mdview, dry_run=args.dry_run)
     print(f"Environment ready in {venv_path}")
     return 0
 

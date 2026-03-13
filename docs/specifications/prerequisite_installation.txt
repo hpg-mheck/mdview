@@ -14,6 +14,13 @@ recent macOS versions.
   support, `less`, build helpers).
 - Create or reuse a project-scoped virtual environment and install mdview
   with development extras through pip.
+- Ensure the bootstrap path installs runtime Python dependencies for normal
+  mdview usage and the mandatory local-check tools (`pytest`, `black`,
+  `ruff`) for development validation.
+- For interactive developer installs, prompt whether typing `mdview` outside
+  the checkout should resolve to the local development copy or to another
+  installed copy, and report whether another `mdview` executable appears on
+  the current PATH before asking.
 - Offer a dry-run mode to show commands without executing them so tests can
   validate logic without mutating the host.
 - Keep logic compatible with Python 3.9+ and avoid non-portable shell
@@ -33,9 +40,20 @@ recent macOS versions.
 - Upgrade `pip`, `setuptools`, and `wheel` inside the environment.
 - Install the project in editable mode with `.[dev]` extras by default;
   allow a production-only option.
+- Repository-local checks must run with `.venv/bin/python` or an activated
+  `.venv` so the bootstrap environment remains authoritative.
 
 ## Safety and usability
 - Prefer `sudo` for system package operations when not running as root.
+- Skip package-manager installation when the required system tools are already
+  present on the host.
+- When running interactively, report whether a non-checkout `mdview`
+  executable appears on PATH before prompting about command resolution.
+- If the developer chooses the local checkout, install a managed user-local
+  `mdview` shim that delegates to the checkout `.venv` entry point.
+- If the developer chooses the installed copy, remove any managed shim from a
+  prior local-choice install and otherwise leave PATH resolution unchanged.
+- Never overwrite an unrelated existing `mdview` executable silently.
 - Print planned operations before executing; honor a `--dry-run` flag to
   skip execution.
 - Fail with clear messaging when the platform is unsupported or required
@@ -45,5 +63,7 @@ recent macOS versions.
 - Expose pure functions for parsing `/etc/os-release`, mapping package
   managers, and building install commands so pytest can cover decision
   paths without invoking subprocesses.
+- Cover PATH probing, prompt selection, managed shim creation, and managed
+  shim removal without touching the real user environment.
 - Keep subprocess calls isolated behind a runner utility that can be
   stubbed in tests.

@@ -2,18 +2,18 @@
   "default_timeout_seconds": 60,
   "tools": {
     "black": {
-      "timeout_seconds": 45,
+      "timeout_seconds": 180,
       "timeout_retries": 1,
       "cleanup_patterns": [
-        "^python -m black( |$)"
+        "python -m black( |$)"
       ],
       "command": [
         "python",
         "-m",
         "black",
-        ".",
-        "--exclude",
-        "/(\\.venv|mdview\\.egg-info)/"
+        "src",
+        "tests",
+        "scripts"
       ]
     },
     "ruff": {
@@ -23,7 +23,9 @@
         "-m",
         "ruff",
         "check",
-        "."
+        "src",
+        "tests",
+        "scripts"
       ]
     },
     "compileall": {
@@ -33,7 +35,8 @@
         "-m",
         "compileall",
         "src",
-        "tests"
+        "tests",
+        "scripts"
       ]
     },
     "pytest": {

@@ -11,6 +11,12 @@ Sandbox checklist
 - Start in the repository root and run `./scripts/install_prerequisites.sh`.
 - Allow the shell wrapper to create `.venv`; it upgrades packaging tools and
   calls the Python installer for system and pip dependencies.
+- Non-interactive runs do not prompt for `mdview` command resolution; use
+  `./scripts/install_prerequisites.sh -- --mdview-command local` or
+  `./scripts/install_prerequisites.sh -- --mdview-command system` when the
+  desired PATH behavior must be explicit.
+- Run follow-up repository commands with `.venv/bin/python` or activate
+  `.venv` before using `python`.
 - Keep the working directory clean: the installer avoids global changes and
   prefers the project-local virtual environment.
 - Use `--dry-run` with the Python installer when validating changes in

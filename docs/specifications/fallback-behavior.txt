@@ -31,9 +31,9 @@ lacks
   user-facing notice explaining the reduced navigation features.
 - Pre-flight prerequisite checks: When Rich, prompt_toolkit, or the default
   pager (less) is missing, print immediate warnings before argument parsing,
-  recommending scripts/install-prerequisites or the appropriate package
-  install. These warnings must appear even when execution exits early via
-  --help.
+  recommending `./scripts/install_prerequisites.sh` or the appropriate
+  package install. These warnings must appear even when execution exits early
+  via --help.
 
 Testing Guidance (post-spec):
 - Add regression tests that force dependency detection to fail and

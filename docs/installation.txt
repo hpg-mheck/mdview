@@ -25,6 +25,23 @@ skip developer dependencies:
 
 The `--` separator ensures arguments reach the Python installer unchanged.
 
+Interactive command resolution
+------------------------------
+
+During interactive developer installs, the Python installer reports whether
+another `mdview` executable appears on PATH outside this checkout and then
+asks whether typing `mdview` in arbitrary directories should use the local
+development copy or leave PATH resolution unchanged. Choosing the local
+development copy installs a managed `~/.local/bin/mdview` shim that delegates
+to this checkout's `.venv` entry point.
+
+Override the prompt explicitly when needed:
+
+```
+./scripts/install_prerequisites.sh -- --mdview-command local
+./scripts/install_prerequisites.sh -- --mdview-command system
+```
+
 Supported platforms
 -------------------
 
@@ -42,13 +59,18 @@ What the installer does
 - Installs `python3`, `venv` tooling, `less`, and `git` using the native
   package manager (with `sudo` when required).
 - Creates `.venv` if missing and upgrades `pip`, `setuptools`, and `wheel`.
+- Skips package-manager installation when the required system tools are
+  already available.
 - Installs the project in editable mode with optional developer extras.
+- Default developer extras include `pytest`, `black`, and `ruff`.
 
 Notes and expectations
 ----------------------
 
 - Run the installer from the repository root to ensure relative paths resolve
   correctly.
+- After bootstrap, use `.venv/bin/python` for repository-local checks or
+  activate `.venv` before running `python`.
 - If the host lacks `sudo`, run the script as a privileged user or install the
   required system packages manually.
 - The Python logic supports a dry run for validation: `python scripts/

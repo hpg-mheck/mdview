@@ -98,4 +98,7 @@ fi
 # shellcheck disable=SC1090
 source "$VENV_DIR/bin/activate"
 python -m pip install --upgrade pip setuptools wheel
+if [ "$#" -gt 0 ] && [ "$1" = "--" ]; then
+  shift
+fi
 python "$ROOT_DIR/scripts/install_prerequisites.py" "$@"

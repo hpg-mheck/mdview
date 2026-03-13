@@ -91,6 +91,18 @@ environment notes that must not be committed.
   ownership or blocker updates.
 
 ## Testing Expectations
+- Before running local checks in a fresh checkout or environment, bootstrap
+  the repository-local toolchain from the repository root with
+  `./scripts/install_prerequisites.sh`. The installer provisions `.venv/`
+  inside the checkout, installs required system tools when available, and
+  installs the project with development extras. Interactive installs report
+  whether another `mdview` command appears on PATH before prompting whether
+  arbitrary-directory `mdview` invocations should prefer the checkout-local
+  copy. Non-interactive runs can override that choice with
+  `./scripts/install_prerequisites.sh -- --mdview-command local` or
+  `./scripts/install_prerequisites.sh -- --mdview-command system`. After
+  bootstrap, run local checks with `.venv/bin/python` or an activated
+  `.venv`.
 - Default to extensive, paranoid, pessimistic unit tests. Cover edge cases,
   error handling, and failure modes alongside happy paths.
 - Derive tests from user stories and scenarios; keep them executable and
@@ -101,17 +113,22 @@ environment notes that must not be committed.
   automated scenarios can rely on consistent inputs.
 
 ## Required Local Checks (run before submitting any change)
+0. Bootstrap the local environment in a fresh checkout:
+   - `./scripts/install_prerequisites.sh`
 1. Format and lint:
-   - `python scripts/run_tool_with_timeout.py black`
-   - `python scripts/run_tool_with_timeout.py ruff`
+   - `.venv/bin/python scripts/run_tool_with_timeout.py black`
+   - `.venv/bin/python scripts/run_tool_with_timeout.py ruff`
 2. Static sanity:
-   - `python scripts/run_tool_with_timeout.py compileall`
+   - `.venv/bin/python scripts/run_tool_with_timeout.py compileall`
 3. Tests:
-   - `python scripts/run_tool_with_timeout.py pytest`
+   - `.venv/bin/python scripts/run_tool_with_timeout.py pytest`
 
-Use `python scripts/run_tool_with_timeout.py pytest -- -k <pattern>` to focus
-on a subset of tests when iterating, but always run the full suite before
-committing.
+Use `.venv/bin/python scripts/run_tool_with_timeout.py pytest -- -k
+<pattern>` to focus on a subset of tests when iterating, but always run the
+full suite before committing.
+
+If `.venv/bin/python` cannot import `black`, `ruff`, or `pytest`, stop and
+fix the environment. Those tools are mandatory for local validation.
 
 Timeout policy for AI agents:
 - Invoke `black`, `ruff`, `compileall`, and `pytest` only through

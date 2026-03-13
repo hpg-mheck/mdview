@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import shlex
@@ -13,6 +14,7 @@ from typing import Dict, List, Tuple
 
 
 CONFIG_FILE = Path(__file__).resolve().with_name("tool_timeouts.json")
+MANDATORY_TOOL_MODULES = {"black", "pytest", "ruff"}
 
 
 def _load_config() -> Dict[str, object]:
@@ -93,6 +95,31 @@ def _resolve_tool_run(
     return command + args, timeout, retries, cleanup_patterns
 
 
+def _bind_python_command(command: List[str]) -> List[str]:
+    if command and command[0] == "python":
+        return [sys.executable] + command[1:]
+    return command
+
+
+def _require_installed_tool(tool: str, command: List[str]) -> None:
+    if tool not in MANDATORY_TOOL_MODULES:
+        return
+    if len(command) < 3 or command[1] != "-m":
+        return
+
+    module_name = command[2]
+    if importlib.util.find_spec(module_name) is not None:
+        return
+
+    raise RuntimeError(
+        "Required tool '{tool}' is not installed for interpreter '{python}'. "
+        "Run ./scripts/install_prerequisites.sh, then invoke checks with "
+        ".venv/bin/python or an activated .venv.".format(
+            tool=tool, python=sys.executable
+        )
+    )
+
+
 def _cleanup_processes(patterns: List[str]) -> None:
     if not patterns:
         return
@@ -117,6 +144,12 @@ def main() -> int:
         override_timeout=args.timeout_seconds,
         tool_args=args.tool_args,
     )
+    command = _bind_python_command(command)
+    try:
+        _require_installed_tool(args.tool, command)
+    except RuntimeError as error:
+        print(f"[timeout-wrapper] prerequisite failure: {error}", file=sys.stderr)
+        return 127
 
     pretty = " ".join(shlex.quote(part) for part in command)
     print(f"[timeout-wrapper] running: {pretty}")
