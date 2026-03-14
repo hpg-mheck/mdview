@@ -1,0 +1,101 @@
+Viewport Navigation and Automation JSON Specification
+=====================================================
+
+Purpose
+-------
+Define viewport-based movement controls for interactive mdview sessions and
+add deterministic automation replay through a new `--automation-json` option.
+
+Scope
+-----
+- Keep mdview as a viewer, not an editor.
+- Move the entire viewport with navigation keys.
+- Add automation replay input that can drive viewport movement and integrate
+  with existing timeout capture artifacts.
+
+Viewer Interaction Model
+------------------------
+- mdview does not track a literal text cursor inside the visible region.
+- Navigation keys move the viewport offsets only.
+- Viewport movement must stay clamped to document bounds.
+
+Required key bindings for viewport movement:
+- Up Arrow: move viewport one row up.
+- Down Arrow: move viewport one row down.
+- Left Arrow: move viewport one column left.
+- Right Arrow: move viewport one column right.
+- Page Up: move viewport up by one viewport height.
+- Page Down: move viewport down by one viewport height.
+- Home: jump to top of document.
+- End: jump to bottom of document.
+
+Compatibility aliases (`h`, `j`, `k`, `l`) may remain available, but arrow and
+page/navigation keys are canonical requirements.
+
+Automation JSON Option
+----------------------
+Add CLI option:
+- `--automation-json <SOURCE>`
+
+`SOURCE` interpretation:
+- If `SOURCE` resolves to an existing file path, mdview reads JSON from that
+  file.
+- Otherwise, mdview interprets `SOURCE` as a literal JSON string.
+
+JSON schema:
+- Top-level value: array.
+- Each item: two-element array `[delay_seconds, key_spec]`.
+- `delay_seconds`: non-negative finite float or integer interpreted as time to
+  wait before injecting the key input.
+- `key_spec`: string describing one keypress sequence.
+
+Key specification requirements:
+- Must support simple names (`down`, `pageup`, `home`, `end`, etc.).
+- Must support control chords (for example, `c-x`).
+- Must support meta/alt combinations with character chords (for example,
+  `m-c-x` or equivalent).
+- Must support VT100 escape-sequence playback for terminals where complex
+  combinations are represented by encoded escape input.
+
+Automation Replay Behavior
+--------------------------
+- Replay runs only in the interactive prompt_toolkit pager path.
+- On fallback/non-interactive output paths, replay is skipped and mdview emits
+  a user-facing fallback notice.
+- Replay events inject keys on the viewer event loop, honoring each event's
+  pre-key delay.
+- Replay and `--automation-timeout` can run together. Timeout capture must
+  reflect the viewport state after replayed navigation that occurred before
+  timeout fires.
+
+Error Handling
+--------------
+- Invalid `--automation-json` input (I/O failure, malformed JSON, schema
+  violation, unsupported key specification) must produce a clear stderr error
+  and exit code `2`.
+- Error text should identify the failing item index when possible.
+
+Documentation Requirements
+--------------------------
+- Add `docs/movement.txt` explaining:
+  - viewport-only movement model (no in-viewport cursor),
+  - canonical key bindings,
+  - interaction with document bounds,
+  - automation replay format and examples.
+- Update CLI help/manpage/user-facing option documentation to include
+  `--automation-json`.
+
+Testing Requirements
+--------------------
+- CLI/unit tests for:
+  - file-vs-literal JSON source behavior,
+  - schema validation failures and user-facing errors,
+  - propagation of parsed replay events into pager invocation.
+- Pager tests for:
+  - replayed key events moving viewport offsets,
+  - replay ordering and delays,
+  - replay plus timeout screenshot capture behavior.
+- Provide a simple replay-driven viewport validation scenario:
+  - baseline capture with no navigation,
+  - capture after replaying a down-arrow input,
+  - assertion that visible rows/offsets changed as expected.

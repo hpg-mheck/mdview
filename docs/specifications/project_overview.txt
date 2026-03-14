@@ -60,10 +60,12 @@ Functional Requirements
     ``docs/specifications/reflow_mode.txt``.
 - Viewing Engine
   - Uses mdview's internal viewer exclusively for display and navigation.
+  - Maintains viewport offsets only; mdview does not track a literal text
+    cursor inside the viewport.
   - Activates horizontal scrolling whenever at least one rendered line
     exceeds viewport width.
-  - Uses left and right arrow keys to move the viewport horizontally
-    across the rendered virtual document.
+  - Uses arrow keys, page navigation keys, and home/end to move the viewport
+    across the rendered virtual document within document bounds.
   - Supports multi-document sessions with ``n``/``p`` and compatible
     ``:n``/``:p`` commands for next/previous document.
 - CLI
@@ -78,7 +80,9 @@ Functional Requirements
     ``--automation-timeout-screenshot <basename>`` writes timeout-exit
     artifacts as ``<basename>.txt`` and ``<basename>.attrs.json``, and
     ``--viewport-columns``/``--viewport-rows`` provide synthetic viewport
-    size overrides for deterministic automation.
+    size overrides for deterministic automation. ``--automation-json`` replays
+    scripted key input as JSON ``[[delay_seconds, key_spec], ...]`` from a
+    file path or literal JSON string.
     ``--verbose`` reports document switches, and ``--MIL`` enables
     Monkey-in-the-Loop per-action troubleshooting telemetry.
 

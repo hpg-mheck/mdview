@@ -1,0 +1,89 @@
+Viewport Movement and Automation Replay
+=======================================
+
+mdview is a viewer. It does not maintain an in-viewport editing cursor.
+Navigation moves the viewport window over a fixed rendered document.
+
+Movement model
+--------------
+- Vertical movement updates the viewport row offset.
+- Horizontal movement updates the viewport column offset.
+- Offsets are clamped to document bounds; movement keys never scroll past
+  top/left or bottom/right limits.
+
+Canonical key bindings
+----------------------
+- `Up Arrow`: move viewport up one row.
+- `Down Arrow`: move viewport down one row.
+- `Left Arrow`: move viewport left one column.
+- `Right Arrow`: move viewport right one column.
+- `Page Up`: move viewport up by one viewport height.
+- `Page Down`: move viewport down by one viewport height.
+- `Home`: jump to top of document.
+- `End`: jump to bottom of document.
+
+Compatibility aliases remain available for convenience:
+- `h`/`l` pan left/right.
+- `j`/`k` move down/up.
+
+Automation replay (`--automation-json`)
+---------------------------------------
+Use `--automation-json SOURCE` to replay key input before timeout capture.
+
+`SOURCE` can be:
+- a JSON file path (if the path exists), or
+- a literal JSON string.
+
+JSON format:
+- top-level array,
+- each item is `[delay_seconds, key_spec]`.
+
+Rules:
+- `delay_seconds` is a non-negative finite number.
+- Delays are cumulative in listed order.
+- `key_spec` is a string describing one replayed key sequence.
+
+Key specification styles
+------------------------
+- Simple names: `down`, `up`, `left`, `right`, `pageup`, `pagedown`,
+  `home`, `end`, `escape`.
+- Control chords: `c-x`, `c-space`.
+- Meta/Alt chords: `m-x`, `m-c-x`, `ctrl+meta+x`.
+- VT100 sequence passthrough: prefix with `vt100:`, then provide encoded key
+  input (for example, an escape sequence in JSON with `\\u001b`).
+
+Replay runs only in the interactive prompt_toolkit pager path. If mdview
+falls back to non-interactive output, replay is skipped and a fallback notice
+is emitted.
+
+Capture-oriented viewport validation
+------------------------------------
+The basic replay workflow is:
+1. Capture a baseline viewport.
+2. Replay one movement key.
+3. Capture again and compare.
+
+Example baseline capture:
+```bash
+./mdview README.md \
+  --viewport-columns 100 \
+  --viewport-rows 24 \
+  --automation-timeout 0.5 \
+  --automation-timeout-screenshot /tmp/mdview-baseline
+```
+
+Example moved capture (one down-arrow replay):
+```bash
+./mdview README.md \
+  --viewport-columns 100 \
+  --viewport-rows 24 \
+  --automation-timeout 0.5 \
+  --automation-timeout-screenshot /tmp/mdview-down1 \
+  --automation-json '[[0.0, "down"]]'
+```
+
+Expected effect:
+- `/tmp/mdview-down1.txt` should start one row lower than
+  `/tmp/mdview-baseline.txt`.
+- `vertical_scroll` in `/tmp/mdview-down1.attrs.json` should be greater than
+  the baseline value.

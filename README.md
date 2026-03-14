@@ -55,11 +55,17 @@ Optional flags:
   framebuffer artifacts as `<basename>.txt` and `<basename>.attrs.json`
   (defaults to `./mdview-automation-timeout-framebuffer` when timeout is
   enabled).
+- `--automation-json <source>` to replay timed key input as
+  `[[delay_seconds, key_spec], ...]` from a JSON file path or literal JSON
+  string.
 - `--viewport-columns <int>` and `--viewport-rows <int>` to enforce synthetic
   viewport dimensions for deterministic automation captures.
 - `--verify-resize-detection` to run an interactive resize checklist that
   acknowledges detected events and reports PASS/FAIL per step.
 - `--version` to display the current version.
+
+Viewport movement behavior and automation replay format are documented in
+`docs/movement.txt`.
 
 Markdown content reflows to current window dimensions by default.
 `--reflow` is therefore redundant for Markdown. The exception is Markdown

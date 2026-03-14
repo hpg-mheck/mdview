@@ -1,4 +1,5 @@
-Title: Automation Timeout, Framebuffer Capture, and Synthetic Viewport Controls
+Title: Automation Timeout, Framebuffer Capture, and Synthetic Viewport
+Controls
 Status: Draft
 
 Overview
@@ -24,6 +25,15 @@ CLI Contract
 - `--viewport-rows <int>`
   - Optional positive integer that overrides detected viewport height for
     rendering and navigation logic.
+- `--automation-json <source>`
+  - Optional JSON automation replay input.
+  - If `<source>` resolves to an existing file, read JSON from that file;
+    otherwise parse `<source>` as literal JSON text.
+  - JSON schema: top-level array of two-element arrays
+    `[delay_seconds, key_spec]`.
+  - `delay_seconds` is a non-negative finite number interpreted as delay
+    before replaying the key spec.
+  - `key_spec` is a non-empty string key sequence descriptor.
 
 Behavior Requirements
 - Timeout starts when the interactive viewer session starts.
@@ -31,6 +41,13 @@ Behavior Requirements
   trigger additional shutdown actions.
 - On timeout, mdview must capture a full visible viewport/framebuffer snapshot
   before issuing synthetic quit.
+- Automation replay events must run in-order before timeout capture when their
+  scheduled delays occur earlier than the timeout.
+- Replay key specs must support:
+  - simple key names (for example `down`, `pageup`, `home`),
+  - control chords (for example `c-x`),
+  - meta/alt chords (for example `m-c-x`),
+  - `vt100:`-prefixed escape-sequence playback.
 - Capture should prefer prompt_toolkit framebuffer data when available, with a
   deterministic text-buffer fallback that respects current scroll offsets and
   active viewport dimensions.
@@ -45,7 +62,8 @@ Behavior Requirements
     style flags) when available from prompt_toolkit renderer state.
 - Capture write failures are non-fatal; mdview continues the quit path.
 - In non-interactive fallback mode (for example no TTY or missing interactive
-  dependencies), timeout and capture options are ignored without error.
+  dependencies), timeout, replay, and capture options are ignored without
+  error.
 - `--MIL` telemetry must include:
   - an explicit timeout event before synthetic quit,
   - timeout-screenshot success/failure context with output basename and
@@ -60,6 +78,8 @@ Testing Requirements
 - Add pager tests that verify timeout-triggered quit behavior in the internal
   prompt_toolkit path, capture artifact creation (`.txt` and `.attrs.json`),
   and telemetry emission when `--MIL` logging is active.
+- Add replay tests that verify key-sequence parsing and replay-driven viewport
+  movement before timeout capture.
 - Add tests for synthetic viewport overrides so deterministic width/height
   behavior can be exercised in non-resize automation runs.
 

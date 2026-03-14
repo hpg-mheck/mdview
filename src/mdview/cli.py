@@ -1,6 +1,7 @@
 """Command-line interface for mdview."""
 
 import argparse
+import json
 import math
 import shutil
 import sys
@@ -33,6 +34,9 @@ class _LoadedDocument:
     reflow_mode: str
 
 
+AutomationReplayEvent = tuple[float, str]
+
+
 def _non_negative_seconds(value: str) -> float:
     """Return a validated non-negative timeout value in seconds."""
 
@@ -61,6 +65,52 @@ def _positive_int(value: str) -> int:
     if parsed <= 0:
         raise argparse.ArgumentTypeError("value must be a positive integer")
     return parsed
+
+
+def _parse_automation_json_source(source: str) -> list[AutomationReplayEvent]:
+    """Return validated automation replay events from file or literal JSON."""
+
+    payload = source
+    candidate = Path(source).expanduser()
+    if candidate.exists():
+        if not candidate.is_file():
+            raise ValueError(f"automation JSON path is not a file: {candidate}")
+        try:
+            payload = candidate.read_text(encoding="utf-8")
+        except OSError as error:
+            raise ValueError(
+                f"failed to read automation JSON file '{candidate}': {error}"
+            ) from error
+
+    try:
+        parsed = json.loads(payload)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"invalid automation JSON: {error.msg}") from error
+
+    if not isinstance(parsed, list):
+        raise ValueError("automation JSON must be a top-level array")
+
+    events: list[AutomationReplayEvent] = []
+    for index, item in enumerate(parsed):
+        if not isinstance(item, list) or len(item) != 2:
+            raise ValueError(
+                "automation JSON entry "
+                f"{index} must be a two-element array: [delay_seconds, key_spec]"
+            )
+        delay, key_spec = item
+        if isinstance(delay, bool) or not isinstance(delay, (int, float)):
+            raise ValueError(f"automation JSON entry {index} delay must be a number")
+        delay_seconds = float(delay)
+        if not math.isfinite(delay_seconds) or delay_seconds < 0:
+            raise ValueError(
+                f"automation JSON entry {index} delay must be non-negative and finite"
+            )
+        if not isinstance(key_spec, str) or not key_spec.strip():
+            raise ValueError(
+                f"automation JSON entry {index} key spec must be a non-empty string"
+            )
+        events.append((delay_seconds, key_spec))
+    return events
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -174,6 +224,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override detected viewport height with a synthetic value.",
     )
     parser.add_argument(
+        "--automation-json",
+        metavar="SOURCE",
+        help=(
+            "Replay key events from JSON SOURCE (file path or literal JSON "
+            "string) as [[delay_seconds, key_spec], ...]."
+        ),
+    )
+    parser.add_argument(
         "-V",
         "--version",
         action="version",
@@ -265,6 +323,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         _emit_fallback_notices()
         return 2
+
+    automation_replay: Optional[list[AutomationReplayEvent]] = None
+    if args.automation_json is not None:
+        try:
+            automation_replay = _parse_automation_json_source(args.automation_json)
+        except ValueError as error:
+            print(f"mdview: {error}", file=sys.stderr)
+            _emit_fallback_notices()
+            return 2
 
     loaded_documents: list[_LoadedDocument] = []
     for path in paths:
@@ -361,6 +428,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             automation_timeout_screenshot_basename=timeout_screenshot_basename,
             viewport_columns=args.viewport_columns,
             viewport_rows=args.viewport_rows,
+            automation_replay=automation_replay,
         )
     except RuntimeError as error:
         print(f"mdview: pager error: {error}", file=sys.stderr)

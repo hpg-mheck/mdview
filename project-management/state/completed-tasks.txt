@@ -68,6 +68,36 @@ summarize how the blocker was resolved.
   `project-management/state/bugs/known-bugs.txt`. Follow-up: filed
   BUG-2026-03-13-01 for the unresolved repository-wide `black` hang.
 
+* Fixed viewport movement key handling after operator report that arrow keys
+  were not reliably moving the document. Recorded at
+  2026-03-08T21:33:02-07:00 by Codex (GPT-5) from direct operator
+  instruction. Updated `src/mdview/rendering.py` to avoid `Esc` as a quit
+  binding (preventing escape-sequence conflicts), broadened movement bindings
+  to include modified arrow/page keys, and hardened zero-delay automation
+  replay startup scheduling so `--automation-json '[[0.0, ...]]'` no longer
+  raises event-loop errors and is applied before timeout captures. Tuned
+  prompt_toolkit escape-sequence flush timing (`ttimeoutlen`/`timeoutlen`)
+  for high-latency terminal links so arrow-key sequences are less likely to
+  fragment into non-navigation keypresses. Added regression coverage in
+  `tests/test_rendering.py`, including modified key bindings and zero-delay
+  replay behavior when `call_from_executor` reports no running loop.
+  Validation: wrapper-based black, ruff, compileall, entropy_check,
+  entropy_tripwire_verify, and full pytest all passed (`285 passed`).
+
+* Implemented viewport-only navigation controls and `--automation-json`
+  replay for deterministic viewer movement testing. Recorded at
+  2026-03-08T20:34:56-07:00 by Codex (GPT-5) from direct operator
+  instruction. Added specification
+  `docs/specifications/viewport_navigation_and_automation_json.txt` and
+  user documentation at `docs/movement.txt`; updated README, POSIX help, and
+  Linux/macOS man pages; implemented JSON source parsing and validation in
+  `src/mdview/cli.py`; implemented timed key replay parsing/injection in
+  `src/mdview/rendering.py`; and added regression coverage in
+  `tests/test_cli.py` and `tests/test_rendering.py`, including baseline
+  versus replayed viewport timeout-capture assertions.
+  Validation: wrapper-based black, ruff, compileall, entropy_check,
+  entropy_tripwire_verify, and full pytest all passed (`283 passed`).
+
 * Fixed first-frame Markdown heading centering in interactive sessions by
   rendering the initial document with active viewport width. Recorded at
   2026-03-08T19:33:45-07:00 by Codex (GPT-5) from operator-reported Termius
@@ -84,7 +114,8 @@ summarize how the blocker was resolved.
   for deterministic text and style regression workflows. Recorded at
   2026-03-08T18:49:12-07:00 by Codex (GPT-5) from direct operator
   instruction. Added proposal
-  `project-management/state/proposals/completed/automation-timeout-dual-artifact-text-and-attrs-capture.txt`,
+  `project-management/state/proposals/completed/`
+  `automation-timeout-dual-artifact-text-and-attrs-capture.txt`,
   updated specification
   `docs/specifications/automation_timeout_option.txt`, changed
   `--automation-timeout-screenshot` semantics to basename output in
@@ -102,7 +133,9 @@ summarize how the blocker was resolved.
   deterministic synthetic viewport controls. Recorded at
   2026-03-08T17:57:07-07:00 by Codex (GPT-5) from direct operator
   instruction. Added proposal
-  `project-management/state/proposals/completed/automation-timeout-framebuffer-screenshots-and-synthetic-viewport-controls.txt`,
+  `project-management/state/proposals/completed/`
+  `automation-timeout-framebuffer-screenshots-and-`
+  `synthetic-viewport-controls.txt`,
   expanded specification
   `docs/specifications/automation_timeout_option.txt`, implemented new CLI
   options (`--automation-timeout-screenshot`, `--viewport-columns`,
@@ -220,8 +253,9 @@ summarize how the blocker was resolved.
 * Added an AI-to-human request queue and standing maintenance orders.
   Recorded at 2026-03-07T22:31:55-08:00 by Codex (GPT-5) from direct
   operator instruction. Added
-  `/project-management/state/ai-human-requests.txt` with pending/active/completed
-  sections plus formatting guidance, and updated `AGENTS.md` and
+  `/project-management/state/ai-human-requests.txt` with
+  pending/active/completed sections plus formatting guidance, and updated
+  `AGENTS.md` and
   `docs/human-orders-for-AI-agents.txt` so agents log requests as pending,
   help reconcile stale states, and ask for human confirmation when possible
   before auto-closing likely completed entries.
@@ -260,7 +294,8 @@ summarize how the blocker was resolved.
   ``python scripts/run_tool_with_timeout.py pytest`` (pass; ``226 passed``).
 
 * Implemented Windows 11 command-line support per
-  ``project-management/state/proposals/completed/windows-11-cli-support.txt``. Recorded at
+  ``project-management/state/proposals/completed/windows-11-cli-support.txt``.
+  Recorded at
   2026-03-06T22:43:04-08:00 by Codex (GPT-5). Added PowerShell and cmd.exe
   shims under ``scripts/windows`` for bootstrap and timeout-wrapper checks,
   extended ``scripts/install_prerequisites.py`` for Windows bootstrap flow,
@@ -382,7 +417,8 @@ summarize how the blocker was resolved.
   ``python scripts/run_tool_with_timeout.py ruff -- src/mdview/intake.py``
   ``src/mdview/dom.py tests/test_intake_parser.py`` (pass), and full
   ``python scripts/run_tool_with_timeout.py pytest`` still reports the known
-  18 pre-existing failures tracked in project-management/state/bugs/known-bugs.txt.
+  18 pre-existing failures tracked in
+  project-management/state/bugs/known-bugs.txt.
 
 * Added DOM unit coverage for invariants and behavior precedence. Recorded at
   2026-03-06T20:58:55-08:00 by Codex (GPT-5) while clearing the top backlog
@@ -414,7 +450,8 @@ summarize how the blocker was resolved.
   reports the known 18 failing tests.
 
 * Implemented the unified internal document object model baseline from
-  project-management/state/proposals/completed/internal-document-object-model.txt. Recorded at
+  project-management/state/proposals/completed/
+  internal-document-object-model.txt. Recorded at
   2026-03-07T03:58:54Z by Codex (GPT-5) while clearing the top backlog item.
   Added src/mdview/dom.py with Document/Block/Line and constraint/style
   profiles, added src/mdview/intake.py ingestion helpers, and routed
@@ -423,13 +460,16 @@ summarize how the blocker was resolved.
   tests/test_dom.py and intake-consumption coverage in
   tests/test_rendering.py.
   Validation: black/ruff/compileall passed; pytest remains blocked by the
-  known 18-failure cluster tracked in project-management/state/bugs/known-bugs.txt.
+  known 18-failure cluster tracked in
+  project-management/state/bugs/known-bugs.txt.
 
-* Populated project-management/state/bugs/known-bugs.txt with actionable entries
+* Populated project-management/state/bugs/known-bugs.txt with actionable
+  entries
   for the current failing-test cluster and linked them back to the backlog
   stabilization gate (BUG-2026-03-07-01 through BUG-2026-03-07-03). Recorded
   at 2026-03-07T03:42:51Z by Codex (GPT-5) while clearing the top backlog
-  item. Updated project-management/state/backlog.txt to include related-bug links in
+  item. Updated project-management/state/backlog.txt to include
+  related-bug links in
   the stabilization gate task. Blockers: none.
 
 * Drafted docs/specifications/reflow_mode.txt as the dedicated

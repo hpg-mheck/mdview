@@ -1032,7 +1032,7 @@ def test_prompt_toolkit_pager_emits_mil_ui_events(monkeypatch) -> None:
     class DummyWindow:
         def __init__(self, content, **_: object) -> None:
             self.content = content
-            self.render_info: DummyRenderInfo = DummyRenderInfo(20, 6)
+            self.render_info: DummyRenderInfo = DummyRenderInfo(20, 2)
             self.vertical_scroll = 0
             self.horizontal_scroll = 0
 
@@ -1117,6 +1117,112 @@ def test_prompt_toolkit_pager_emits_mil_ui_events(monkeypatch) -> None:
     assert all(context["document_index"] == 2 for _, context in events)
 
 
+def test_prompt_toolkit_pager_accepts_modified_navigation_keys(
+    monkeypatch,
+) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(20, 6)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(20, 2)
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def __init__(self) -> None:
+            self.handlers = {}
+
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                for key in keys:
+                    self.handlers[key] = func
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyEvent:
+        def __init__(self, app) -> None:
+            self.app = app
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.key_bindings = key_bindings
+            self.output = DummyOutput()
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            return
+
+        def exit(self) -> None:
+            return
+
+        def run(self) -> None:
+            event = DummyEvent(self)
+            self.layout.container.content.text_func()
+            self.key_bindings.handlers["s-down"](event)
+            self.key_bindings.handlers["c-up"](event)
+            self.key_bindings.handlers["c-s-down"](event)
+            self.key_bindings.handlers["c-pagedown"](event)
+            self.key_bindings.handlers["s-pageup"](event)
+            self.key_bindings.handlers["q"](event)
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        "line-0\nline-1\nline-2\nline-3\nline-4\nline-5",
+        viewport_rows=2,
+    )
+    assert app_registry[-1].layout.container.vertical_scroll == 1
+    assert "escape" not in app_registry[-1].key_bindings.handlers
+
+
 def test_prompt_toolkit_pager_honors_automation_timeout(monkeypatch) -> None:
     class DummyRenderInfo:
         def __init__(self, window_width: int, window_height: int) -> None:
@@ -1158,7 +1264,7 @@ def test_prompt_toolkit_pager_honors_automation_timeout(monkeypatch) -> None:
     class DummyWindow:
         def __init__(self, content, **_: object) -> None:
             self.content = content
-            self.render_info: DummyRenderInfo = DummyRenderInfo(20, 6)
+            self.render_info: DummyRenderInfo = DummyRenderInfo(20, 2)
             self.vertical_scroll = 0
             self.horizontal_scroll = 0
 
@@ -1233,6 +1339,284 @@ def test_prompt_toolkit_pager_honors_automation_timeout(monkeypatch) -> None:
     actions = [action for action, _ in events]
     assert "automation-timeout" in actions
     assert "quit" in actions
+
+
+def test_prompt_toolkit_replays_automation_key_sequences(monkeypatch) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(20, 6)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    class DummyTimer:
+        def __init__(self, interval, callback) -> None:
+            self.interval = interval
+            self.callback = callback
+
+        def start(self) -> None:
+            self.callback()
+
+        def cancel(self) -> None:
+            return
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(20, 2)
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def __init__(self) -> None:
+            self.handlers = {}
+
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                for key in keys:
+                    self.handlers[key] = func
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyEvent:
+        def __init__(self, app) -> None:
+            self.app = app
+
+    class DummyKeyProcessor:
+        def __init__(self, app) -> None:
+            self.app = app
+            self.pending = []
+
+        def feed_multiple(self, key_presses, first: bool = False) -> None:
+            self.pending.extend(list(key_presses))
+
+        def process_keys(self) -> None:
+            event = DummyEvent(self.app)
+            for key_press in self.pending:
+                key = getattr(key_press, "key", key_press)
+                resolved = getattr(key, "value", key)
+                handler = self.app.key_bindings.handlers.get(str(resolved))
+                if handler is not None:
+                    handler(event)
+            self.pending.clear()
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.key_bindings = key_bindings
+            self.output = DummyOutput()
+            self.key_processor = DummyKeyProcessor(self)
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            return
+
+        def exit(self) -> None:
+            return
+
+        def run(self) -> None:
+            self.layout.container.content.text_func()
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+    monkeypatch.setattr(rendering.threading, "Timer", DummyTimer)
+
+    events: List[Tuple[str, dict]] = []
+
+    def logger(action: str, context: dict) -> None:
+        events.append((action, context))
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        "line-0\nline-1\nline-2",
+        ui_event_logger=logger,
+        automation_replay=[(0.0, "down"), (0.0, "m-c-x")],
+        viewport_rows=2,
+    )
+
+    assert app_registry[-1].layout.container.vertical_scroll == 1
+    replay_actions = [
+        action for action, _ in events if action == "automation-replay-key"
+    ]
+    assert len(replay_actions) == 2
+    combo_event = next(
+        context
+        for action, context in events
+        if action == "automation-replay-key" and context["key_spec"] == "m-c-x"
+    )
+    assert combo_event["key_count"] >= 2
+
+
+def test_prompt_toolkit_replay_zero_delay_without_running_event_loop(
+    monkeypatch,
+) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(20, 6)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    class DummyTimer:
+        def __init__(self, interval, callback) -> None:
+            self.interval = interval
+            self.callback = callback
+
+        def start(self) -> None:
+            self.callback()
+
+        def cancel(self) -> None:
+            return
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(20, 2)
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def __init__(self) -> None:
+            self.handlers = {}
+
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                for key in keys:
+                    self.handlers[key] = func
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyEvent:
+        def __init__(self, app) -> None:
+            self.app = app
+
+    class DummyKeyProcessor:
+        def __init__(self, app) -> None:
+            self.app = app
+            self.pending = []
+
+        def feed_multiple(self, key_presses, first: bool = False) -> None:
+            self.pending.extend(list(key_presses))
+
+        def process_keys(self) -> None:
+            event = DummyEvent(self.app)
+            for key_press in self.pending:
+                key = getattr(key_press, "key", key_press)
+                resolved = getattr(key, "value", key)
+                handler = self.app.key_bindings.handlers.get(str(resolved))
+                if handler is not None:
+                    handler(event)
+            self.pending.clear()
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.key_bindings = key_bindings
+            self.output = DummyOutput()
+            self.key_processor = DummyKeyProcessor(self)
+            app_registry.append(self)
+
+        def call_from_executor(self, callback) -> None:
+            raise RuntimeError("no running event loop")
+
+        def invalidate(self) -> None:
+            return
+
+        def exit(self) -> None:
+            return
+
+        def run(self) -> None:
+            self.layout.container.content.text_func()
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+    monkeypatch.setattr(rendering.threading, "Timer", DummyTimer)
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        "line-0\nline-1\nline-2",
+        automation_replay=[(0.0, "down")],
+        viewport_rows=2,
+    )
+    assert app_registry[-1].layout.container.vertical_scroll == 1
 
 
 def test_prompt_toolkit_timeout_writes_screenshot_artifact(
@@ -1378,6 +1762,159 @@ def test_prompt_toolkit_timeout_writes_screenshot_artifact(
     assert actions.index("automation-timeout-screenshot") < actions.index(
         "automation-timeout"
     )
+
+
+def test_automation_replay_changes_timeout_capture_viewport(
+    monkeypatch, tmp_path: Path
+) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(12, 4)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    class DummyTimer:
+        def __init__(self, interval, callback) -> None:
+            self.interval = interval
+            self.callback = callback
+
+        def start(self) -> None:
+            self.callback()
+
+        def cancel(self) -> None:
+            return
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(12, 4)
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def __init__(self) -> None:
+            self.handlers = {}
+
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                for key in keys:
+                    self.handlers[key] = func
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyEvent:
+        def __init__(self, app) -> None:
+            self.app = app
+
+    class DummyKeyProcessor:
+        def __init__(self, app) -> None:
+            self.app = app
+            self.pending = []
+
+        def feed_multiple(self, key_presses, first: bool = False) -> None:
+            self.pending.extend(list(key_presses))
+
+        def process_keys(self) -> None:
+            event = DummyEvent(self.app)
+            for key_press in self.pending:
+                key = getattr(key_press, "key", key_press)
+                resolved = getattr(key, "value", key)
+                handler = self.app.key_bindings.handlers.get(str(resolved))
+                if handler is not None:
+                    handler(event)
+            self.pending.clear()
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.key_bindings = key_bindings
+            self.output = DummyOutput()
+            self.key_processor = DummyKeyProcessor(self)
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            return
+
+        def exit(self) -> None:
+            return
+
+        def run(self) -> None:
+            self.layout.container.content.text_func()
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+    monkeypatch.setattr(rendering.threading, "Timer", DummyTimer)
+
+    sample = "line-00\nline-01\nline-02\nline-03\nline-04\n"
+    baseline_base = tmp_path / "baseline"
+    moved_base = tmp_path / "moved"
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        sample,
+        automation_timeout=0.1,
+        automation_timeout_screenshot_basename=baseline_base,
+        viewport_columns=8,
+        viewport_rows=2,
+    )
+    assert rendering._attempt_prompt_toolkit_pager(
+        sample,
+        automation_timeout=0.1,
+        automation_timeout_screenshot_basename=moved_base,
+        viewport_columns=8,
+        viewport_rows=2,
+        automation_replay=[(0.01, "down")],
+    )
+
+    baseline_txt = (tmp_path / "baseline.txt").read_text(encoding="ascii")
+    moved_txt = (tmp_path / "moved.txt").read_text(encoding="ascii")
+    assert baseline_txt.splitlines()[0].startswith("line-00")
+    assert moved_txt.splitlines()[0].startswith("line-01")
+
+    baseline_attrs = json.loads((tmp_path / "baseline.attrs.json").read_text("utf-8"))
+    moved_attrs = json.loads((tmp_path / "moved.attrs.json").read_text("utf-8"))
+    assert baseline_attrs["vertical_scroll"] == 0
+    assert moved_attrs["vertical_scroll"] == 1
 
 
 def test_prompt_toolkit_timeout_prefers_renderer_framebuffer(

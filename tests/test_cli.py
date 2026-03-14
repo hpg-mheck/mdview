@@ -1,5 +1,6 @@
 import importlib
 import os
+from pathlib import Path
 
 import pytest
 
@@ -96,6 +97,7 @@ def test_format_help_matches_expected_shape():
     assert "--readability-first-tables" in help_text
     assert "--automation-timeout" in help_text
     assert "--automation-timeout-screenshot" in help_text
+    assert "--automation-json" in help_text
     assert "--viewport-columns" in help_text
     assert "--viewport-rows" in help_text
     assert "Render Markdown in the terminal" in help_text
@@ -237,6 +239,59 @@ def test_main_passes_automation_timeout_to_page_text(monkeypatch, tmp_path):
     assert captured["screenshot_basename"] == cli_module.Path(
         "mdview-automation-timeout-framebuffer"
     )
+
+
+def test_parse_automation_json_source_accepts_literal_json() -> None:
+    events = cli_module._parse_automation_json_source(
+        '[[0.0, "down"], [0.25, "m-c-x"]]'
+    )
+    assert events == [(0.0, "down"), (0.25, "m-c-x")]
+
+
+def test_parse_automation_json_source_reads_file(tmp_path: Path) -> None:
+    source = tmp_path / "events.json"
+    source.write_text('[[0.0, "down"], [1, "pagedown"]]', encoding="utf-8")
+
+    events = cli_module._parse_automation_json_source(str(source))
+    assert events == [(0.0, "down"), (1.0, "pagedown")]
+
+
+def test_parse_automation_json_source_rejects_invalid_schema() -> None:
+    with pytest.raises(ValueError):
+        cli_module._parse_automation_json_source('{"delay": 1.0, "key": "down"}')
+
+
+def test_main_passes_automation_replay_to_page_text(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = {}
+
+    def fake_page_text(text: str, **kwargs):
+        captured["automation_replay"] = kwargs.get("automation_replay")
+
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main(
+        [
+            "--automation-json",
+            '[[0.0, "down"], [0.5, "pageup"]]',
+            str(document),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["automation_replay"] == [(0.0, "down"), (0.5, "pageup")]
+
+
+def test_main_rejects_invalid_automation_json(tmp_path, capsys):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+
+    exit_code = cli_module.main(["--automation-json", "not-json", str(document)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "invalid automation JSON" in captured.err
 
 
 def test_main_rejects_timeout_screenshot_without_timeout(tmp_path, capsys):
