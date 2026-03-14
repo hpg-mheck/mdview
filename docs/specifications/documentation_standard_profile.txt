@@ -1,0 +1,47 @@
+Documentation Standard Profile
+==============================
+
+Scope
+-----
+Define the repository documentation standard for module docstrings, function
+docstrings, inline rationale comments, and project-facing technical records.
+
+Selected Standards
+------------------
+- Primary operational baseline: IEEE Std 1063-2001 profile for software
+  documentation structure and consistency.
+- Prose style baseline: Chicago Manual of Style for tone, grammar, and
+  punctuation.
+- High-rigor traceability overlay: MIL-STD-498-inspired traceability practice
+  for proposal, backlog, bug, and completion records.
+
+Repository Mapping
+------------------
+- Module-level documentation:
+  - Public modules should begin with a concise docstring describing purpose,
+    major responsibilities, and important constraints.
+- Function and method documentation:
+  - Public and externally consumed call points should include docstrings with
+    intent, key parameters, return values, and error behavior when
+    non-obvious.
+- Inline comments:
+  - Add comments only for rationale, invariants, or behavior that is not
+    clear from code structure alone.
+  - Avoid comments that restate syntax.
+- Project-management traceability:
+  - Proposal status, backlog transitions, bug lifecycle updates, and completed
+    task notes must preserve decision history with ISO 8601 timestamps.
+
+Review Checklist
+----------------
+- Documentation matches behavior in tests and implementation.
+- Public APIs and behavioral boundaries are documented where needed.
+- Rationale comments exist for non-obvious branches and invariants.
+- Proposal and backlog history remains append-only and timestamped.
+- Text files outside fixture directories are wrapped to 78 columns.
+
+Non-Goals
+---------
+- Mandating proprietary tooling for standards enforcement.
+- Requiring exhaustive line-by-line comments.
+- Rewriting historical documents solely for stylistic normalization.

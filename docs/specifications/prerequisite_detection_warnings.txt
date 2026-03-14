@@ -14,10 +14,10 @@ Background
 
 Requirements
 - Before argument parsing, mdview must check for missing optional
-  dependencies (rich, prompt_toolkit) and the default pager command less.
+  dependencies (rich, prompt_toolkit).
 - When any prerequisite is missing, mdview must print a short, actionable
-  warning to stderr, suggesting `./scripts/install_prerequisites.sh` or
-  installing the named tool.
+  warning to stderr, suggesting running `./scripts/install_prerequisites.sh`
+  or installing the named tool.
 - The warnings must appear even when the process exits early due to
   --help or argument parsing errors.
 - Add unit coverage that simulates missing prerequisites and asserts the

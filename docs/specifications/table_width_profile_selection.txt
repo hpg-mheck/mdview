@@ -1,0 +1,92 @@
+Table Width Profile Selection Specification
+===========================================
+
+Scope
+-----
+Define how mdview chooses table layout width strategy when rendering
+Markdown tables and other approved table-like structured blocks.
+
+Motivation
+----------
+A single compression strategy is insufficient. Some tables can be made to fit
+with aggressive compression, while others cannot fit the viewport under any
+reasonable compression. Once unavoidable overflow is reached, readability
+should take priority over additional squeezing.
+
+Profile Definitions
+-------------------
+- Fit-first profile:
+  - Strong compression strategy.
+  - Objective: avoid horizontal overflow when practical.
+  - May use tighter spacing and aggressive line breaking inside cells.
+- Readability-first profile:
+  - Weaker compression strategy.
+  - Objective: preserve visual clarity when overflow is unavoidable.
+  - Uses clearer spacing and less aggressive in-cell breaking.
+
+Default Selection Mode
+----------------------
+Default mode is `auto`:
+1. Evaluate table width under fit-first profile.
+2. If the table fits the viewport, render with fit-first.
+3. If the table still exceeds viewport width, switch to readability-first for
+   the entire table block.
+
+The switch applies to all cells in that table block. Mixed per-cell profile
+selection is out of scope.
+
+CLI Override
+------------
+Provide a command-line flag:
+- `--readability-first-tables`
+
+Semantics:
+- Force readability-first profile for table-like blocks, even when fit-first
+  could fit the table.
+- Do not disable horizontal overflow handling.
+- Do not change non-table reflow policy semantics.
+
+Cell Width Model
+----------------
+Table sizing uses content/style-aware practical widths, not one fixed minimum
+for all cells.
+
+At minimum, sizing must account for:
+- content break opportunities,
+- unbreakable token pressure,
+- alignment expectations,
+- style-sensitive content such as code-like tokens and symbol-heavy cells.
+
+Each cell exposes at least two practical widths:
+- fit-first practical width,
+- readability-first practical width.
+
+Table width derives from column widths plus table structure overhead.
+
+Relationship to Horizontal Scrolling
+------------------------------------
+- Horizontal scrolling remains active whenever final rendered table width
+  exceeds viewport width.
+- The selection model controls table readability strategy, not scrolling
+  availability.
+
+Relationship to Reflow Controls
+-------------------------------
+- This model is specific to table-like block layout strategy.
+- Existing `--reflow`, `--reflow-mode`, and `--noreflow` precedence remains
+  in effect for global reflow decisions.
+
+Future Extension
+----------------
+The same two-profile model may be adopted for other structured block types
+after explicit specification updates and tests. Initial required scope is
+Markdown tables.
+
+Testing Guidance
+----------------
+- Verify `auto` chooses fit-first when fit-first can avoid overflow.
+- Verify `auto` switches to readability-first when fit-first cannot avoid
+  overflow.
+- Verify `--readability-first-tables` always forces readability-first.
+- Verify horizontal scrolling activation remains driven by final rendered
+  width.

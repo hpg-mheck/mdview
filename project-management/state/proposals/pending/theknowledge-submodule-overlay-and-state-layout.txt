@@ -1,0 +1,157 @@
+Title: TheKnowledge Submodule Overlay and State Layout
+Author: Codex (GPT-5)
+Date: 2026-03-08T14:09:24-07:00
+Status: Proposed
+Reviewers: Project owner (operator), AI maintainers
+Related Work: Operator direction on 2026-03-08; TheKnowledge export effort
+
+Problem Statement
+-----------------
+We want to import `TheKnowledge` as a reusable submodule while keeping
+project-specific working state (for example, `backlog.txt`) outside the
+submodule. Without a strict layout and precedence model, project state can
+bleed into shared SOP content, causing noisy submodule diffs, harder upgrades,
+and ambiguous ownership of process files.
+
+Goals
+-----
+- Import `TheKnowledge` into a deterministic SOP location.
+- Allow project-local override documents without editing the submodule.
+- Keep all mutable project state outside the submodule and override tree.
+- Enforce read/write rules through tooling and checks.
+- Keep update and rollback workflows simple for humans and AI agents.
+
+Non-Goals
+---------
+- Redesigning the business logic of mdview.
+- Changing proposal, backlog, or bug semantics.
+- Introducing a new build system or dependency manager.
+- Solving multi-version release branching strategy in this proposal.
+
+Use Cases
+---------
+- A maintainer updates SOP language for this project only while preserving
+  upstream `TheKnowledge` content unchanged.
+- An AI agent updates `backlog.txt` and `known-bugs.txt` without touching
+  shared SOP assets.
+- The team pulls newer `TheKnowledge` revisions and quickly sees whether local
+  overrides still apply cleanly.
+- Auditors trace exactly where each effective policy came from: baseline,
+  override, or state.
+
+Constraints and Assumptions
+---------------------------
+- Python 3.9+ compatibility remains required.
+- Existing project path conventions use `project-management/` (note spelling).
+- Submodule contents must be treated as upstream-managed and mostly read-only.
+- Local hooks and guard scripts are acceptable for policy enforcement.
+- CI and local workflows already use managed wrapper scripts.
+
+Proposed Approach
+-----------------
+Adopt a three-zone layout under `project-management/`:
+
+- `SOP/TheKnowledge/`: git submodule, baseline SOP and reusable tooling.
+- `SOP/overrides/`: project-local override files using mirrored relative
+  paths.
+- `state/`: mutable project records (`backlog.txt`, task files, bug files,
+  and similar operational state).
+
+Define deterministic precedence rules:
+
+- SOP/spec/process document reads: `overrides` first, then `TheKnowledge`.
+- State files: read and write only in `state/`.
+- No runtime writes are permitted to `SOP/TheKnowledge/` or `SOP/overrides/`.
+
+Add light orchestration tooling:
+
+- `scripts/sop_bootstrap_state.py`: initialize missing `state/` files from
+  templates in `SOP/TheKnowledge/project-management/`.
+- `scripts/sop_resolve_path.py` (or shared helper module): resolve effective
+  read paths using the precedence model for docs and SOP assets.
+- Optional `scripts/sop_audit_layout.py`: report violations and missing files.
+
+Add enforcement checks:
+
+- Pre-commit and pre-push guardrails block direct edits inside
+  `SOP/TheKnowledge/` except submodule pointer updates.
+- Guardrails verify required `state/` files exist and are writable.
+- CI validates that no mutable records are tracked under `SOP/TheKnowledge/`
+  or `SOP/overrides/`.
+
+Documentation updates:
+
+- Add a single SOP integration guide with examples for add/update/rollback.
+- Update AGENTS instructions to reference resolver and state-write policy.
+- Provide migration notes for moving existing state files into `state/`.
+
+Risks and Mitigations
+---------------------
+- Risk: Path confusion (`project-managenent` typo versus canonical path).
+  Mitigation: standardize on `project-management/` and add a startup check
+  that fails fast on unexpected paths.
+- Risk: Override sprawl makes effective policy hard to reason about.
+  Mitigation: require mirrored paths, add a resolver audit report, and keep an
+  index of active overrides.
+- Risk: Submodule updates break assumptions.
+  Mitigation: run resolver and state bootstrap checks in CI before merge.
+- Risk: Tooling bypass via manual edits.
+  Mitigation: enforce via hooks, CI, and documented operator procedure.
+
+Testing and Validation
+----------------------
+- Unit tests for resolver precedence behavior and path normalization.
+- Unit tests for bootstrap logic (missing file creation, idempotence,
+  no-overwrite semantics unless explicitly forced).
+- Unit tests for guard checks that reject forbidden write targets.
+- Integration tests for end-to-end read/write flows across all three zones.
+- Manual validation:
+  1. Add baseline file only and confirm resolver finds baseline.
+  2. Add matching override and confirm override precedence.
+  3. Update state file and confirm no SOP tree writes occur.
+  4. Update submodule pointer and confirm local state remains untouched.
+
+Alternatives Considered
+-----------------------
+- Keep everything in one directory with naming conventions only.
+  Rejected: too easy to mix mutable state with shared SOP content.
+- Copy `TheKnowledge` files directly into mdview (no submodule).
+  Rejected: loses upstream traceability and complicates updates.
+- Store overrides inside the submodule directory.
+  Rejected: creates ambiguity and accidental upstream coupling.
+
+Open Questions
+--------------
+- Should overrides be allowed for every path or only a whitelisted subset?
+  Owner: operator and maintainers. Target decision: 2026-03-10.
+- Should state bootstrap copy templates once or maintain sync hints over time?
+  Owner: maintainers. Target decision: 2026-03-10.
+- Should resolver output a machine-readable manifest for audit tooling?
+  Owner: maintainers. Target decision: 2026-03-10.
+
+Milestones
+----------
+1. Layout and policy spec acceptance (owner: operator, by 2026-03-10).
+   Entry: proposal approved.
+   Exit: accepted specification committed under `docs/specifications/`.
+2. Tooling implementation (owner: maintainers, by 2026-03-12).
+   Entry: accepted spec exists.
+   Exit: bootstrap and resolver scripts with unit tests merged.
+3. Guardrail and docs integration (owner: maintainers, by 2026-03-13).
+   Entry: tooling merged.
+   Exit: hooks/CI checks active and SOP documentation updated.
+
+Adoption and Rollout
+--------------------
+Roll out in three steps:
+
+1. Add directory layout and placeholder state files.
+2. Enable resolver and bootstrap in non-blocking audit mode.
+3. Turn on blocking guardrails in pre-push and CI after one clean cycle.
+
+Communicate the change in development workflow docs and AGENTS guidance before
+enabling blocking checks.
+
+Decision Log
+------------
+- 2026-03-08: Proposal drafted for review.

@@ -1,0 +1,24 @@
+Deferred Tasks
+
+Use this list to park work that an operator explicitly directs us to defer.
+When a feature is deferred, move its entry from
+`project-management/state/backlog.txt` or `project-management/state/tasks-in-progress.txt`
+into this file. Keep the asterisk bullet format with a blank line after each
+item, and note when and why the deferral happened. Preserve the original task
+language inside a quoted block so it can be re-enabled without rewriting.
+
+* Deferred the inline HTML passthrough specification and related Markdown
+  handling work. Moved from project-management/state/backlog.txt on
+  2025-12-10T07:16:14Z per operator request to table the HTML handling
+  complexity. Dependent coverage tasks remain blocked until this feature
+  returns to active planning.
+
+>>BEGIN>>
+> * Draft a specification for inline HTML passthrough that lists fixtures,
+>   defines acceptable passthrough behavior, and notes interactions with other
+>   Markdown elements.
+> 
+> * Build pytest coverage for inline HTML passthrough per the specification.
+>   Confirm inline HTML text remains intact and coexists with surrounding
+>   Markdown elements.
+>>END>>

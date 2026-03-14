@@ -1,0 +1,96 @@
+Resolved Bugs
+
+Record resolved bugs with newest entries at the top. Use the same
+asterisk-plus-blank-line formatting as the active bug files. Each entry must
+include the ISO 8601 timestamp for when the fix was recorded, a short symptom
+summary, `Root cause:` analysis, and `Resolution:` notes. Add commit or test
+references when they help trace the fix.
+
+* 2026-03-08T19:33:45-07:00 Fixed first-frame Markdown heading centering in
+  interactive sessions.
+  Root cause: The initial interactive render used the wrong viewport width
+  before prompt_toolkit reported the active terminal size or the explicit
+  `--viewport-columns` override, so centered heading frames drifted on the
+  first frame.
+  Resolution: Detected startup width before the first render, honored
+  `--viewport-columns` for the initial frame, and added
+  `tests/test_cli.py` coverage for startup-width selection.
+  Validation: wrapper-based `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and `pytest` all passed (`273 passed`).
+  Owner: Codex (GPT-5).
+
+* 2026-03-06T22:13:44-08:00 Closed BUG-2026-03-07-01 for Rich emphasis
+  spacing drift.
+  Root cause: Rich-rendered emphasis paths introduced right-padding and
+  wrap-join spacing drift, which broke bold, italic, bold+italic, and
+  strikethrough boundary assertions in non-interactive output.
+  Resolution: Normalized Rich markdown export behavior to remove padding
+  drift and reduce brittle hard wraps in non-interactive render paths.
+  Validation: full `pytest` suite passed the emphasis boundary tests.
+  Owner: Codex (GPT-5).
+
+* 2026-03-06T22:13:44-08:00 Closed BUG-2026-03-07-02 for nested-list
+  sentinel leakage.
+  Root cause: Rich rendering leaked forced-break sentinel tokens into the
+  visible nested-list output and destabilized wrapped-line segmentation.
+  Resolution: Scrubbed forced-break sentinels from rendered output and
+  stabilized nested-list segmentation in Rich rendering paths.
+  Validation: nested-list suites passed under full `pytest` runs.
+  Owner: Codex (GPT-5).
+
+* 2026-03-06T22:13:44-08:00 Closed BUG-2026-03-07-03 for unexpected
+  plain-text reflow.
+  Root cause: The plain-text rendering path reflowed `.txt` fixtures under
+  rich-enabled execution, violating the default no-reflow expectation.
+  Resolution: Implemented plain-text default no-reflow behavior with explicit
+  CLI overrides (`--reflow`, `--reflow-mode`, `--noreflow`).
+  Validation: `test_render_to_ansi_preserves_five_line_plain_text` and the
+  full `pytest` suite passed.
+  Owner: Codex (GPT-5).
+
+* 2025-12-12T03:50:00Z Stabilized the H1 resize regression in padded rows.
+  Root cause: The resize path and framebuffer helpers did not preserve width
+  and height semantics consistently across resized, padded heading rows.
+  Resolution: Made framebuffer helpers width-and-height aware, enforced
+  explicit resize dimensions, and extended the resize regression coverage.
+  Owner: R. Talon.
+
+* 2025-12-12T01:59:17+00:00 Added framebuffer peek/poke helpers for visual
+  regression inspection.
+  Root cause: The visual regression harness could not inspect or mutate
+  viewport cells by terminal coordinate, which left framebuffer-level defects
+  hard to reproduce and verify.
+  Resolution: Added peek/poke framebuffer helpers so tests can inspect and
+  mutate viewport cells deterministically.
+  Owner: R. Talon (Matt "Breakpoint" Heck).
+
+* 2025-12-12T01:12:41Z Restored full-width H1 heading frames after resize.
+  Root cause: Heading frame widths were not being recomputed correctly against
+  current console dimensions after resize events.
+  Resolution: Recomputed widths on resize, restored full-width H1 heading
+  frames, and expanded resize regression coverage.
+  Owner: R. Talon.
+
+* 2025-12-12T00:58:20Z Realigned centered pager content after window resizes.
+  Root cause: The pager continued using stale output dimensions after a
+  terminal resize, so centered content drifted out of alignment.
+  Resolution: Sourced updated widths from the prompt_toolkit output size and
+  expanded resize coverage in pager tests.
+  Owner: R. Talon.
+
+* 2025-12-11T08:13:05+00:00 Stopped H1 heading panels from wrapping in narrow
+  terminals.
+  Root cause: Rich panel sizing allowed H1 content to exceed narrow terminal
+  widths, which forced unintended wraps.
+  Resolution: Constrained panel width to content width and added a narrow-
+  console regression test.
+  Owner: R. Talon.
+
+* 2025-12-11T07:29:12+00:00 Resolved the editable install metadata failure.
+  Root cause: Project metadata omitted the required author email, which broke
+  editable install validation.
+  Resolution: Populated the project author email and added metadata coverage
+  to prevent regression.
+  Owner: R. Talon.
+  Notes: install verification blocked by outbound proxy restrictions;
+  compile-only check succeeded.

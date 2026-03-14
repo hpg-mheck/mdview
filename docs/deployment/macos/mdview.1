@@ -10,6 +10,18 @@ mdview \- render Markdown in the terminal with an internal viewer
 .I MODE
 .RI ]
 .RI [ \-\-noreflow ]
+.RI [ \-\-automation\-timeout
+.I SECONDS
+.RI ]
+.RI [ \-\-automation\-timeout\-screenshot
+.I BASENAME
+.RI ]
+.RI [ \-\-viewport\-columns
+.I COLUMNS
+.RI ]
+.RI [ \-\-viewport\-rows
+.I ROWS
+.RI ]
 .RI [ \-V ]
 .I path
 .SH DESCRIPTION
@@ -43,6 +55,24 @@ or
 .TP
 .BR \-\-noreflow
 Disable reflow in all cases (equivalent to mode none).
+.TP
+.BR \-\-automation\-timeout " " SECONDS
+Inject synthetic quit after the given viewer runtime for automation runs.
+.TP
+.BR \-\-automation\-timeout\-screenshot " " BASENAME
+Write timeout-exit framebuffer artifacts using BASENAME, producing
+.B BASENAME.txt
+and
+.B BASENAME.attrs.json.
+If omitted while automation timeout is enabled, mdview uses default basename
+.B mdview-automation-timeout-framebuffer
+in the current working directory.
+.TP
+.BR \-\-viewport\-columns " " COLUMNS
+Override detected viewport width with a synthetic value.
+.TP
+.BR \-\-viewport\-rows " " ROWS
+Override detected viewport height with a synthetic value.
 .TP
 .BR \-V , " \-\-version"
 Show the mdview version and exit.

@@ -1,0 +1,50 @@
+Windows Shim Validation Troubleshooting
+=======================================
+
+Symptom: Podman check reports `SKIP` with noexec or memory-protection text
+---------------------------------------------------------------------------
+Meaning:
+- Wine in the container could start, but `wine cmd` could not map required
+  executable pages because host policy blocked `mprotect` or executable
+  mappings.
+
+Action:
+- Treat the result as an environment limitation, not an automatic shim
+  regression.
+- Continue with host Wine checks when available.
+- Use Windows CI as the final compatibility gate.
+
+Symptom: Podman check reports `SKIP: Podman unavailable in current permission
+context`
+----------------------------------------------------------------------------
+Meaning:
+- Rootless Podman could not initialize in the current sandbox/lock context
+  (for example lock-file permission restrictions).
+
+Action:
+- Treat as an environment limitation.
+- Continue with host Wine fallback checks.
+- If needed, rerun with a trusted rootless Podman runtime context.
+
+Symptom: Host Wine check reports `SKIP: wine is not installed on host`
+----------------------------------------------------------------------
+Meaning:
+- Local fallback path is unavailable.
+
+Action:
+- Keep local run as informational and rely on Windows CI.
+- Install Wine only if your local workflow requires faster feedback.
+
+Symptom: Any check reports `FAIL`
+---------------------------------
+Meaning:
+- A shim behavior contract likely regressed (interpreter selection, delegated
+  command execution, or exit-code propagation).
+
+Action:
+1. Run focused tests:
+   - `python scripts/run_tool_with_timeout.py pytest --`
+     `tests/test_windows_cli_shims.py`
+2. Re-run the orchestrator:
+   - `python scripts/run_tool_with_timeout.py windows_shims_linux`
+3. Fix scripts and tests together, then rerun full required checks.

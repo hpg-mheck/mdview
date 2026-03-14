@@ -1,0 +1,25 @@
+WSL2 Linux Validation Maintenance
+=================================
+
+What to maintain
+----------------
+- Keep the WSL2 strategy aligned with required local checks in AGENTS.md and
+  `docs/running-tests.txt`.
+- Keep wrapper command examples in this directory synchronized with actual
+  scripts once wrappers are implemented.
+- Keep timeout expectations aligned with `scripts/tool_timeouts.json`.
+- Update troubleshooting notes when new WSL2 host failure patterns are found.
+
+Change-management expectations
+------------------------------
+- Update specification first: the WSL2 Linux-validation spec file under
+  `docs/specifications/testing/`.
+- Then update runbook and troubleshooting documents under
+  `docs/testing/wsl2/`.
+- Only after docs/spec updates are approved should implementation scripts be
+  changed on a real Windows host.
+
+Execution constraint reminder
+-----------------------------
+Do not claim validation results for this workflow unless checks were run on a
+real Windows host with WSL2.

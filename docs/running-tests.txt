@@ -4,13 +4,9 @@ Running Tests
 Prerequisites
 -------------
 - Python 3.9 or newer available on your PATH.
-- Run `./scripts/install_prerequisites.sh` from the repository root before
-  first use in a fresh checkout or environment.
-- The installer provisions `.venv/` in the checkout, installs required system
-  tools when available, and installs the project with development extras in
-  an isolated environment.
-- After bootstrap, run commands with `.venv/bin/python` or activate `.venv`
-  before using `python`.
+- Project dependencies installed in an isolated environment.
+- In a fresh checkout, run `./scripts/install_prerequisites.sh` first, then
+  use `.venv/bin/python` or activate `.venv`.
 
 Standard test run
 -----------------
@@ -20,18 +16,19 @@ Standard test run
   - `.venv/bin/python scripts/run_tool_with_timeout.py black`
   - `.venv/bin/python scripts/run_tool_with_timeout.py ruff`
   - `.venv/bin/python scripts/run_tool_with_timeout.py compileall`
+  - `.venv/bin/python scripts/run_tool_with_timeout.py entropy_check`
+  - `.venv/bin/python scripts/run_tool_with_timeout.py entropy_tripwire_verify`
 
 Focused execution
 -----------------
 - To target specific tests while iterating, use `-k` to match a substring:
-  - `.venv/bin/python scripts/run_tool_with_timeout.py pytest -- -k`
-    `plain_text`
+  - `.venv/bin/python scripts/run_tool_with_timeout.py pytest -- -k plain_text`
 - To rerun a single file or test function:
   - `.venv/bin/python scripts/run_tool_with_timeout.py pytest --`
     `tests/test_rendering.py::`
     `test_render_to_ansi_preserves_five_line_plain_text`
 
-Environment Notes
+Environment notes
 -----------------
 - Tests rely on static fixtures stored under `resources/tests/`. Keep these
   files in sync with their user stories.
@@ -41,7 +38,32 @@ Environment Notes
   short. Increase a timeout only when a shorter value is confirmed to
   interrupt a legitimate run.
 - For one-off overrides, pass `--timeout-seconds`, for example:
-  `.venv/bin/python scripts/run_tool_with_timeout.py pytest
-  --timeout-seconds 300 -- -k nested`
+  `.venv/bin/python scripts/run_tool_with_timeout.py pytest`
+  `--timeout-seconds 300 -- -k nested`
+- Windows 11 shell parity wrappers:
+  - PowerShell:
+    `powershell -ExecutionPolicy Bypass -File scripts/windows/run-tool.ps1`
+    `pytest`
+  - cmd.exe:
+    `scripts\\windows\\run-tool.bat pytest`
+- Linux-side Windows shim validation:
+  - `.venv/bin/python scripts/run_tool_with_timeout.py windows_shims_linux`
+  - See `docs/testing/windows/README.txt` for workflow, `SKIP` handling, and
+    maintenance notes.
+- Windows-side Linux workflow validation via WSL2:
+  - Defined in `docs/testing/wsl2/README.txt` and corresponding specification.
+  - Execute only on a real Windows host with WSL2; otherwise treat as
+    documentation-only planning.
+- Entropy-based secret scanning:
+  - `.venv/bin/python scripts/run_tool_with_timeout.py entropy_check`
+  - See `docs/security/entropy-checks.txt` for thresholds, exclusions, and
+    managed hook behavior.
+- Tripwire integrity verification:
+  - `.venv/bin/python scripts/run_tool_with_timeout.py entropy_tripwire_verify`
+  - Included in the cached quality gate used before push.
+- Cached full quality gate (used by standardized push workflow):
+  - `.venv/bin/python scripts/run_quality_gate_cached.py`
+  - Set `MDVIEW_QUALITY_GATE_NO_CACHE=1` or pass `--no-cache` to force an
+    uncached rerun.
 - If `.venv/bin/python` cannot import `black`, `ruff`, or `pytest`, stop and
-  repair the local bootstrap before trusting any test result.
+  repair the bootstrap environment before trusting any result.

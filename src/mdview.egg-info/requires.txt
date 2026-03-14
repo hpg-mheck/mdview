@@ -5,3 +5,6 @@ rich>=13.7.0
 black>=24.0
 pytest>=7.4
 ruff>=0.6.0
+
+[interactive]
+prompt_toolkit>=3.0

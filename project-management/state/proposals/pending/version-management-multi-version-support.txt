@@ -1,0 +1,99 @@
+Title: Multi-Version Release and Maintenance Workflow Extension
+Author: Codex (GPT-5)
+Date: 2026-03-06T23:05:00-08:00
+Status: Draft
+Reviewers: Matt "Breakpoint" Heck (Operator), Release engineering lead
+Related Work: project-management/git-flow.txt;
+project-management/state/backlog.txt
+
+Problem Statement
+-----------------
+The current Git flow documents branch naming and merge order for a single
+active version line. It does not define how to handle bugs and features that
+must land in both the current release branch and older supported maintenance
+branches.
+
+Goals
+-----
+- Define version-line branch conventions for active and maintenance releases.
+- Define backport and cherry-pick policy with traceable audit markers.
+- Link bug tracking to affected version lines and remediation status.
+- Define release-note traceability across forward-fix and backport commits.
+
+Non-Goals
+---------
+- Automating release packaging in this proposal.
+- Introducing semantic-version tooling changes in this proposal.
+- Rewriting historical branch history.
+
+Use Cases
+---------
+- A critical bug exists in ``VERSIONS/0.5.x`` and ``VERSIONS/0.4.x`` and needs
+  coordinated fixes.
+- A low-risk bugfix is merged into the current line and then backported to one
+  or more maintenance branches.
+- Release notes must show which commit fixed which version line.
+
+Proposed Approach
+-----------------
+- Branch model:
+  - Active release lines use ``VERSIONS/<major>.<minor>.<patch>``.
+  - Maintenance lines use ``MAINT/<major>.<minor>``.
+  - Development branches continue to use:
+    - ``feature/<name>``
+    - ``bugfix/<bug-id>``
+    - ``proposals/<name>``
+- Bug metadata:
+  - Each bug entry includes ``Affected Versions`` and ``Fixed Versions``.
+  - Backport requirement is explicit in bug records before closure.
+- Backport policy:
+  - Land the primary fix on the highest active line first.
+  - Backport via ``git cherry-pick -x`` to required lower lines.
+  - If backport diverges materially, open a dedicated
+    ``bugfix/<bug-id>-backport-<line>`` branch.
+- Traceability:
+  - Every backport commit message includes:
+    - source commit hash
+    - target version line
+    - bug ID
+  - Release notes reference both forward-fix and backport hashes.
+
+Testing and Validation
+----------------------
+- Require full local checks per target line before merge:
+  - black, ruff, compileall, pytest via timeout wrapper.
+- For shared fixes, run targeted regression tests on each maintenance line
+  where behavior differs.
+- Validate that bug tracker entries and release notes identify fixed versions.
+
+Risks and Mitigations
+---------------------
+- Risk: Backport drift causes inconsistent behavior.
+  Mitigation: Require explicit test evidence for each target line.
+- Risk: Operators miss required backports.
+  Mitigation: Add checklist fields in bug records and completion notes.
+- Risk: Release notes become ambiguous.
+  Mitigation: Enforce hash and version-line references in closure templates.
+
+Open Questions
+--------------
+- How many maintenance lines are supported concurrently? Owner: Operator.
+- Should patch-release branches (for example ``VERSIONS/0.5.1``) remain linear
+  descendants of their minor-line anchor or allow direct bugfix merges?
+  Owner: Release engineering lead.
+
+Milestones
+----------
+- Milestone 1: Approve branch and backport policy language.
+- Milestone 2: Update bug templates and release-note templates.
+- Milestone 3: Roll out on the next cross-version bugfix cycle.
+
+Adoption and Rollout
+--------------------
+- Phase 1: Apply workflow to new bugfixes only.
+- Phase 2: Backfill bug metadata fields for open issues.
+- Phase 3: Enforce release-note traceability in version cut checklists.
+
+Decision Log
+------------
+- None yet.

@@ -1,0 +1,64 @@
+name: windows-cli
+
+on:
+  push:
+    branches:
+      - trunk
+      - main
+      - master
+      - VERSIONS/**
+      - feature/**
+      - bugfix/**
+      - proposals/**
+  pull_request:
+
+jobs:
+  windows-shims:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install project and dev dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+
+      - name: PowerShell shim full checks
+        shell: pwsh
+        run: |
+          ./scripts/windows/run-tool.ps1 black
+          ./scripts/windows/run-tool.ps1 ruff
+          ./scripts/windows/run-tool.ps1 compileall
+          ./scripts/windows/run-tool.ps1 pytest
+
+      - name: PowerShell shim failure propagation check
+        shell: pwsh
+        run: |
+          ./scripts/windows/run-tool.ps1 pytest -- -k definitely_not_a_real_test_name
+          if ($LASTEXITCODE -eq 0) {
+            throw "Expected non-zero exit from failing shim command."
+          }
+
+      - name: cmd shim smoke checks
+        shell: cmd
+        run: |
+          scripts\windows\run-tool.bat compileall
+          scripts\windows\run-tool.bat pytest -- -k test_project_metadata
+
+      - name: cmd shim failure propagation check
+        shell: cmd
+        run: |
+          scripts\windows\run-tool.bat pytest -- -k definitely_not_a_real_test_name
+          if errorlevel 1 (
+            echo Shim returned expected non-zero exit.
+          ) else (
+            echo Expected non-zero exit from failing shim command.
+            exit /b 1
+          )

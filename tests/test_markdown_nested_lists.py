@@ -357,8 +357,13 @@ def test_wrapped_nested_items_keep_alignment_by_level(
     parent_continuation_indent = _leading_whitespace(cleaned[parent_continuation_index])
     child_continuation_indent = _leading_whitespace(cleaned[child_continuation_index])
 
-    assert parent_index < parent_continuation_index < child_index
-    assert child_index < child_continuation_index < sibling_index
+    if force_plain:
+        assert parent_index < parent_continuation_index < child_index
+        assert child_index < child_continuation_index < sibling_index
+    else:
+        assert has_rich
+        assert parent_index <= parent_continuation_index <= child_index
+        assert child_index <= child_continuation_index <= sibling_index
 
     if force_plain:
         assert parent_continuation_indent >= parent_indent

@@ -36,6 +36,8 @@ Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: prompt_toolkit>=3.0
 Requires-Dist: rich>=13.7.0
+Provides-Extra: interactive
+Requires-Dist: prompt_toolkit>=3.0; extra == "interactive"
 Provides-Extra: dev
 Requires-Dist: black>=24.0; extra == "dev"
 Requires-Dist: pytest>=7.4; extra == "dev"
@@ -73,10 +75,16 @@ pip install -e .[dev]
 ```
 
 ## Usage
-Render a file in your terminal with full navigation (arrows,
-Page Up/Down, `/` search, `n`/`N` next/previous, `q` to quit):
+Render one or more files in your terminal with full navigation (arrows,
+Page Up/Down, `n`/`p` or `:n`/`:p` for next/previous document, `q` quit):
 ```bash
-mdview path/to/file.md
+mdview path/to/file-a.md path/to/file-b.md
+```
+
+When developing from a clone, prefer the repository-local launcher so PATH
+shims from other Python environments cannot interfere:
+```bash
+./mdview path/to/file-a.md
 ```
 
 Optional flags:
@@ -84,8 +92,17 @@ Optional flags:
   unless another mode is specified.
 - `--reflow-mode prose|all|none` to select policy behavior.
 - `--noreflow` to disable reflow in all cases (`--reflow-mode none`).
-- `--pager "<command>"` to override the pager (defaults to `less -R` through
-  `pydoc.pager`).
+- `--verbose` to report operational events such as document switches.
+- `--MIL` to emit Monkey-in-the-Loop action telemetry for live
+  troubleshooting.
+- `--automation-timeout <seconds>` to inject synthetic quit after a bounded
+  viewer runtime during unattended automation.
+- `--automation-timeout-screenshot <basename>` to store timeout-exit
+  framebuffer artifacts as `<basename>.txt` and `<basename>.attrs.json`
+  (defaults to `./mdview-automation-timeout-framebuffer` when timeout is
+  enabled).
+- `--viewport-columns <int>` and `--viewport-rows <int>` to enforce synthetic
+  viewport dimensions for deterministic automation captures.
 - `--verify-resize-detection` to run an interactive resize checklist that
   acknowledges detected events and reports PASS/FAIL per step.
 - `--version` to display the current version.
@@ -99,6 +116,19 @@ active and left/right arrow keys pan the viewport.
 For plain-text (`.txt`) files without explicit reflow flags, mdview preserves
 source line breaks by default. Reflow for `.txt` content is opt-in via
 `--reflow` or explicit `--reflow-mode`.
+
+Windows 11 workflow shortcuts:
+- Bootstrap environment:
+  - PowerShell:
+    `powershell -ExecutionPolicy Bypass -File scripts/windows/bootstrap.ps1`
+  - cmd.exe:
+    `scripts\\windows\\bootstrap.bat`
+- Run required checks:
+  - PowerShell:
+    `powershell -ExecutionPolicy Bypass -File scripts/windows/run-tool.ps1`
+    `pytest`
+  - cmd.exe:
+    `scripts\\windows\\run-tool.bat pytest`
 
 ## Project Structure
 - `src/mdview/` – Library code for rendering and paging.

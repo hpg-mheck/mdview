@@ -1,0 +1,75 @@
+Sandbox Synthetic Viewport and Framebuffer Capture
+==================================================
+
+Purpose
+-------
+Explain how mdview behaves when automation runs in sandboxed or headless
+environments where no human terminal session is present.
+
+Viewer stack model
+------------------
+- mdview uses an internal prompt_toolkit viewer for interactive paging.
+- The implementation does not depend on external pagers or direct curses
+  integration for primary rendering behavior.
+- When prompt_toolkit or a TTY is unavailable, mdview falls back to
+  non-interactive output and skips interactive-only features.
+
+Synthetic viewport controls
+---------------------------
+For deterministic automation, mdview can override detected terminal geometry:
+- `--viewport-columns <int>`
+- `--viewport-rows <int>`
+
+These options force the viewer to use synthetic dimensions for layout,
+scrolling, and timeout-capture artifacts. Use them when host terminal size is
+unstable or unknown.
+
+Timeout framebuffer capture
+---------------------------
+Use `--automation-timeout <seconds>` to inject synthetic quit after a bounded
+runtime. When timeout triggers, mdview captures the visible viewport and writes
+paired artifacts:
+- explicit basename: `--automation-timeout-screenshot <basename>`
+- default basename: `./mdview-automation-timeout-framebuffer`
+- emitted files:
+  - `<basename>.txt`
+  - `<basename>.attrs.json`
+
+Capture format
+--------------
+`<basename>.txt` contains a column-stable ASCII framebuffer snapshot with
+carriage-return line endings.
+
+`<basename>.attrs.json` includes:
+- format/version marker,
+- capture timestamp,
+- capture source (`prompt_toolkit-renderer` or `synthetic-text-buffer`),
+- viewport dimensions and scroll offsets,
+- active document index/count,
+- per-row, per-column cell metadata:
+  - UTF-8 character at that cell,
+  - ASCII-normalized character used in `.txt`,
+  - style string and parsed attributes when available.
+
+When prompt_toolkit framebuffer internals are available, mdview captures
+directly from renderer state. If not, mdview falls back to a deterministic
+text-buffer slice that still honors viewport dimensions and offsets.
+
+Typical sandbox workflow
+------------------------
+1. Run mdview through a PTY-capable harness.
+2. Set explicit viewport dimensions.
+3. Set automation timeout and screenshot path.
+4. Archive the JSON artifact for comparison against known-good references.
+
+Example:
+`.venv/bin/python -m mdview.cli --viewport-columns 100 --viewport-rows 28 \
+--automation-timeout 2.0 --automation-timeout-screenshot \
+/tmp/mdview-capture sample.md`
+
+Notes
+-----
+- Timeout-capture write failures are non-fatal; mdview still exits through the
+  normal synthetic-quit path.
+- For stable comparisons, keep viewport values and sample inputs fixed across
+  runs.

@@ -1,0 +1,261 @@
+Title: Content Element and Style Hierarchy Architecture Plan
+Author: Codex (GPT-5)
+Date: 2026-03-08T03:59:22-07:00
+Status: Proposed
+Reviewers: Matt "Breakpoint" Heck (Operator), Core Architecture Team,
+Rendering Maintainer
+Related Work: project-management/state/proposals/completed/internal-document-object-model.txt;
+project-management/state/proposals/completed/internal-viewer-engine.txt;
+docs/specifications/unified_content_intake_model.txt;
+docs/specifications/style_strategies.txt;
+docs/specifications/style_ranks.txt;
+docs/specifications/table_width_profile_selection.txt
+
+Problem Statement
+-----------------
+mdview currently uses a strong metadata-first model: blocks carry constraints
+and style hints, and rendering behavior is selected through functions.
+This has kept the system compact, but contributors now need a clearer
+extension contract for new element families and style systems.
+
+The current concern is architectural direction. A major class hierarchy for
+content elements and styles can improve extensibility and discoverability, but
+it can also create class explosion and brittle inheritance chains if adopted
+without constraints. We need a design that gains extensibility while
+preserving maintainability and predictable behavior.
+
+Goals
+-----
+- Define a formal, extensible object-oriented architecture for major content
+  element types and style behavior.
+- Keep class growth controlled through capability interfaces and registries,
+  not deep inheritance webs.
+- Separate content semantics from style semantics while keeping them
+  interoperable.
+- Standardize sizing, layout, and rendering contracts across element types.
+- Provide an incremental migration path from current metadata-first
+  implementation without regressions.
+
+Non-Goals
+---------
+- Replacing all existing rendering logic in one release.
+- Defining every Markdown feature class in this proposal.
+- Building third-party plugin APIs in this phase.
+- Altering user-visible semantics already covered by accepted specifications.
+
+Use Cases
+---------
+- Add a new block type (for example, definition lists) without editing many
+  unrelated files.
+- Add a style policy (for example, accessibility emphasis strategy) without
+  modifying every element implementation.
+- Support dual table width profiles (fit-first and readability-first) using
+  shared sizing and layout interfaces.
+- Keep horizontal overflow behavior consistent across structured elements.
+
+Constraints and Assumptions
+---------------------------
+- Python 3.9+ compatibility remains required.
+- Existing DOM contracts (Document, Block, Line, constraints, score vectors)
+  remain authoritative during migration.
+- Hard constraints still outrank policy and style hints.
+- External pager delegation remains out of scope.
+
+Proposed Approach
+-----------------
+Adopt a hybrid architecture:
+- A shallow major element class hierarchy for semantic families.
+- A separate style hierarchy for style policy and conflict resolution.
+- Capability interfaces for measure, layout, and render.
+- Registry-based dispatch so extension does not require deep subclassing.
+
+Content Element Hierarchy
+-------------------------
+Introduce major families only, with strict depth limits.
+
+Recommended classes:
+- ContentElement (abstract base contract)
+- BlockElement (abstract)
+- InlineElement (abstract)
+- StructuredBlockElement (abstract)
+- Concrete families initially:
+  - ProseBlockElement
+  - TableBlockElement
+  - ListBlockElement
+  - CodeBlockElement
+  - HeadingBlockElement
+  - DelimiterBlockElement
+
+Rules:
+- Maximum inheritance depth: three levels from ContentElement.
+- New behavior should prefer composition/capabilities over additional
+  subclasses.
+- Concrete classes hold semantics, not global policy decisions.
+
+Style Hierarchy
+---------------
+Define style as a separate axis, not a subclass of content elements.
+
+Recommended classes:
+- StyleStrategy (abstract)
+- InlineStyleStrategy
+- BlockStyleStrategy
+- FallbackStyleStrategy
+- ConflictResolutionStrategy
+
+Style inputs:
+- Style ranks from `docs/specifications/style_ranks.txt`
+- Renderer capabilities (Rich available, fallback mode, ANSI limits)
+- Accessibility preferences and readability policies
+
+Style outputs:
+- Style directives, conflict decisions, and fallback instructions.
+
+Capability Interfaces
+---------------------
+Every renderable element family should implement explicit capabilities.
+
+Minimum capability set:
+- measure(context) -> Measurement
+  - Reports practical widths and key geometry metrics.
+- layout(context, measurement) -> LayoutPlan
+  - Produces line/column plan under active policy.
+- render(context, layout, style) -> RenderedFragment
+  - Emits final renderable text/segments and metadata.
+- overflow_policy(context, measurement) -> OverflowDecision
+  - Signals fit/overflow behavior and panning implications.
+
+For structured blocks (tables first), `Measurement` must expose:
+- fit-first projection
+- readability-first projection
+- final chosen profile
+
+Dispatch and Registration
+-------------------------
+Introduce two registries:
+- ElementRegistry: maps classified block types to element classes.
+- StyleRegistry: maps style tags/capabilities to style strategies.
+
+Dispatch algorithm:
+1. Intake yields block classification and constraints.
+2. ElementRegistry selects a major element class.
+3. Element instance measures and proposes layout.
+4. StyleRegistry selects style strategy and conflict policy.
+5. Renderer combines layout + style to emit final output.
+
+This keeps extension explicit and testable without inheritance explosion.
+
+Sizing and Rendering Policy Integration
+---------------------------------------
+Sizing is not a rendering afterthought. It is a first-class step.
+
+Required order for each block:
+1. Semantic element selection.
+2. Measurement under current viewport and policy.
+3. Profile selection (if element supports multiple profiles).
+4. Layout generation.
+5. Style resolution and render emission.
+
+Example: TableBlockElement
+- In auto mode, measure fit-first then readability-first as needed.
+- If fit-first cannot avoid overflow, use readability-first for all cells.
+- Horizontal scrolling remains active when final width exceeds viewport.
+
+Why this is maintainable
+------------------------
+This design keeps the extensibility benefit of classes while reducing
+long-term complexity:
+- Shallow hierarchy prevents brittle override stacks.
+- Capability interfaces isolate responsibilities.
+- Registries decouple extension from central switch statements.
+- Style is separate, avoiding Content x Style subclass multiplication.
+
+Migration Plan
+--------------
+Phase 1: Interface and adapter scaffolding
+- Add abstract capability interfaces and registry skeletons.
+- Provide adapters that wrap current DOM + function pipeline.
+
+Phase 2: Table family migration
+- Implement TableBlockElement using current accepted two-profile semantics.
+- Keep outputs parity-tested against existing behavior.
+
+Phase 3: Core families migration
+- Migrate prose, list, heading, code, and delimiter families.
+- Keep fallback renderers and viewer contracts unchanged.
+
+Phase 4: Style strategy extraction
+- Move style conflict logic into StyleStrategy hierarchy.
+- Preserve existing style-rank semantics.
+
+Phase 5: Cleanup and simplification
+- Remove obsolete dispatch branches once parity is achieved.
+- Keep adapters only where backward compatibility is needed.
+
+Risks and Mitigations
+---------------------
+- Risk: class proliferation despite intent.
+  Mitigation: enforce depth and registry policies in code review.
+- Risk: duplicated logic during migration.
+  Mitigation: require adapter-based reuse and parity tests per phase.
+- Risk: performance overhead from additional object dispatch.
+  Mitigation: cache measurements/layout plans and profile selection results.
+- Risk: unclear ownership between element and style layers.
+  Mitigation: define strict contract boundaries and invariants.
+
+Testing and Validation
+----------------------
+- Unit tests for each capability contract (`measure`, `layout`, `render`).
+- Registry tests for type/strategy resolution and fallback behavior.
+- Golden fixture tests comparing migrated output to pre-migration output.
+- Policy tests for dual table profile selection and overflow activation.
+- Property tests for invariants:
+  - hard constraints override style/policy requests,
+  - deterministic output for identical input/context,
+  - no data loss in render pipeline.
+- Follow Joel Spolsky's release bar: no rollout without broad edge-case
+  coverage and regression parity.
+
+Alternatives Considered
+-----------------------
+- Keep pure metadata + function dispatch indefinitely.
+  Rejected as sole long-term approach because extension contracts remain
+  diffuse for new major families.
+- Full deep inheritance model for all content/style combinations.
+  Rejected due to class explosion and brittle method-resolution complexity.
+- ECS-only architecture.
+  Rejected for now as too disruptive relative to current project shape.
+
+Open Questions
+--------------
+- Should inline elements be migrated in phase 1 or deferred until block-family
+  migration stabilizes?
+  Owner: Architecture team. Decision by: 2026-03-22.
+- Should style strategies expose a debug trace payload for conflict decisions?
+  Owner: Rendering maintainer. Decision by: 2026-03-22.
+- What parity threshold is required before retiring legacy dispatch paths?
+  Owner: Operator + QA lead. Decision by: 2026-03-29.
+
+Milestones
+----------
+- Milestone 1 (2026-03-22): Approve contracts, hierarchy limits, and
+  registry design.
+- Milestone 2 (2026-03-29): Land adapters and table-family migration behind
+  a guarded switch.
+- Milestone 3 (2026-04-05): Migrate major block families with parity tests.
+- Milestone 4 (2026-04-12): Extract style strategies and finalize conflict
+  policy wiring.
+- Milestone 5 (2026-04-19): Retire superseded paths after sustained test
+  stability.
+
+Adoption and Rollout
+--------------------
+- Start behind an internal architecture flag and run dual-path comparisons.
+- Keep user-facing behavior unchanged during the migration window.
+- Promote per-family after parity passes and performance checks.
+- Document extension patterns for contributors after phase 3.
+
+Decision Log
+------------
+- 2026-03-08T03:59:22-07:00: Initial proposal drafted to balance extensibility
+  with maintainability via shallow hierarchy + capability registry strategy.

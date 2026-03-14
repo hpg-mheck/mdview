@@ -26,6 +26,9 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+interactive = [
+  "prompt_toolkit>=3.0"
+]
 dev = [
   "black>=24.0",
   "pytest>=7.4",
