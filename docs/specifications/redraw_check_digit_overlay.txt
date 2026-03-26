@@ -1,0 +1,71 @@
+Redraw Check-Digit Overlay
+==========================
+
+Purpose
+-------
+Add an optional interactive-pager diagnostic overlay that places a single
+digit at the center of the visible screen and advances it from `0` through
+`9` modulo `10` on every redraw. The feature exists to make redraw activity
+visible while debugging viewport update failures in normal viewing sessions.
+
+CLI Surface
+-----------
+- Add `--redraw-check-digit`.
+- The flag applies only to the interactive full-screen pager path.
+- When the pager falls back to non-interactive output because prompt_toolkit
+  or a TTY is unavailable, mdview must emit a user-facing notice that the
+  redraw check digit was skipped.
+
+Behavior
+--------
+- The check digit occupies one visible cell at the center of the current
+  screen.
+- Centering is viewport-relative:
+  - row = center row of the visible viewport,
+  - column = center column of the visible viewport.
+- The overlay must not shift surrounding content. It replaces the character
+  already present at that cell for the current frame.
+- The first rendered frame shows `0`.
+- Each subsequent redraw increments the digit modulo `10`.
+- Redraw causes include, but are not limited to:
+  - initial render,
+  - explicit invalidation after navigation input,
+  - resize-triggered rerendering,
+  - document switching,
+  - automation replay effects,
+  - timeout-capture redraws.
+
+Rendering Integration
+---------------------
+- Implement the overlay as a viewport-relative prompt_toolkit layer that is
+  anchored to the visible screen rather than injected into document-relative
+  text coordinates.
+- The digit position must be recomputed from the active viewport width and
+  height before each render so arrow-key scrolling and resize events do not
+  shift it to a different absolute screen cell.
+- The overlay should remain visible even when the source document is shorter
+  than the viewport by rendering independently from the document line count.
+- Use a distinct style so the digit remains easy to spot on top of document
+  content.
+
+Testing Requirements
+--------------------
+- CLI tests for help text and propagation of `--redraw-check-digit` into the
+  pager call.
+- Pager tests that confirm:
+  - the center cell shows `0` on the first draw,
+  - a later redraw changes the digit to `1`,
+  - the overlay is positioned relative to the visible viewport rather than
+    absolute document origin,
+  - repeated vertical scrolling does not move the overlay away from the same
+    absolute viewport cell,
+  - a stress loop of five cycles of ten `up` presses followed by ten `down`
+    presses verifies that every keypress-triggered redraw advances the digit
+    modulo 10 and keeps it at the expected center cell in the cropped
+    viewport,
+  - a real prompt_toolkit render-loop regression drives repeated vertical
+    arrow-key input, verifies that the visible framebuffer content actually
+    scrolls, and confirms the digit stays at the same absolute screen cell
+    through each redraw,
+  - a fallback notice is recorded when the flag is requested without an
+    interactive pager.

@@ -1,0 +1,71 @@
+AI-Human Requests
+=================
+
+Use this queue for requests that AI agents need human operators to handle when
+time allows, especially access, approvals, credentials, policy decisions, or
+environment actions that can unblock future work. Record each request as an
+asterisk followed by a blank line, and include a concise summary, why it
+matters, requester/owner, and an ISO 8601 timestamp for when the request was
+added or moved between sections.
+
+------------------------------------------------------------------------------
+
+Pending Requests
+----------------
+
+*
+
+  Summary: Finalize the remaining `TBD` behavior for underline style fallback
+  and rank rationale in markdown style specs.
+  Why it matters: `docs/specifications/style_strategies.txt` and
+  `docs/specifications/style_ranks.txt` still carry `TBD` notes, which leaves
+  behavior ambiguous if underline support is enabled.
+  Requested operator action: choose final fallback/rank policy and approve
+  spec updates.
+  Requested by: Codex (GPT-5).
+  Added: 2026-03-07T23:54:17-08:00.
+
+*
+
+  Summary: Run/confirm at least one native Windows validation pass for shell
+  shim behavior (`.ps1`/`.bat`) on a real Windows host.
+  Why it matters: Linux-side smoke checks pass but currently resolve to `SKIP`
+  on this machine due host policy/no host Wine, so native confirmation remains
+  valuable beyond CI.
+  Requested operator action: run the Windows wrapper checks locally or confirm
+  a recent native Windows CI run is sufficient for this cycle.
+  Requested by: Codex (GPT-5).
+  Added: 2026-03-07T23:54:17-08:00.
+
+Active Requests
+---------------
+
+Completed Requests
+------------------
+
+*
+
+  Summary: Review and resolve the multi-version maintenance workflow
+  proposal.
+  Completion note: operator rejected
+  `project-management/state/proposals/rejected/`
+  `version-management-multi-version-support.txt` after concluding the
+  version-branch experiment had failed in practice, and project policy now
+  returns to trunk-first development.
+  Requested by: Codex (GPT-5).
+  Added: 2026-03-07T23:54:17-08:00.
+  Completed: 2026-03-26T12:52:14-07:00.
+
+*
+
+  Summary: Repaired SSH authentication flow for repo remotes using
+  `github-hpg`.
+  Completion note: auth now succeeds with active environment values
+  (`SSH_AUTH_SOCK`/`SSH_AGENT_PID`), `ssh -T git@github-hpg` passes, and
+  `git fetch --all --prune --quiet` passes.
+  Operator note: as long as this key is passphrase-protected, operator
+  environment setup is required before running Codex so the unlocked
+  ssh-agent context is available.
+  Requested by: Codex (GPT-5).
+  Added: 2026-03-08T00:26:00-08:00.
+  Completed: 2026-03-08T00:42:15-08:00.

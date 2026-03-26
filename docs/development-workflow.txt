@@ -9,11 +9,14 @@ Proposals
 ---------
 
 Use proposals to drive discussion before drafting a full specification. Follow
-the template in `docs/format-for-proposals.txt` and store each file in
-`project-management/proposals/` with a descriptive name. Stamp every proposal
-with an ISO 8601 date, status, and reviewer list. Cross-reference backlog
-entries, bugs, and specifications in the metadata so readers can trace the
-request through the workflow. Keep revisions append-only: update the
+the template in `docs/format-for-proposals.txt` and store each file under
+`project-management/state/proposals/` status folders:
+`pending/`, `accepted/`, `completed/`, `rejected/`, `superseded/`, and
+`under-review/`. Follow `project-management/state/proposals/README.txt` for
+placement rules. Stamp every proposal with an ISO 8601 date, status, and
+reviewer list. Cross-reference backlog entries, bugs, and specifications in
+the metadata so readers can trace the request through the workflow. Keep
+revisions append-only: update the
 status and decision log instead of rewriting history, and record who accepted
 or rejected the proposal.
 
@@ -27,7 +30,7 @@ Backlogging
 -----------
 
 Convert accepted proposals and direct operator requests into backlog entries.
-Add new items to `project-management/backlog.txt` using the existing
+Add new items to `project-management/state/backlog.txt` using the existing
 asterisk-plus-blank-line formatting. Capture the requestor, a short actionable
 summary, and an ISO 8601 timestamp showing when the item entered the queue.
 Note blockers and dependencies inline so prioritization is transparent. Keep
@@ -36,58 +39,101 @@ and partial findings into indented follow-up lines to avoid rewriting the
 original request.
 
 If the operator defers an item at this stage, move it to
-`project-management/deferred.txt` using the deferral rules below so it can
-return unchanged later. Retain the timestamp showing when it left the backlog
-to preserve history.
+`project-management/state/deferred.txt` using the deferral rules below so it
+can return unchanged later. Retain the timestamp showing when it left the
+backlog to preserve history.
 
 Execution
 ---------
 
-Promote an item to `project-management/tasks-in-progress.txt` when active work
-begins. Copy the backlog entry verbatim, add a fresh timestamp for when the
-effort started, and include current owners plus any known blockers. Link to
-the relevant specification or proposal so reviewers can verify scope. While
-executing, keep notes concise and dated.
+Promote an item to
+`project-management/state/tasks-in-progress.txt` when active work begins. Copy
+the backlog entry verbatim, add a fresh timestamp for when the effort started,
+and include current owners plus any known blockers. Link to the relevant
+specification or proposal so reviewers can verify scope. While executing, keep
+notes concise and dated.
 
 Implement the specification, keeping code and tests aligned with Chicago style
-documentation standards and the required checks. After running
-`./scripts/install_prerequisites.sh`, use `.venv/bin/python` (or activate
-`.venv`) and run `.venv/bin/python scripts/run_tool_with_timeout.py black`,
-`.venv/bin/python scripts/run_tool_with_timeout.py ruff`,
-`.venv/bin/python scripts/run_tool_with_timeout.py compileall`, and
-`.venv/bin/python scripts/run_tool_with_timeout.py pytest` before declaring
-the work ready. If black, ruff, or pytest is missing, treat that as an
-environment failure and fix the bootstrap before proceeding. Interactive
-bootstrap runs report whether another `mdview` command appears on PATH before
-prompting whether arbitrary-directory `mdview` invocations should prefer the
-checkout-local copy. In non-interactive sessions, pass
-`./scripts/install_prerequisites.sh -- --mdview-command local` or
-`./scripts/install_prerequisites.sh -- --mdview-command system` when command
-resolution matters. If progress stalls, move the entry back to the backlog
-with an explanation and timestamp.
+documentation standards and the required checks. In a fresh checkout, run
+`./scripts/install_prerequisites.sh` first, then use an activated `.venv` or
+`.venv/bin/python` so `python` resolves to the repository-local toolchain.
+Run `python scripts/run_tool_with_timeout.py black`,
+`python scripts/run_tool_with_timeout.py ruff`,
+`python scripts/run_tool_with_timeout.py compileall`,
+`python scripts/run_tool_with_timeout.py entropy_check`,
+`python scripts/run_tool_with_timeout.py entropy_tripwire_verify`, and
+`python scripts/run_tool_with_timeout.py pytest` before declaring the work
+ready. Interactive bootstrap runs report whether another `mdview` command
+appears on PATH before prompting whether arbitrary-directory `mdview`
+invocations should prefer the checkout-local copy. In non-interactive
+sessions, pass `./scripts/install_prerequisites.sh --mdview-command local`
+or `./scripts/install_prerequisites.sh --mdview-command system` when command
+resolution matters. Work from `trunk` unless an operator explicitly directs
+a different integration branch. If progress stalls, move the entry back to
+the backlog with an explanation and timestamp.
+
+Treat documentation and comments as part of the deliverable, not as optional
+cleanup. Public-facing docs, module docstrings, and complex runtime code paths
+must explain intent, invariants, library constraints, failure modes, and
+debugging cues clearly enough that a new maintainer can follow the behavior
+without reverse-engineering it from tests alone.
+
+When code coordinates terminal I/O, rendering, timers, fallback behavior,
+automation, or other multi-step state transitions, add section-level comments
+that map the control flow and explain why the sequence is arranged that way.
+Use comments to warn future maintainers away from tempting but unsafe
+"simplifications" when prior bugs or library quirks make those shortcuts
+dangerous. AI-assisted edits should have the same guidance available as human
+reviewers.
+
+For broad exploratory smoke runs, avoid ad hoc shell snippets. Implement
+repeatable checks as formal tests or reusable scripts under `dev-utils/`, and
+document usage in `docs/testing/` so they can be rerun consistently.
+
+The managed pre-commit hook installed by setup scripts runs
+`entropy_check` automatically. Keep that hook installed on developer machines
+and CI-adjacent sandboxes where commits are authored.
+
+For standardized git operations, use:
+- `python scripts/git_standard_commit_push.py -m "<message>"` for commits and
+  pushes with mandatory cached quality gate checks (including entropy
+  tripwire verification).
+- `python scripts/git_veteran_pull.py` for guarded fast-forward pull updates.
+See `docs/security/git-tripwire-operations.txt` for failure diagnostics and
+maintenance guidance.
+
+The default quality-gate cache file is `.git/mdview-quality-cache.json`.
+Delete it or pass `--no-quality-cache` through the commit/push script when a
+full uncached rerun is required.
 
 Clearing
 --------
 
-When work finishes, move the item to `project-management/completed-tasks.txt`
-and place it at the top of the file. Preserve the asterisk-plus-blank-line
-formatting and include a concise summary of what shipped, the date it landed,
-and who completed it. Note how any blockers were cleared and reference merged
-commits, specifications, or proposals for traceability. If the operator defers
-the work instead of clearing it, follow the deferral process below to retain
-the original request for future reactivation.
+When work finishes, move the item to
+`project-management/state/completed-tasks.txt` and place it at the top of the
+file. Preserve the asterisk-plus-blank-line formatting and include a concise
+summary of what shipped, the date it landed, and who completed it. Note how
+any blockers were cleared and reference merged commits, specifications, or
+proposals for traceability. If the operator defers the work instead of
+clearing it, follow the deferral process below to retain the original request
+for future reactivation.
 
 Before clearing, confirm the corresponding specification is complete, the
 required checks have passed, and reviewers can trace the change back to the
 proposal and backlog entries. If a follow-on task is needed, open a fresh
 backlog entry rather than rewriting the completed record.
 
+Also confirm that modified complex code remains adequately documented. If a
+reviewer cannot trace state transitions, fallback boundaries, or debugging
+hooks from the code and its comments, the work is not ready to clear.
+
 Deferrals
 ---------
 
 When the operator requests that a feature be deferred, move the item from
-`project-management/backlog.txt` or `project-management/tasks-in-progress.txt`
-into `project-management/deferred.txt` without changing the ordering or the
+`project-management/state/backlog.txt` or
+`project-management/state/tasks-in-progress.txt` into
+`project-management/state/deferred.txt` without changing the ordering or the
 asterisk-plus-blank-line formatting. Add a short note that explains why the
 work is pausing and stamp the entry with an ISO 8601 timestamp to show when
 the deferral occurred.
@@ -103,10 +149,11 @@ Status Hygiene
 --------------
 
 Keep backlog entries concise, actionable, and timestamped when they enter the
-list. Only promote items to `project-management/tasks-in-progress.txt` when
-work begins, and return them to the backlog if progress stops. For completed
-work, record the outcome in `project-management/completed-tasks.txt` at the
-top of the file with a timestamp and a brief summary of what changed.
+list. Only promote items to
+`project-management/state/tasks-in-progress.txt` when work begins, and return
+them to the backlog if progress stops. For completed work, record the outcome
+in `project-management/state/completed-tasks.txt` at the top of the file with
+a timestamp and a brief summary of what changed.
 
 Ensure every stage leaves a paper trail: proposals record decisions, backlog
 entries show queue position, in-progress tasks log active ownership, and the

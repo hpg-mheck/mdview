@@ -5,13 +5,31 @@ mdview \- render Markdown in the terminal with an internal viewer
 .SH SYNOPSIS
 .B mdview
 .RI [ \-h ]
+.RI [ \-\-verify\-resize\-detection ]
+.RI [ \-\-test\-input\-feedback ]
 .RI [ \-\-reflow ]
 .RI [ \-\-reflow\-mode
 .I MODE
 .RI ]
 .RI [ \-\-noreflow ]
+.RI [ \-\-automation\-timeout
+.I SECONDS
+.RI ]
+.RI [ \-\-automation\-timeout\-screenshot
+.I BASENAME
+.RI ]
+.RI [ \-\-viewport\-columns
+.I COLUMNS
+.RI ]
+.RI [ \-\-viewport\-rows
+.I ROWS
+.RI ]
+.RI [ \-\-automation\-json
+.I SOURCE
+.RI ]
+.RI [ \-\-redraw\-check\-digit ]
 .RI [ \-V ]
-.I path
+.RI [ path " ..." ]
 .SH DESCRIPTION
 mdview renders Markdown and plain text with ANSI styling and displays content
 through its internal viewing engine. External pagers such as
@@ -26,10 +44,24 @@ viewport width when minimum table sizing requires overflow.
 .SH OPTIONS
 .TP
 .B path
-Path to a Markdown or text file to view.
+Path to a Markdown or text file to view when not using the standalone
+diagnostic modes.
 .TP
 .BR \-h , " \-\-help"
 Show the help message and exit.
+.TP
+.BR \-\-verify\-resize\-detection
+Run the interactive resize-detection checklist and report PASS or FAIL.
+.TP
+.BR \-\-test\-input\-feedback
+Run a two-stage terminal input diagnostic. Stage 1 uses direct terminal
+input and line-oriented redraws. Stage 2 uses the full-screen
+.BR prompt_toolkit
+viewer stack. Both stages accept Left/Right arrows plus
+.B ,
+and
+.B .
+alternates and emit timestamped debug logs to standard error.
 .TP
 .BR \-\-reflow
 Enable reflow processing. If no explicit mode is supplied, prose mode is used.
@@ -44,6 +76,34 @@ or
 .BR \-\-noreflow
 Disable reflow in all cases (equivalent to mode none).
 .TP
+.BR \-\-automation\-timeout " " SECONDS
+Inject synthetic quit after the given viewer runtime for automation runs.
+.TP
+.BR \-\-automation\-timeout\-screenshot " " BASENAME
+Write timeout-exit framebuffer artifacts using BASENAME, producing
+.B BASENAME.txt
+and
+.B BASENAME.attrs.json.
+If omitted while automation timeout is enabled, mdview uses default basename
+.B mdview-automation-timeout-framebuffer
+in the current working directory.
+.TP
+.BR \-\-viewport\-columns " " COLUMNS
+Override detected viewport width with a synthetic value.
+.TP
+.BR \-\-viewport\-rows " " ROWS
+Override detected viewport height with a synthetic value.
+.TP
+.BR \-\-automation\-json " " SOURCE
+Replay key events from JSON SOURCE. SOURCE may be a file path or literal JSON
+string encoded as:
+.B [[delay_seconds, key_spec], ...]
+where delays are non-negative and key specs describe replayed key input.
+.TP
+.BR \-\-redraw\-check\-digit
+Overlay a center-screen digit that advances from 0 to 9 on each interactive
+pager redraw.
+.TP
 .BR \-V , " \-\-version"
 Show the mdview version and exit.
 .SH FILES
@@ -52,5 +112,6 @@ Show the mdview version and exit.
 The shared POSIX help text derived from the argparse configuration. Keep this
 file in sync with the parser when packaging the Linux man page.
 .SH SEE ALSO
+.BR prompt_toolkit (7),
 .BR curses (3x),
 .BR terminfo (5)

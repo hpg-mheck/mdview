@@ -5,6 +5,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VENV_DIR="${VENV_DIR:-${ROOT_DIR}/.venv}"
 PYTHON_CANDIDATES=(${PYTHON_BIN:-python3} python3 python)
+FORWARD_ARGS=("$@")
+
+# Backward-compatible passthrough for legacy invocation styles documented as:
+#   ./scripts/install_prerequisites.sh -- --production
+if [ "${#FORWARD_ARGS[@]}" -gt 0 ] && [ "${FORWARD_ARGS[0]}" = "--" ]; then
+  FORWARD_ARGS=("${FORWARD_ARGS[@]:1}")
+fi
 
 log() {
   echo "[install_prerequisites.sh] $*"
@@ -97,8 +104,7 @@ fi
 
 # shellcheck disable=SC1090
 source "$VENV_DIR/bin/activate"
-python -m pip install --upgrade pip setuptools wheel
-if [ "$#" -gt 0 ] && [ "$1" = "--" ]; then
-  shift
-fi
-python "$ROOT_DIR/scripts/install_prerequisites.py" "$@"
+python "$ROOT_DIR/scripts/install_prerequisites.py" \
+  --project-root "$ROOT_DIR" \
+  --venv "$VENV_DIR" \
+  "${FORWARD_ARGS[@]}"

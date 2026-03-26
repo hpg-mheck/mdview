@@ -1,0 +1,111 @@
+Title: Automation-Timeout Framebuffer Screenshots and Synthetic Viewport
+Author: Codex (GPT-5)
+Date: 2026-03-08T17:50:40-07:00
+Status: Implemented
+Reviewers: Project owner (operator), AI maintainers
+Related Work: docs/specifications/automation_timeout_option.txt; operator
+  direction on 2026-03-08
+
+Problem Statement
+-----------------
+Automation harnesses can force viewer exit with `--automation-timeout`, but
+they cannot capture the final visible viewport as a deterministic artifact.
+This gap makes visual-regression triage harder because failures cannot be
+compared to known-good reference captures. Current behavior also relies on
+ambient terminal dimensions, which creates non-deterministic viewport width
+and height in sandboxed or remote execution.
+
+Goals
+-----
+- Capture a full viewport/framebuffer snapshot at timeout-triggered exit.
+- Expose explicit CLI viewport sizing controls for deterministic automation.
+- Keep behavior internal-viewer-only and compatible with Python 3.9+.
+- Provide clear sandbox documentation for synthetic viewport behavior.
+
+Non-Goals
+---------
+- Introducing external pagers or GUI screenshot tools.
+- Adding native OS-level terminal screenshot integration.
+- Replacing current PTY smoke harness orchestration.
+
+Use Cases
+---------
+- A regression harness runs mdview with a fixed viewport and captures a final
+  framebuffer artifact for comparison against known references.
+- A maintainer reproduces a render discrepancy in a headless sandbox where
+  terminal geometry is unstable or unavailable.
+- A CI task archives timeout-exit viewport captures for triage.
+
+Constraints and Assumptions
+---------------------------
+- Execution may occur in non-GUI and non-curses environments.
+- prompt_toolkit remains an optional dependency and may be unavailable.
+- Automation timeout behavior must remain non-fatal in fallback paths.
+
+Proposed Approach
+-----------------
+- Extend CLI contract with explicit viewport width/height options.
+- Extend automation timeout behavior to capture the last visible viewport
+  before synthetic quit.
+- Emit the capture as a deterministic artifact suitable for regression
+  comparison.
+- Prefer prompt_toolkit-renderer framebuffer extraction when available, with a
+  text-buffer fallback that still preserves viewport offsets and dimensions.
+- Document synthetic viewport behavior and sandbox constraints under `docs/`.
+
+Risks and Mitigations
+---------------------
+- Risk: prompt_toolkit internals vary across versions.
+  Mitigation: use defensive attribute access and fallback capture logic.
+- Risk: viewport overrides diverge from physical terminal geometry.
+  Mitigation: document that overrides are synthetic, automation-focused
+  controls.
+- Risk: capture write failures interrupt exit path.
+  Mitigation: treat capture failures as non-fatal and continue quit flow.
+
+Testing and Validation
+----------------------
+- Add CLI tests for new viewport and capture options, including validation.
+- Add pager tests for timeout-triggered capture artifact behavior.
+- Preserve existing timeout telemetry guarantees and quit sequencing tests.
+- Run full required repository quality checks before completion.
+
+Alternatives Considered
+-----------------------
+- OS-native screenshots from terminal emulators.
+  Rejected: non-portable and unavailable in headless CI/sandbox contexts.
+- Capturing only rendered source text without viewport slicing.
+  Rejected: misses visible-region state and scroll offsets.
+
+Open Questions
+--------------
+- What default artifact path should timeout capture use when no explicit path
+  is provided? Owner: implementation author. Decision by: 2026-03-08.
+- Should captures include style metadata or plain visible text only?
+  Owner: implementation author. Decision by: 2026-03-08.
+
+Milestones
+----------
+1. Draft proposal and specification updates (owner: Codex, 2026-03-08).
+   Entry: operator request received.
+   Exit: proposal + spec committed in working tree.
+2. Implement CLI and pager changes with tests (owner: Codex, 2026-03-08).
+   Entry: specification drafted.
+   Exit: new behavior covered by automated tests.
+3. Document sandbox behavior and run quality gate (owner: Codex, 2026-03-08).
+   Entry: implementation complete.
+   Exit: required checks pass and docs are aligned.
+
+Adoption and Rollout
+--------------------
+- Keep new options opt-in except timeout capture default when timeout is set.
+- Document artifact behavior for harness users and CI maintainers.
+- Maintain backward compatibility for existing invocations that do not use the
+  new options.
+
+Decision Log
+------------
+- 2026-03-08T17:50:40-07:00: Proposal drafted from direct operator request.
+- 2026-03-08T18:07:33-07:00: Implemented. Added timeout framebuffer artifact
+  capture, synthetic viewport CLI overrides, and sandbox execution
+  documentation with full test/quality-gate validation.

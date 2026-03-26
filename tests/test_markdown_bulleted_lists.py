@@ -39,7 +39,10 @@ def _leading_whitespace(line: str) -> int:
 @pytest.fixture
 def render_bulleted(monkeypatch):
     def _render(
-        filename: str, *, force_plain: bool = False
+        filename: str,
+        *,
+        force_plain: bool = False,
+        width: int = 130,
     ) -> Tuple[List[str], List[str], bool]:
         path = FIXTURE_DIR / filename
         content = path.read_text(encoding="utf-8")
@@ -55,7 +58,7 @@ def render_bulleted(monkeypatch):
             module = importlib.reload(rendering)
 
         try:
-            rendered = module.render_to_ansi(content, markdown=True)
+            rendered = module.render_to_ansi(content, markdown=True, width=width)
             raw_lines = rendered.splitlines()
             cleaned = [_strip_ansi(line) for line in raw_lines]
             has_rich = module.HAS_RICH
@@ -182,6 +185,26 @@ def test_marker_changes_start_new_list_blocks(
         assert has_rich
         assert hyphen_markers == "•"
         assert asterisk_markers == "•"
+
+
+def test_list_followed_by_bold_paragraph_wraps_without_hidden_break_width(
+    render_bulleted,
+) -> None:
+    cleaned, _, has_rich = render_bulleted(
+        "bulleted_followed_by_bold_paragraph.md",
+        width=62,
+    )
+
+    if not has_rich:
+        pytest.skip("rich-specific forced-break regression requires Rich")
+
+    paragraph_index = _find_line(
+        cleaned,
+        lambda line: "This repository does" in line,
+    )
+
+    assert "This repository does not include" in cleaned[paragraph_index]
+    assert "product-specific source code" in cleaned[paragraph_index]
 
 
 @pytest.mark.parametrize("force_plain", [False, True])

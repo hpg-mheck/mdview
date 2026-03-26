@@ -2,7 +2,7 @@
   "default_timeout_seconds": 60,
   "tools": {
     "black": {
-      "timeout_seconds": 180,
+      "timeout_seconds": 120,
       "timeout_retries": 1,
       "cleanup_patterns": [
         "python -m black( |$)"
@@ -13,7 +13,8 @@
         "black",
         "src",
         "tests",
-        "scripts"
+        "scripts",
+        "dev-utils"
       ]
     },
     "ruff": {
@@ -45,6 +46,43 @@
         "python",
         "-m",
         "pytest"
+      ]
+    },
+    "entropy_check": {
+      "timeout_seconds": 90,
+      "command": [
+        "python",
+        "dev-utils/security/run_entropy_harness.py"
+      ]
+    },
+    "entropy_tripwire_verify": {
+      "timeout_seconds": 120,
+      "command": [
+        "python",
+        "dev-utils/security/verify_entropy_tripwire.py"
+      ]
+    },
+    "windows_shims_linux": {
+      "timeout_seconds": 150,
+      "timeout_retries": 0,
+      "command": [
+        "scripts/windows/verify-windows-shims-linux.sh"
+      ]
+    },
+    "interactive_markdown_smoke": {
+      "timeout_seconds": 240,
+      "timeout_retries": 0,
+      "cleanup_patterns": [
+        "dev-utils/smoke/interactive_markdown_smoke.py",
+        "python -m mdview.cli"
+      ],
+      "command": [
+        "python",
+        "dev-utils/smoke/interactive_markdown_smoke.py",
+        "--sample-count",
+        "50",
+        "--progress-interval",
+        "10"
       ]
     }
   }

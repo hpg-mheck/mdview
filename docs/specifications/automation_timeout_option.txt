@@ -1,0 +1,89 @@
+Title: Automation Timeout, Framebuffer Capture, and Synthetic Viewport
+Controls
+Status: Draft
+
+Overview
+- Extend automation controls so unattended runs can exit deterministically,
+  capture the final visible viewport, and enforce synthetic viewport sizing.
+- Keep the behavior internal-viewer only and safe in headless sandbox runs.
+
+CLI Contract
+- `--automation-timeout <seconds>`
+  - `<seconds>` accepts non-negative finite numeric values.
+  - Applies only when the internal interactive viewer path is active.
+- `--automation-timeout-screenshot <basename>`
+  - Optional explicit output basename for timeout-triggered framebuffer
+    capture.
+  - If omitted and `--automation-timeout` is set, mdview uses deterministic
+    default basename `./mdview-automation-timeout-framebuffer`.
+  - Timeout capture writes two files:
+    - `<basename>.txt`
+    - `<basename>.attrs.json`
+- `--viewport-columns <int>`
+  - Optional positive integer that overrides detected viewport width for
+    rendering and navigation logic.
+- `--viewport-rows <int>`
+  - Optional positive integer that overrides detected viewport height for
+    rendering and navigation logic.
+- `--automation-json <source>`
+  - Optional JSON automation replay input.
+  - If `<source>` resolves to an existing file, read JSON from that file;
+    otherwise parse `<source>` as literal JSON text.
+  - JSON schema: top-level array of two-element arrays
+    `[delay_seconds, key_spec]`.
+  - `delay_seconds` is a non-negative finite number interpreted as delay
+    before replaying the key spec.
+  - `key_spec` is a non-empty string key sequence descriptor.
+
+Behavior Requirements
+- Timeout starts when the interactive viewer session starts.
+- If the operator exits before timeout, the pending automation quit must not
+  trigger additional shutdown actions.
+- On timeout, mdview must capture a full visible viewport/framebuffer snapshot
+  before issuing synthetic quit.
+- Automation replay events must run in-order before timeout capture when their
+  scheduled delays occur earlier than the timeout.
+- Replay key specs must support:
+  - simple key names (for example `down`, `pageup`, `home`),
+  - control chords (for example `c-x`),
+  - meta/alt chords (for example `m-c-x`),
+  - `vt100:`-prefixed escape-sequence playback.
+- Capture should prefer prompt_toolkit framebuffer data when available, with a
+  deterministic text-buffer fallback that respects current scroll offsets and
+  active viewport dimensions.
+- `<basename>.txt` requirements:
+  - Contains one row per viewport row, column-aligned.
+  - Uses ASCII-only characters suitable for deterministic textual diffing.
+  - Ends each row with carriage-return line endings.
+- `<basename>.attrs.json` requirements:
+  - Includes character-level metadata for each row and column cell.
+  - Includes the UTF-8 character at that cell position.
+  - Includes color/style attributes (foreground/background and applicable text
+    style flags) when available from prompt_toolkit renderer state.
+- Capture write failures are non-fatal; mdview continues the quit path.
+- In non-interactive fallback mode (for example no TTY or missing interactive
+  dependencies), timeout, replay, and capture options are ignored without
+  error.
+- `--MIL` telemetry must include:
+  - an explicit timeout event before synthetic quit,
+  - timeout-screenshot success/failure context with output basename and
+    produced file paths when capture is attempted.
+
+Testing Requirements
+- Add CLI parser tests that cover:
+  - flag appears in `--help`,
+  - valid numeric parsing,
+  - rejection of negative timeout values,
+  - rejection of non-positive viewport dimensions.
+- Add pager tests that verify timeout-triggered quit behavior in the internal
+  prompt_toolkit path, capture artifact creation (`.txt` and `.attrs.json`),
+  and telemetry emission when `--MIL` logging is active.
+- Add replay tests that verify key-sequence parsing and replay-driven viewport
+  movement before timeout capture.
+- Add tests for synthetic viewport overrides so deterministic width/height
+  behavior can be exercised in non-resize automation runs.
+
+Non-Goals
+- Do not add external pager integration.
+- Do not add script-level retry or watchdog orchestration in this change.
+- Do not require GUI terminal screenshot facilities.

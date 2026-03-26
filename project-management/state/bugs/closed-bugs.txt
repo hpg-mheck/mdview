@@ -1,0 +1,112 @@
+# Closed bugs
+# -----------
+#
+# Record resolved bugs here with the newest items at the top. Use the same
+# asterisk-plus-blank-line formatting, include an ISO 8601 timestamp for when
+# the fix was recorded, the resolution summary, and links to commits or tests
+# when available.
+
+* 2026-03-26T12:13:06-07:00 Closed BUG-2026-03-26-01, the project-local
+  Codex quality-gate regressions exposed during takeover. Root cause:
+  `scripts/tool_timeouts.json` used an unsupported `black` flag in the live
+  formatter environment, and the entropy scanner/verifier did not exclude
+  generated repo-local Codex state (`.codex-home`, `.codex-local`).
+  `scripts/run_quality_gate_cached.py` also fingerprinted that generated
+  state during standardized push validation. Resolution: remove the
+  unsupported Black flag, extend the entropy-tripwire contract and docs for
+  repo-local Codex exclusions, update the scanner/verifier and cached
+  quality-gate default excludes, add regressions in
+  `tests/test_entropy_harness.py`, `tests/test_run_quality_gate_cached.py`,
+  and `tests/test_verify_entropy_tripwire.py`, and record the full analysis in
+  `project-management/state/bugs/reports/resolved/`
+  `BUG-2026-03-26-01-local-codex-quality-gate-regressions.txt`. Validation:
+  wrapper-based `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and full `pytest` all passed, and wrapper-based
+  `black` plus `scripts/run_quality_gate_cached.py --checks
+  entropy_tripwire_verify` passed in the approved out-of-sandbox path for
+  this Codex session (`306 passed`). Owner: Codex (GPT-5.4).
+
+* 2026-03-10T08:13:30-07:00 Closed BUG-2026-03-10-01, the quality-gate
+  `black` timeout and third-party tree scan. Root cause:
+  `scripts/tool_timeouts.json` ran `python -m black . --exclude
+  '/(\\.venv|mdview\\.egg-info)/'`, which overrode Black's safe default
+  exclusions and failed to exclude the top-level `.venv`, so the formatter
+  recursed into `.venv/lib/python3.9/site-packages` and timed out. Resolution:
+  scope the formatter command to `src`, `tests`, `scripts`, and `dev-utils`,
+  add regression coverage in `tests/test_entropy_harness.py`, and record the
+  full analysis in
+  `project-management/state/bugs/reports/resolved/`
+  `BUG-2026-03-10-01-quality-gate-black-timeout.txt`. Validation:
+  wrapper-based `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and full `pytest` all passed (`304 passed`).
+  Owner: Codex (GPT-5.4).
+
+* 2026-03-10T02:26:54-07:00 Resolved list-boundary wrap drift that could
+  force a bad line break between `not` and `include` during width changes by
+  splitting mdview's Rich break markers into visible structural sentinels for
+  nested-list and literal-heading cases plus zero-width HTML comments for
+  prose-after-list separation. Validation: added a width-specific regression
+  fixture in `tests/test_markdown_bulleted_lists.py`, reran wrapper-based
+  `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and full `pytest` (`303 passed`). Owner: Codex
+  (GPT-5.4).
+
+* 2026-03-10T01:21:05-07:00 Resolved redraw-check-digit viewport drift in the
+  live prompt_toolkit pager by pinning the overlay to a viewport-relative
+  float layer and driving scroll state through prompt_toolkit's supported
+  scroll hooks plus a hidden cursor position. Validation: added a live
+  prompt_toolkit regression in `tests/test_rendering.py`, reran wrapper-based
+  `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and full `pytest` (`302 passed`). Owner: Codex
+  (GPT-5.4).
+
+* 2026-03-08T19:33:45-07:00 Resolved first-frame heading-centering drift in
+  interactive sessions (reported from Termius) by rendering the initial
+  document with active terminal width or `--viewport-columns` override.
+  Validation: added `tests/test_cli.py` coverage for startup width selection
+  and passed wrapper-based full checks (`black`, `ruff`, `compileall`,
+  `entropy_check`, `entropy_tripwire_verify`, `pytest`). Owner: Codex (GPT-5).
+
+* 2026-03-06T22:13:44-08:00 Closed BUG-2026-03-07-01 by normalizing Rich
+  markdown export behavior to remove right-padding drift and reduce brittle
+  hard wraps in non-interactive render paths. Validation: full ``pytest``
+  suite now passes emphasis boundary tests for bold, italic, bold+italic, and
+  strikethrough suites. Owner: Codex (GPT-5).
+
+* 2026-03-06T22:13:44-08:00 Closed BUG-2026-03-07-02 by scrubbing forced-break
+  sentinels from rendered output and stabilizing nested-list segmentation in
+  Rich rendering paths. Validation: nested-list suites now pass under full
+  ``pytest`` runs. Owner: Codex (GPT-5).
+
+* 2026-03-06T22:13:44-08:00 Closed BUG-2026-03-07-03 by implementing
+  plain-text default no-reflow behavior with explicit CLI overrides
+  (``--reflow``, ``--reflow-mode``, ``--noreflow``). Validation:
+  ``test_render_to_ansi_preserves_five_line_plain_text`` and full ``pytest``
+  suite pass. Owner: Codex (GPT-5).
+
+* 2025-12-12T01:59:17+00:00 Added peek/poke framebuffer helpers so visual
+  regressions can inspect and mutate viewport cells with terminal-style
+  coordinates. Owner: R. Talon (Matt "Breakpoint" Heck).
+
+* 2025-12-12T03:50:00Z Stabilized H1 resize regression by giving framebuffer
+  helpers width-and-height awareness, enforcing explicit resize dimensions,
+  and extending the regression test to probe padded rows. Owner: R. Talon.
+
+* 2025-12-12T01:12:41Z Restored full-width H1 heading frames and recomputed
+  widths on resize by honoring console dimensions and expanding regression
+  coverage for resize behavior. Owner: R. Talon.
+
+* 2025-12-12T00:58:20Z Resolved centered pager content failing to realign
+  after window resizes by sourcing updated widths from the prompt_toolkit
+  output size and expanding resize coverage in the pager tests. Owner:
+  R. Talon.
+
+* 2025-12-11T08:13:05+00:00 Resolved H1 heading panels wrapping when terminals
+  narrowed by constraining Rich panels to content width and adding
+  a regression test that enforces narrow-console rendering. Owner: R. Talon.
+
+* 2025-12-11T07:29:12+00:00 Resolved editable install failure by populating
+  the project author email (mheck@hardproblemsgroup.com) and adding metadata
+  coverage to guard against regressions. Owner: R. Talon. Notes: install
+  verification blocked by outbound proxy restrictions; compile-only check
+  succeeded.

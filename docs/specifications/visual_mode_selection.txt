@@ -1,0 +1,71 @@
+Visual Mode Selection Specification
+===================================
+
+Scope
+-----
+Define vi-style visual selection behavior for mdview, including entry,
+navigation, selection anchors, clipboard copy, and exit semantics.
+
+Goals
+-----
+- Provide keyboard-driven text selection in the internal viewer.
+- Keep behavior predictable across wrapped, horizontally panned content.
+- Support repeated copy workflows without requiring mouse interaction.
+
+Mode Entry and Exit
+-------------------
+- Press `V` to enter visual mode.
+- Press `Escape` to exit visual mode without copying new content.
+- Exiting visual mode must clear transient selection highlights unless the
+  user explicitly stores a copied region.
+
+Navigation in Visual Mode
+-------------------------
+- Arrow keys move the active cursor endpoint.
+- Movement respects current viewport and document bounds.
+- When horizontal overflow is active, left/right movement must cooperate with
+  viewport panning rather than truncating selection.
+
+Selection Anchor Controls
+-------------------------
+- `Space` toggles selection anchor state:
+  - First press: set selection start at current cursor.
+  - Second press: set selection end at current cursor.
+  - Third press: clear selection and return to anchor-unset state.
+- If the user moves after setting both anchors, the active end follows cursor
+  updates while the opposite endpoint remains fixed.
+
+Copy and Clipboard Behavior
+---------------------------
+- Press `Enter` to copy the current selection to clipboard history.
+- Copy operation must preserve selected character order as displayed in the
+  virtual rendered document.
+- After a successful copy, visual mode exits.
+- Multiple copy operations in one session append distinct entries to clipboard
+  history; later copies must not overwrite previous entries unless configured
+  by future policy.
+
+Interaction with Wrapping and Scrolling
+---------------------------------------
+- Selection operates on rendered coordinates, not raw source coordinates.
+- Wrapped lines are selectable across continuation rows as contiguous rendered
+  text.
+- Horizontal panning changes visible window only; selection anchors remain on
+  stable document coordinates.
+- Resize events must preserve cursor and anchor coordinates when still valid,
+  or clamp them to nearest valid positions.
+
+Error Handling
+--------------
+- Pressing `Enter` with no active selection must be a no-op with a user-facing
+  status hint.
+- Clipboard write failures must preserve visual mode state and report an error
+  without dropping anchors.
+
+Testing Guidance
+----------------
+- Add unit tests for state transitions: entry, anchor toggles, clear cycle,
+  copy-and-exit, and escape exit.
+- Add integration tests for selection across wrapped lines and horizontally
+  panned content.
+- Add resize regression tests validating anchor/cursor clamping and retention.

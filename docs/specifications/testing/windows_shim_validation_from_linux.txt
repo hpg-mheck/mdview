@@ -1,0 +1,36 @@
+Windows shim validation from Linux
+==================================
+
+Status
+------
+Accepted.
+
+Purpose
+-------
+Define required local verification behavior for Windows shell wrappers when
+developers or AI agents are running on Linux.
+
+Requirements
+------------
+1. The project MUST provide a Linux-side orchestrator script that runs local
+   Windows shim checks in a fixed two-step order:
+   - container preflight (`podman-wine-smoke.sh`)
+   - host Wine checks (`host-wine-shim-check.sh`)
+2. The orchestrator MUST fail when either step returns a non-zero code that
+   indicates a real regression.
+3. The orchestrator MUST treat environment limitations as `SKIP` when checks
+   cannot execute due to missing binaries, Podman permission-context limits,
+   or host memory-protection policy.
+4. The orchestrator MUST return success when:
+   - at least one check path passes, or
+   - all paths skip for environment reasons.
+5. Local checks MUST NOT replace Windows CI; Windows CI remains the
+   authoritative compatibility gate for Windows wrapper behavior.
+6. The timeout wrapper configuration MUST include a dedicated tool entry for
+   the orchestrated Linux command so AI agents can run it with bounded time.
+
+Out of scope
+------------
+- Full Windows API compatibility validation.
+- Packaging-signing and installer behavior.
+- Any replacement of native Windows CI coverage.

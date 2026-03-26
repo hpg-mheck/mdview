@@ -9,7 +9,7 @@ package installation to `scripts/install_prerequisites.py`.
 Quick start
 -----------
 
-From the repository root:
+From anywhere inside the repository (or via an absolute path):
 
 ```
 ./scripts/install_prerequisites.sh
@@ -20,10 +20,14 @@ extras. Pass `--production` through to the Python installer when you want to
 skip developer dependencies:
 
 ```
-./scripts/install_prerequisites.sh -- --production
+./scripts/install_prerequisites.sh --production
 ```
 
-The `--` separator ensures arguments reach the Python installer unchanged.
+Legacy forwarding also remains supported:
+
+```
+./scripts/install_prerequisites.sh -- --production
+```
 
 Interactive command resolution
 ------------------------------
@@ -38,8 +42,8 @@ to this checkout's `.venv` entry point.
 Override the prompt explicitly when needed:
 
 ```
-./scripts/install_prerequisites.sh -- --mdview-command local
-./scripts/install_prerequisites.sh -- --mdview-command system
+./scripts/install_prerequisites.sh --mdview-command local
+./scripts/install_prerequisites.sh --mdview-command system
 ```
 
 Supported platforms
@@ -56,22 +60,36 @@ What the installer does
 -----------------------
 
 - Detects the platform and chooses an available package manager.
-- Installs `python3`, `venv` tooling, `less`, and `git` using the native
-  package manager (with `sudo` when required).
+- Installs `python3`, `venv` tooling, and `git` using the native package
+  manager (with `sudo` when required).
 - Creates `.venv` if missing and upgrades `pip`, `setuptools`, and `wheel`.
 - Skips package-manager installation when the required system tools are
   already available.
-- Installs the project in editable mode with optional developer extras.
-- Default developer extras include `pytest`, `black`, and `ruff`.
+- Installs the project in editable mode with `interactive` extras in all
+  modes and `dev` extras when not using `--production`.
+- Installs/updates managed git `pre-commit` and `pre-push` hook wrappers via
+  `scripts/install_git_hooks.py`.
 
 Notes and expectations
 ----------------------
 
-- Run the installer from the repository root to ensure relative paths resolve
-  correctly.
-- After bootstrap, use `.venv/bin/python` for repository-local checks or
-  activate `.venv` before running `python`.
+- The installer resolves project root from script location and always installs
+  the editable project from that root, regardless of current working
+  directory.
+- After bootstrap, use `.venv/bin/python` for fully explicit local-check
+  runs, or activate `.venv` before invoking `python`.
 - If the host lacks `sudo`, run the script as a privileged user or install the
   required system packages manually.
+- Use `--skip-system-packages` when system dependencies are already present or
+  when package-manager access is intentionally restricted.
 - The Python logic supports a dry run for validation: `python scripts/
   install_prerequisites.py --dry-run`.
+- Entropy-secret checks are wired into managed hooks:
+  - `pre-commit` runs entropy checks.
+  - `pre-push` runs cached quality-gate checks.
+  See `docs/security/entropy-checks.txt` for details and manual run commands.
+- Standardized git operation utilities are available after setup:
+  - `python scripts/git_standard_commit_push.py -m "<message>"`
+  - `python scripts/git_veteran_pull.py`
+  - Cache file used by push quality gate: `.git/mdview-quality-cache.json`
+  - Runbook: `docs/security/git-tripwire-operations.txt`

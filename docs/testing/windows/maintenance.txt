@@ -1,0 +1,36 @@
+Windows Shim Validation Maintenance
+===================================
+
+What to update when behavior changes
+------------------------------------
+- `scripts/windows/run-tool.bat` and `scripts/windows/bootstrap.bat`:
+  - keep interpreter selection (`py` first, then `python`) explicit
+  - keep delayed-expansion-safe exit propagation via `CMD_EXIT`
+- `scripts/windows/run-tool.ps1` and `scripts/windows/bootstrap.ps1`:
+  - keep `param(...)` as the first executable construct
+  - keep repository root resolution based on `Resolve-Path` + `Join-Path`
+- `scripts/windows/podman-wine-smoke.sh`:
+  - keep rootless Podman flags explicit (`--root`, `--runroot`, `--tmpdir`)
+  - keep noexec/memory-policy detection mapped to `SKIP`, not `FAIL`
+- `scripts/windows/host-wine-shim-check.sh`:
+  - keep checks isolated with disposable `WINEPREFIX` and stub interpreters
+- `scripts/windows/verify-windows-shims-linux.sh`:
+  - keep layered order: container preflight first, host Wine second
+
+Timeout policy
+--------------
+- Keep `windows_shims_linux` timeout in `scripts/tool_timeouts.json` short by
+  default and raise only when a legitimate run is truncated.
+- Use one-off overrides with:
+  - `python scripts/run_tool_with_timeout.py windows_shims_linux`
+    `--timeout-seconds <n>`
+
+Test coverage expectations
+--------------------------
+- Update `tests/test_windows_cli_shims.py` whenever script contracts change.
+- Keep assertions focused on behavior contracts, not incidental formatting.
+- Retain at least one test that detects:
+  - PowerShell `param(...)` ordering
+  - repository root resolution contract
+  - batch exit-code propagation safeguards
+  - presence of Linux-side orchestrator wiring

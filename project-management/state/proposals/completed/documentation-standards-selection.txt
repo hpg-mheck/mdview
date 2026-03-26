@@ -1,0 +1,129 @@
+Title: Documentation Standards Adoption for Source Code Coverage
+Author: R. Talon
+Date: 2025-12-12T01:13:33Z
+Status: Implemented
+Reviewers: Matt "Breakpoint" Heck (review lead), documentation team
+Related Work: User request to standardize function/module/line documentation;
+docs/specifications/documentation_standard_profile.txt
+
+Problem Statement
+-----------------
+The codebase lacks a unified, formal documentation standard that governs
+function, module, and line-level commentary. This fragmentation invites
+inconsistent guidance, uneven readability, and difficulty onboarding new
+contributors. Without a standard, audits and maintenance risk diverging
+expectations, and the repository cannot guarantee Chicago-style clarity or
+industry-grade traceability.
+
+Goals
+-----
+- Identify vetted, formal documentation standards suitable for code-level
+  coverage and supportive of Chicago-style clarity.
+- Present at least one military-grade option to satisfy rigor requirements.
+- Recommend a shortlist and ask maintainers to select a standard for adoption.
+- Align any choice with existing workflow orders (proposals, backlog,
+  testing).
+
+Non-Goals
+---------
+- Writing or refactoring code comments at this stage.
+- Selecting or customizing a standard without maintainer approval.
+- Drafting training materials or linters for the chosen standard.
+
+Use Cases
+---------
+- New contributors follow a consistent template for function docstrings and
+  inline rationale.
+- Auditors validate documentation completeness against a recognized standard.
+- Maintainers assess code reviews with shared expectations for clarity and
+  traceability.
+
+Constraints and Assumptions
+---------------------------
+- Documentation must remain compatible with Python 3.7-era tooling and
+  formatting constraints.
+- Existing Chicago Manual of Style guidance remains in force for prose.
+- Standards should not mandate proprietary tooling; open, implementable
+  guidance is preferred.
+
+Proposed Approach
+-----------------
+- Adopt one primary standard for code documentation depth, supplemented by the
+  Chicago Manual of Style for prose tone.
+- Candidate standards for selection:
+  - MIL-STD-498 with Data Item Descriptions (e.g., Software Design
+    Description, Interface Design Description) for disciplined, auditable
+    artifacts and line-level traceability.
+  - ISO/IEC/IEEE 15289:2019 (Content of life-cycle information items) to
+    structure required artifacts across development phases, including
+    architecture and design notes that map to modules and functions.
+  - ISO/IEC/IEEE 26514:2008 (User documentation for systems and software) to
+    govern developer- and operator-facing documentation that references module
+    behavior and entry points.
+  - IEEE Std 1063-2001 (Software User Documentation) as a lighter-weight
+    alternative for user-facing materials when full ISO 26514 compliance is
+    excessive.
+- Request maintainers to choose a primary standard and, if desired, a
+  secondary reference (e.g., ISO/IEC/IEEE 15289 paired with IEEE 1063) for
+  balancing rigor and practicality.
+- After selection, draft a specification mapping the chosen standard to
+  docstring templates, module headers, inline comment expectations, and review
+  checklists.
+
+Risks and Mitigations
+---------------------
+- Risk: MIL-STD-498 may impose heavy ceremony. Mitigation: allow tailoring to
+  exempt low-risk modules while keeping traceability artifacts.
+- Risk: ISO/IEC/IEEE standards may require paywalled access. Mitigation:
+  summarize required clauses in internal guidance and secure licensed copies
+  for reviewers.
+- Risk: Overlapping standards could confuse contributors. Mitigation: pick one
+  primary standard and publish concise quick-reference checklists.
+
+Testing and Validation
+----------------------
+- Validate adoption via documentation reviews on a pilot module, checking that
+  every function, module header, and critical inline comment meets the chosen
+  standard.
+- Add checklist items to code review templates; measure reduced re-review
+  cycles over two sprints.
+
+Alternatives Considered
+-----------------------
+- Ad hoc house style only: rejected because it lacks external validation and
+  weakens auditability.
+- Rely solely on Chicago Manual of Style: rejected because it governs tone but
+  not technical completeness or artifact structure.
+
+Open Questions
+--------------
+- Which standard best balances rigor and maintainability for this repository?
+- Should we pair a heavy standard (MIL-STD-498) with a lighter enforcement
+  tier for small modules?
+- Who will maintain the internal checklist and training notes once adopted?
+
+Milestones
+----------
+- Selection decision: within one week of proposal review.
+- Specification draft: within one week after selection, mapping clauses to
+  docstring and comment templates.
+- Pilot application: within one sprint on a medium-size module, followed by
+  review feedback and adjustments.
+
+Adoption and Rollout
+--------------------
+- Begin with the pilot module; refine templates and review checklists.
+- Expand to all new code; retrofit existing modules opportunistically during
+  active work.
+- Provide a short reference guide aligned with Admiral Hopper's standing
+  orders, emphasizing clarity, brevity, and traceability.
+
+Decision Log
+------------
+- 2026-03-06T22:55:00-08:00: Accepted with a tailored standards profile.
+  Selected IEEE Std 1063-2001 as the primary operational baseline, Chicago
+  style for prose, and MIL-STD-498-inspired traceability practices for
+  project-management records.
+- 2026-03-06T22:55:00-08:00: Implemented by adding
+  ``docs/specifications/documentation_standard_profile.txt`` and aligning
+  repository guidance to this profile.

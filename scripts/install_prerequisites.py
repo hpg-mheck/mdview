@@ -3,7 +3,8 @@ Installer for mdview prerequisites across supported environments.
 
 This script installs system dependencies, provisions a virtual environment, and
 installs the project with development extras. It supports Rocky Linux 9.6,
-Fedora 43, Ubuntu 24.x, Linux Mint, Debian, and modern macOS versions.
+Fedora 43, Ubuntu 24.x, Linux Mint, Debian, modern macOS versions, and
+Windows 11 command-line environments.
 """
 
 from __future__ import annotations
@@ -35,12 +36,15 @@ class CommandRunner:
     def __init__(self, dry_run: bool = False) -> None:
         self.dry_run = dry_run
 
-    def run(self, command: Sequence[str]) -> None:
+    def run(self, command: Sequence[str], cwd: Optional[Path] = None) -> None:
         printable = " ".join(command)
-        print(f"-> {printable}")
+        if cwd is None:
+            print(f"-> {printable}")
+        else:
+            print(f"-> (cd {cwd} && {printable})")
         if self.dry_run:
             return
-        subprocess.run(command, check=True)
+        subprocess.run(command, check=True, cwd=str(cwd) if cwd else None)
 
 
 def parse_os_release(content: str) -> Dict[str, str]:
@@ -64,6 +68,9 @@ def load_os_release(path: Path = Path("/etc/os-release")) -> Dict[str, str]:
 
 def detect_os_info() -> OSInfo:
     system = platform.system().lower()
+    if system == "windows":
+        version = platform.version()
+        return OSInfo("windows", version, "Windows")
     if system == "darwin":
         version = platform.mac_ver()[0]
         return OSInfo("macos", version, "macOS")
@@ -82,6 +89,9 @@ def select_package_manager(
     os_info: OSInfo, available: Optional[Iterable[str]] = None
 ) -> Optional[str]:
     """Choose the best-fit package manager for the detected platform."""
+
+    if os_info.platform_id == "windows":
+        return None
 
     preferred: List[str] = []
     if os_info.platform_id in {"ubuntu", "debian", "linuxmint", "mint"}:
@@ -103,11 +113,11 @@ def select_package_manager(
 
 def system_packages_for(manager: str) -> List[str]:
     if manager == "apt-get":
-        return ["python3", "python3-venv", "python3-pip", "less", "git"]
+        return ["python3", "python3-venv", "python3-pip", "git"]
     if manager in {"dnf", "yum"}:
-        return ["python3", "python3-pip", "python3-virtualenv", "less", "git"]
+        return ["python3", "python3-pip", "python3-virtualenv", "git"]
     if manager == "brew":
-        return ["python", "git", "less"]
+        return ["python", "git"]
     return []
 
 
@@ -181,8 +191,6 @@ def collect_missing_system_tools(python_executable: str) -> List[str]:
         missing.append("venv")
     if not _python_module_available(python_executable, "pip"):
         missing.append("pip")
-    if shutil.which("less") is None:
-        missing.append("less")
     if shutil.which("git") is None:
         missing.append("git")
     return missing
@@ -392,9 +400,57 @@ def upgrade_pip_tooling(python_executable: str, runner: CommandRunner) -> None:
     )
 
 
-def install_project(python_executable: str, dev: bool, runner: CommandRunner) -> None:
-    target = ".[dev]" if dev else "."
-    runner.run([python_executable, "-m", "pip", "install", "-e", target])
+def is_project_root(path: Path) -> bool:
+    return (path / "pyproject.toml").exists() or (path / "setup.py").exists()
+
+
+def resolve_project_root(explicit: Optional[str] = None) -> Path:
+    if explicit:
+        candidate = Path(explicit).expanduser().resolve()
+        if is_project_root(candidate):
+            return candidate
+        raise RuntimeError(
+            f"Invalid --project-root: {candidate}. Expected pyproject.toml "
+            "or setup.py in that directory."
+        )
+
+    candidate = Path(__file__).resolve().parent.parent
+    if is_project_root(candidate):
+        return candidate
+
+    for parent in [Path.cwd().resolve(), *Path.cwd().resolve().parents]:
+        if is_project_root(parent):
+            return parent
+
+    raise RuntimeError(
+        "Unable to resolve project root. Pass --project-root to a directory "
+        "containing pyproject.toml or setup.py."
+    )
+
+
+def resolve_venv_path(venv_value: str, project_root: Path) -> Path:
+    venv_path = Path(venv_value).expanduser()
+    if not venv_path.is_absolute():
+        venv_path = project_root / venv_path
+    return venv_path.resolve()
+
+
+def install_project(
+    python_executable: str, dev: bool, runner: CommandRunner, project_root: Path
+) -> None:
+    target = ".[dev,interactive]" if dev else ".[interactive]"
+    runner.run(
+        [python_executable, "-m", "pip", "install", "-e", target], cwd=project_root
+    )
+
+
+def install_git_hooks(
+    python_executable: str, runner: CommandRunner, project_root: Path
+) -> None:
+    hook_installer = Path(__file__).resolve().with_name("install_git_hooks.py")
+    runner.run(
+        [python_executable, str(hook_installer), "--repo-root", str(project_root)]
+    )
 
 
 def validate_platform(os_info: OSInfo) -> None:
@@ -406,20 +462,28 @@ def validate_platform(os_info: OSInfo) -> None:
         "rocky",
         "fedora",
         "macos",
+        "windows",
     }
     if os_info.platform_id not in supported:
         raise RuntimeError(
             "Unsupported platform: {platform}. Supported platforms include "
             "Rocky Linux 9.6, Fedora 43, Ubuntu 24.x, Linux Mint, Debian, and "
-            "modern macOS releases.".format(platform=os_info.pretty_name)
+            "modern macOS releases, plus Windows 11 command-line shells.".format(
+                platform=os_info.pretty_name
+            )
         )
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Install mdview prerequisites.")
     parser.add_argument(
+        "--project-root",
+        default=str(Path(__file__).resolve().parent.parent),
+        help="Repository root containing pyproject.toml or setup.py.",
+    )
+    parser.add_argument(
         "--venv",
-        default=str(Path(__file__).resolve().parent.parent / ".venv"),
+        default=".venv",
         help="Virtual environment path.",
     )
     parser.add_argument(
@@ -445,39 +509,58 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
             "prompt when interactive."
         ),
     )
+    parser.add_argument(
+        "--skip-system-packages",
+        action="store_true",
+        help="Skip apt/dnf/yum/brew bootstrap and only configure Python tooling.",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     runner = CommandRunner(dry_run=args.dry_run)
+    project_root = resolve_project_root(args.project_root)
 
     os_info = detect_os_info()
     validate_platform(os_info)
 
-    manager = select_package_manager(os_info)
-    if manager is None:
-        raise RuntimeError("No supported package manager found for this platform.")
-
     print(
         f"Detected platform: {os_info.pretty_name} ({os_info.platform_id} {os_info.version_id})"
     )
-    missing_tools = collect_missing_system_tools(args.python)
-    if missing_tools:
-        packages = system_packages_for(manager)
-        use_sudo = should_use_sudo()
-        commands = build_install_commands(manager, packages, use_sudo)
-        print(f"Missing system tools detected: {', '.join(missing_tools)}")
-        execute_commands(commands, runner)
-    else:
-        print(
-            "System prerequisites already available; skipping package-manager install."
-        )
 
-    venv_path = Path(args.venv).resolve()
+    if args.skip_system_packages:
+        print("Skipping system package manager bootstrap (--skip-system-packages).")
+    else:
+        manager = select_package_manager(os_info)
+        if manager is not None:
+            missing_tools = collect_missing_system_tools(args.python)
+            if missing_tools:
+                packages = system_packages_for(manager)
+                use_sudo = should_use_sudo()
+                commands = build_install_commands(manager, packages, use_sudo)
+                print(f"Missing system tools detected: {', '.join(missing_tools)}")
+                execute_commands(commands, runner)
+            else:
+                print(
+                    "System prerequisites already available; skipping "
+                    "package-manager install."
+                )
+        elif os_info.platform_id != "windows":
+            raise RuntimeError("No supported package manager found for this platform.")
+        else:
+            print("Windows detected: skipping system package manager bootstrap.")
+
+    venv_path = resolve_venv_path(args.venv, project_root)
     venv_python = ensure_virtualenv(args.python, venv_path, runner)
     upgrade_pip_tooling(str(venv_python), runner)
-    install_project(str(venv_python), dev=not args.production, runner=runner)
+    install_project(
+        str(venv_python),
+        dev=not args.production,
+        runner=runner,
+        project_root=project_root,
+    )
+    install_git_hooks(str(venv_python), runner=runner, project_root=project_root)
     local_mdview = venv_command_path(venv_path, "mdview")
     alternate_mdview = detect_noncheckout_mdview(local_mdview)
     command_mode = resolve_mdview_command_mode(

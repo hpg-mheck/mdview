@@ -1,0 +1,46 @@
+Markdown Forced-Break Wrap Stability
+====================================
+
+Purpose
+-------
+Prevent mdview's Rich-oriented forced-break handling from introducing
+spurious paragraph wraps after list blocks or other structural transitions.
+The immediate regression to prevent is the sentence
+`This repository does **not** include ...` breaking between `not` and
+`include` at widths where the combined phrase still fits on one line.
+
+Scope
+-----
+- This work applies to Markdown rendering through Rich.
+- The failure appears after mdview inserts `_FORCED_BREAK_SENTINEL` markers
+  to preserve blank-line separation around list blocks.
+- The fix must preserve the existing visual separation behavior around
+  lists, headings, and related structural transitions.
+
+Behavior
+--------
+- Forced-break markers must not contribute visible width to adjacent prose.
+- Forced-break markers must not survive into user-visible output.
+- After a list block, the following paragraph must wrap according to the real
+  visible text width, not according to hidden marker width.
+- Emphasis spans adjacent to the affected boundary must remain intact and must
+  not trigger an extra line break solely because a structural marker preceded
+  the paragraph.
+
+Implementation Direction
+------------------------
+- Replace the current visible text sentinel strategy with a Rich-safe marker
+  that preserves structural separation without entering rendered prose flow.
+- Any marker string used in regex cleanup must be escaped before building the
+  cleanup pattern.
+- Do not weaken the existing blank-line separation guarantees that the list
+  normalization path currently enforces.
+
+Testing Requirements
+--------------------
+- Add a regression fixture covering a list block followed by a paragraph that
+  contains a bold emphasis span near the reported wrap point.
+- At a width in the reported failure band, assert that the rendered output
+  keeps `This repository does not include` together on one line.
+- Keep existing list-spacing and escaping suites passing so the forced-break
+  fix does not reintroduce earlier Rich spacing regressions.

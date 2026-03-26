@@ -193,6 +193,9 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# Local quality-gate cache
+.git/mdview-quality-cache.json
+
 # PyPI configuration file
 .pypirc
 
@@ -208,3 +211,10 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 node_modules/
+
+# BEGIN managed by codex-wrangler
+.codex-local/
+.codex-home/
+bin/codex-local
+README-LOCAL-Start-Codex.md
+# END managed by codex-wrangler

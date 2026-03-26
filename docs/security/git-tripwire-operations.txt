@@ -1,0 +1,119 @@
+Git Tripwire Operations
+=======================
+
+Purpose
+-------
+Provide a stable, operator-readable runbook for guarded git workflows that
+must not push changes unless entropy-tripwire validation is healthy.
+
+Scripts
+-------
+- `scripts/git_standard_commit_push.py`
+- `scripts/git_veteran_pull.py`
+- `scripts/run_quality_gate_cached.py`
+- `dev-utils/security/verify_entropy_tripwire.py`
+- `scripts/run_tool_with_timeout.py entropy_tripwire_verify`
+
+Standard commit and push
+------------------------
+Command:
+- `python scripts/git_standard_commit_push.py -m "<message>"`
+
+Behavior:
+1. Resolve repository root.
+2. Run `python scripts/run_quality_gate_cached.py`.
+3. Stage all changes (`git add -A`) unless `--no-stage-all` is set.
+4. Commit with provided message.
+5. Push to `origin <current-branch>` unless overridden.
+
+Important options:
+- `--remote <name>`
+- `--branch <name>`
+- `--no-stage-all`
+- `--allow-empty`
+- `--no-quality-cache` (forces uncached quality gate)
+- `--dry-run`
+
+Push gate conditions
+--------------------
+The push path is blocked unless all three tripwire conditions pass:
+1. Sentinel fixture is detected when unexcluded:
+   - expected fixture: `tests/test_entropy_check.py`
+2. Normal harness run (with fixture exclusion) reports no findings.
+3. Reported scanned-file counts match independent file enumeration under the
+   same exclude patterns.
+
+Quality-gate cache behavior
+---------------------------
+- Cache file location: `.git/mdview-quality-cache.json`
+- Cache keys are per check (`black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, `pytest`).
+- Each check fingerprint hashes both relative path names and file contents for
+  that check's scope.
+- A check is skipped only when its previous run passed and the fingerprint is
+  unchanged.
+- Any scoped file content or path change invalidates that check and reruns it.
+
+Managed hooks
+-------------
+`scripts/install_git_hooks.py` installs wrappers for both `pre-commit` and
+`pre-push`.
+
+- Existing non-managed hooks are preserved by moving them to
+  `.git/hooks/<hook>.local`.
+- New managed wrappers invoke `<hook>.local` first, then run mdview checks.
+- This avoids breaking non-shell legacy hooks while still enforcing local
+  quality gates.
+
+Pre-push cache override
+-----------------------
+Set this environment variable to force uncached checks during a push:
+- `MDVIEW_QUALITY_GATE_NO_CACHE=1`
+
+Veteran pull operation
+----------------------
+Command:
+- `python scripts/git_veteran_pull.py`
+
+Default behavior:
+1. Ensure working tree is clean.
+2. Run `git fetch --all --prune`.
+3. Run `git pull --ff-only`.
+4. Run `python scripts/run_tool_with_timeout.py entropy_check`.
+
+Important options:
+- `--allow-dirty`
+- `--remote <name>`
+- `--branch <name>` (requires `--remote`)
+- `--skip-entropy-check`
+- `--dry-run`
+
+Common failure modes and responses
+----------------------------------
+Tripwire verifier fails sentinel detection:
+- Confirm `tests/test_entropy_check.py` exists and still contains the intended
+  high-entropy fixture token.
+
+Verifier reports non-sentinel findings:
+- Run `python scripts/run_tool_with_timeout.py entropy_check`.
+- Inspect flagged lines and rotate/remove any real credentials before retry.
+
+Verifier reports scan-count mismatch:
+- Check for newly introduced generated directories that should be excluded.
+- Confirm exclude patterns in scanner and harness are still aligned.
+
+Commit/push fails with no staged changes:
+- Either stage changes manually and rerun with `--no-stage-all`, or rerun
+  without that flag so the script stages all tracked/untracked updates.
+
+Pull fails due dirty tree:
+- Commit or stash changes, then rerun.
+- Use `--allow-dirty` only when conflict risk is understood.
+
+Maintenance checklist
+---------------------
+- Keep `tests/test_entropy_check.py` as an intentional sentinel fixture.
+- Keep harness exclusions minimal and explicit.
+- Keep timeout values in `scripts/tool_timeouts.json` bounded.
+- Keep managed hooks installed through `scripts/install_git_hooks.py`.
+- Re-run full required checks after any threshold/exclusion logic change.

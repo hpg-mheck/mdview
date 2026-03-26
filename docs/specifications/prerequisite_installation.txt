@@ -3,15 +3,15 @@
 This specification defines the bootstrap and prerequisite installation flow
 for mdview development environments. The goal is to supply a predictable way
 to set up system packages and Python dependencies across Rocky Linux 9.6,
-Fedora 43, Ubuntu 24.x, Linux Mint, Debian (current stable/testing), and
-recent macOS versions.
+Fedora 43, Ubuntu 24.x, Linux Mint, Debian (current stable/testing), recent
+macOS versions, and Windows 11.
 
 ## Objectives
 - Provide a shell entry point that can run on minimal systems, ensure a
   working Python interpreter, and invoke the Python installer safely.
 - Implement a Python installer that detects the operating system, selects a
   package manager, and installs required system packages (Python, venv
-  support, `less`, build helpers).
+  support, and source-control helpers).
 - Create or reuse a project-scoped virtual environment and install mdview
   with development extras through pip.
 - Ensure the bootstrap path installs runtime Python dependencies for normal
@@ -25,21 +25,33 @@ recent macOS versions.
   validate logic without mutating the host.
 - Keep logic compatible with Python 3.9+ and avoid non-portable shell
   features.
+- Ensure repository launchers invoke mdview's internal CLI and never depend on
+  external renderers such as `pandoc` or GUI openers.
 
 ## System package expectations
 - Debian/Ubuntu/Mint: install `python3`, `python3-venv`, `python3-pip`,
-  `less`, and `git` using `apt-get update` + `apt-get install -y`.
+  and `git` using `apt-get update` + `apt-get install -y`.
 - Fedora/Rocky: install `python3`, `python3-pip`, `python3-virtualenv`,
-  `less`, and `git` using `dnf` or `yum` depending on availability.
-- macOS (Homebrew): install `python`, `git`, and `less` with `brew update`
-  + `brew install`.
+  and `git` using `dnf` or `yum` depending on availability.
+- macOS (Homebrew): install `python` and `git` with `brew update` +
+  `brew install`.
+- Windows 11: use `py -3` (or `python`) and skip system package-manager
+  installation in this script path; bootstrap directly into virtualenv and
+  pip installation.
 
 ## Virtual environment strategy
-- Use `.venv` at the repository root, created by `python -m venv` if
-  missing.
+- Use `.venv` at the repository root, created by `python -m venv` if missing.
+- Resolve project root independently of caller working directory so the
+  installer can run from subdirectories such as `scripts/` and still install
+  from repository root.
+  Running the installer from `scripts/` (or any other subdirectory) must
+  still install the editable project from repository root.
 - Upgrade `pip`, `setuptools`, and `wheel` inside the environment.
-- Install the project in editable mode with `.[dev]` extras by default;
-  allow a production-only option.
+- Install the project in editable mode with `interactive` extras in all modes
+  and include `dev` extras by default. Allow `--production` to skip only `dev`
+  extras.
+- Provide an option to skip system package installation when host packages are
+  already present or package-manager access is intentionally restricted.
 - Repository-local checks must run with `.venv/bin/python` or an activated
   `.venv` so the bootstrap environment remains authoritative.
 
