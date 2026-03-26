@@ -128,3 +128,39 @@ def test_quality_gate_cache_ignores_repo_local_codex_state(tmp_path: Path) -> No
 
     calls = _read_calls(repo)
     assert calls == ["entropy_tripwire_verify"]
+
+
+def test_quality_gate_cache_uses_gitdir_when_git_is_a_file(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    git_dir = repo / ".git-worktree"
+    git_dir.mkdir(parents=True)
+    (repo / ".git").parent.mkdir(parents=True, exist_ok=True)
+    (repo / ".git").write_text("gitdir: .git-worktree\n", encoding="utf-8")
+    (repo / "src").mkdir(parents=True)
+    (repo / "tests").mkdir(parents=True)
+    (repo / "scripts").mkdir(parents=True)
+    (repo / "dev-utils").mkdir(parents=True)
+    (repo / "resources").mkdir(parents=True)
+    (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+    (repo / "pyproject.toml").write_text(
+        "[tool.black]\nline-length = 88\n", encoding="utf-8"
+    )
+    (repo / "scripts" / "run_tool_with_timeout.py").write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env python3",
+                "raise SystemExit(0)",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    first = _run_cached(repo, "--checks", "black")
+    assert first.returncode == 0
+    assert "RUN black: cache miss" in first.stdout
+
+    second = _run_cached(repo, "--checks", "black")
+    assert second.returncode == 0
+    assert "SKIP black: cache hit" in second.stdout
+    assert (git_dir / "mdview-quality-cache.json").exists()

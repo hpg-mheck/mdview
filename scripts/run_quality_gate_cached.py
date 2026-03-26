@@ -16,6 +16,7 @@ from typing import Dict, Iterable, List, Sequence
 
 
 SCHEMA_VERSION = "1.0.0"
+DEFAULT_CACHE_FILENAME = "mdview-quality-cache.json"
 
 DEFAULT_EXCLUDES = {
     ".git",
@@ -84,8 +85,11 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--cache-file",
-        default=".git/mdview-quality-cache.json",
-        help="Cache file path relative to repo root.",
+        default=None,
+        help=(
+            "Optional cache file path relative to repo root. Defaults to "
+            "the active gitdir."
+        ),
     )
     parser.add_argument(
         "--no-cache",
@@ -205,6 +209,23 @@ def load_cache(path: Path) -> Dict[str, object]:
     return data
 
 
+def resolve_default_cache_path(repo_root: Path) -> Path:
+    git_path = repo_root / ".git"
+    if git_path.is_dir():
+        return (git_path / DEFAULT_CACHE_FILENAME).resolve()
+
+    if git_path.is_file():
+        header = git_path.read_text(encoding="utf-8").strip()
+        if header.startswith("gitdir:"):
+            raw_git_dir = header.split(":", 1)[1].strip()
+            git_dir = Path(raw_git_dir)
+            if not git_dir.is_absolute():
+                git_dir = (repo_root / git_dir).resolve()
+            return (git_dir / DEFAULT_CACHE_FILENAME).resolve()
+
+    return (repo_root / ".git" / DEFAULT_CACHE_FILENAME).resolve()
+
+
 def save_cache(path: Path, data: Dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     ordered = {
@@ -234,7 +255,10 @@ def now_iso() -> str:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     repo_root = Path(args.repo_root).resolve()
-    cache_path = (repo_root / args.cache_file).resolve()
+    if args.cache_file:
+        cache_path = (repo_root / args.cache_file).resolve()
+    else:
+        cache_path = resolve_default_cache_path(repo_root)
 
     cache = load_cache(cache_path)
     checks_cache = cache.setdefault("checks", {})
