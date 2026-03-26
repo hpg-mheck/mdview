@@ -5,9 +5,12 @@ import sys
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import pytest
+
 import mdview.rendering as rendering
 from mdview.rendering import (
     HAS_RICH,
+    _build_formatted_text,
     _format_pipe_tables,
     is_markdown_file,
     page_text,
@@ -297,10 +300,66 @@ def test_page_text_records_prompt_toolkit_fallback(monkeypatch, capsys) -> None:
         importlib.reload(rendering)
 
 
+def test_page_text_records_redraw_check_digit_fallback(monkeypatch, capsys) -> None:
+    original_find_spec = importlib.util.find_spec
+    monkeypatch.setattr(
+        importlib.util,
+        "find_spec",
+        lambda name: None if name == "prompt_toolkit" else original_find_spec(name),
+    )
+
+    import mdview.rendering as rendering
+
+    reloaded = importlib.reload(rendering)
+
+    try:
+        reloaded.page_text("sample", redraw_check_digit=True)
+        captured = capsys.readouterr()
+        notices = reloaded.get_fallback_notices()
+        assert any("Redraw check digit" in notice for notice in notices)
+        assert captured.out == "sample\n"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(rendering)
+
+
 def test_render_to_ansi_does_not_write_directly_to_stdout(capsys) -> None:
     render_to_ansi("# Heading\n\nBody\n", markdown=True)
     captured = capsys.readouterr()
     assert captured.out == ""
+
+
+def test_build_formatted_text_overlays_redraw_check_digit() -> None:
+    segments = _build_formatted_text(
+        ["abcdefghij"],
+        {},
+        None,
+        fill_width=10,
+        overlay_line=0,
+        overlay_column=4,
+        overlay_character="0",
+    )
+
+    rendered_line = "".join(text for _, text in segments).splitlines()[0]
+    assert rendered_line == "abcd0fghij"
+    assert any(
+        style == "class:redraw-check-digit" and "0" in text for style, text in segments
+    )
+
+
+def test_build_formatted_text_extends_blank_lines_for_overlay() -> None:
+    segments = _build_formatted_text(
+        ["short"],
+        {},
+        None,
+        fill_width=5,
+        overlay_line=2,
+        overlay_column=2,
+        overlay_character="7",
+    )
+
+    rendered_lines = "".join(text for _, text in segments).splitlines()
+    assert rendered_lines == ["short", "     ", "  7  "]
 
 
 def test_prompt_toolkit_pager_rerenders_on_resize(monkeypatch) -> None:
@@ -401,8 +460,351 @@ def test_prompt_toolkit_pager_rerenders_on_resize(monkeypatch) -> None:
     # Capture the instance to assert against rendered content.
     assert resized_widths == [60]
     assert len(controls) == 1
-    assert controls[0].rendered[0][0][1].strip() == "initial"
-    assert controls[0].rendered[1][0][1].strip() == "resized content"
+    assert "".join(text for _, text in controls[0].rendered[0]).strip() == "initial"
+    assert (
+        "".join(text for _, text in controls[0].rendered[1]).strip()
+        == "resized content"
+    )
+
+
+def test_prompt_toolkit_pager_advances_redraw_check_digit(monkeypatch) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(11, 5)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    app_registry: List["DummyApplication"] = []
+    controls: List["DummyFormattedTextControl"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+            self.rendered: List[List[Tuple[str, str]]] = []
+            controls.append(self)
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info = DummyRenderInfo(11, 5)
+            self.vertical_scroll = 2
+            self.horizontal_scroll = 3
+
+    class DummyKeyBindings:
+        def add(self, *args, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.output = DummyOutput()
+            app_registry.append(self)
+
+        def run(self) -> None:
+            control = self.layout.container.content
+            control.rendered.append(control.text_func())
+            control.rendered.append(control.text_func())
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+    content = "\n".join(f"line-{index:02d}-abcdef" for index in range(8))
+    assert rendering._attempt_prompt_toolkit_pager(
+        content,
+        redraw_check_digit=True,
+    )
+
+    first_render = "".join(text for _, text in controls[0].rendered[0]).splitlines()
+    second_render = "".join(text for _, text in controls[0].rendered[1]).splitlines()
+    assert first_render[4][8] == "0"
+    assert second_render[4][8] == "1"
+
+
+def test_prompt_toolkit_pager_keeps_redraw_check_digit_centered_during_scroll(
+    monkeypatch,
+) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(21, 7)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    app_registry: List["DummyApplication"] = []
+    captures: List[Tuple[List[str], int]] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info = DummyRenderInfo(21, 7)
+            self.vertical_scroll = 10
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def __init__(self) -> None:
+            self.handlers = {}
+
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                for key in keys:
+                    self.handlers[key] = func
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyEvent:
+        def __init__(self, app) -> None:
+            self.app = app
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.key_bindings = key_bindings
+            self.output = DummyOutput()
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            _capture_viewport(self.layout.container)
+
+        def run(self) -> None:
+            event = DummyEvent(self)
+            window = self.layout.container
+            _capture_viewport(window)
+            for _ in range(5):
+                for _ in range(10):
+                    self.key_bindings.handlers["up"](event)
+                for _ in range(10):
+                    self.key_bindings.handlers["down"](event)
+
+    def _capture_viewport(window: DummyWindow) -> None:
+        segments = window.content.text_func()
+        full_lines = "".join(text for _, text in segments).splitlines()
+        framebuffer = rendering._capture_text_buffer_framebuffer(
+            lines=full_lines,
+            vertical_scroll=window.vertical_scroll,
+            horizontal_scroll=window.horizontal_scroll,
+            width=21,
+            height=7,
+        )
+        captures.append(
+            (rendering._ascii_lines_from_cells(framebuffer), window.vertical_scroll)
+        )
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+    content = "\n".join(["abcdefghijklmnopqrstuvw"] * 40)
+    assert rendering._attempt_prompt_toolkit_pager(
+        content,
+        redraw_check_digit=True,
+    )
+
+    center_row = 3
+    center_column = 10
+    assert len(captures) == 101
+    for redraw_index, (viewport_lines, vertical_scroll) in enumerate(captures):
+        expected_digit = str(redraw_index % 10)
+        assert viewport_lines[center_row][center_column] == expected_digit
+        digit_positions = [
+            (row_index, column_index)
+            for row_index, line in enumerate(viewport_lines)
+            for column_index, character in enumerate(line)
+            if character.isdigit()
+        ]
+        assert digit_positions == [(center_row, center_column)]
+        assert 0 <= vertical_scroll <= 10
+
+
+def test_prompt_toolkit_pager_keeps_redraw_check_digit_centered_during_live_scroll(
+    monkeypatch,
+) -> None:
+    try:
+        import prompt_toolkit  # noqa: F401
+    except ModuleNotFoundError:
+        venv_site_packages = sorted(
+            (Path(__file__).resolve().parent.parent / ".venv").glob(
+                "lib*/python*/site-packages"
+            )
+        )
+        if venv_site_packages:
+            monkeypatch.syspath_prepend(str(venv_site_packages[0]))
+    pytest.importorskip("prompt_toolkit")
+
+    from prompt_toolkit.application import Application as RealApplication
+    from prompt_toolkit.application.current import get_app as real_get_app
+    from prompt_toolkit.data_structures import Size
+    from prompt_toolkit.input.defaults import create_pipe_input
+    from prompt_toolkit.key_binding import KeyBindings as RealKeyBindings
+    from prompt_toolkit.layout import Layout as RealLayout
+    from prompt_toolkit.layout.containers import (
+        Float as RealFloat,
+        FloatContainer as RealFloatContainer,
+        Window as RealWindow,
+    )
+    from prompt_toolkit.layout.controls import (
+        FormattedTextControl as RealFormattedTextControl,
+    )
+    from prompt_toolkit.output import DummyOutput
+    from prompt_toolkit.styles import Style as RealStyle
+
+    class FixedSizeDummyOutput(DummyOutput):
+        def get_size(self):
+            return Size(rows=24, columns=80)
+
+    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    labels = [
+        f"line-{alphabet[index // len(alphabet)]}{alphabet[index % len(alphabet)]}"
+        for index in range(40)
+    ]
+    content = "\n".join(f"{label} " + ("x" * 72) for label in labels)
+    key_sequence = (["\x1b[B"] * 10 + ["\x1b[A"] * 10) * 5 + ["q"]
+    captures: List[List[str]] = []
+
+    with create_pipe_input() as pipe_input:
+
+        class InstrumentedApplication(RealApplication):
+            def __init__(self, *args, **kwargs) -> None:
+                kwargs["input"] = pipe_input
+                kwargs["output"] = FixedSizeDummyOutput()
+                super().__init__(*args, **kwargs)
+                self.after_render += self._capture_and_drive
+
+            def _capture_and_drive(self, app) -> None:
+                framebuffer = rendering._capture_prompt_toolkit_framebuffer(
+                    self,
+                    width=80,
+                    height=24,
+                )
+                if framebuffer is None:
+                    return
+                captures.append(rendering._ascii_lines_from_cells(framebuffer))
+                frame_index = len(captures) - 1
+                if frame_index < len(key_sequence):
+                    pipe_input.send_text(key_sequence[frame_index])
+
+        def fake_components():
+            return (
+                InstrumentedApplication,
+                RealKeyBindings,
+                RealLayout,
+                RealWindow,
+                RealFormattedTextControl,
+                RealStyle,
+                real_get_app,
+                RealFloatContainer,
+                RealFloat,
+            )
+
+        monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+        monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+
+        assert rendering._attempt_prompt_toolkit_pager(
+            content,
+            redraw_check_digit=True,
+            viewport_columns=80,
+            viewport_rows=24,
+        )
+
+    expected_scrolls = [0]
+    scroll = 0
+    for _ in range(5):
+        for _ in range(10):
+            scroll = min(scroll + 1, 16)
+            expected_scrolls.append(scroll)
+        for _ in range(10):
+            scroll = max(scroll - 1, 0)
+            expected_scrolls.append(scroll)
+
+    center_row = 11
+    center_column = 39
+    assert len(captures) == 101
+    assert len(expected_scrolls) == len(captures)
+    for redraw_index, (viewport_lines, expected_scroll) in enumerate(
+        zip(captures, expected_scrolls)
+    ):
+        assert viewport_lines[0].startswith(labels[expected_scroll])
+        assert viewport_lines[center_row][center_column] == str(redraw_index % 10)
+        digit_positions = [
+            (row_index, column_index)
+            for row_index, line in enumerate(viewport_lines)
+            for column_index, character in enumerate(line)
+            if character.isdigit()
+        ]
+        assert digit_positions == [(center_row, center_column)]
 
 
 def test_prompt_toolkit_control_kwargs_are_version_compatible(monkeypatch) -> None:
@@ -992,7 +1394,9 @@ def test_prompt_toolkit_pager_switches_documents_with_n_and_p(monkeypatch) -> No
     )
 
     control = app_registry[-1].layout.container.content
-    assert [segments[0][1].strip() for segments in control.rendered] == [
+    assert [
+        "".join(text for _, text in segments).strip() for segments in control.rendered
+    ] == [
         "doc-zero",
         "doc-one",
         "doc-zero",

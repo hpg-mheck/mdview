@@ -59,6 +59,43 @@ def test_tripwire_verifier_passes_for_clean_repo_with_sentinel(tmp_path: Path) -
     assert "PASS: tripwire verification complete." in result.stdout
 
 
+def test_tripwire_verifier_ignores_repo_local_codex_state(tmp_path: Path) -> None:
+    tripwire = tmp_path / "tests" / "test_entropy_check.py"
+    tripwire.parent.mkdir(parents=True)
+    tripwire.write_text(_sentinel_fixture(), encoding="utf-8")
+    auth = tmp_path / ".codex-home" / ".codex" / "auth.json"
+    auth.parent.mkdir(parents=True)
+    auth.write_text(
+        "\n".join(
+            [
+                "{",
+                f'  "access_token": "{_token()}"',
+                "}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    package_lock = tmp_path / ".codex-local" / "package-lock.json"
+    package_lock.parent.mkdir(parents=True)
+    package_lock.write_text(
+        "\n".join(
+            [
+                "{",
+                f'  "integrity": "{_token()}"',
+                "}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_tripwire(tmp_path)
+
+    assert result.returncode == 0
+    assert "PASS: tripwire verification complete." in result.stdout
+
+
 def test_tripwire_verifier_fails_when_non_sentinel_finding_exists(
     tmp_path: Path,
 ) -> None:

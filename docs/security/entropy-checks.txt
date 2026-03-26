@@ -16,6 +16,17 @@ Core tools
   - `entropy_check`
   - `entropy_tripwire_verify`
 
+Default path exclusions
+-----------------------
+- Scanner defaults exclude generated local environment state that is not
+  repository content, including `.git`, `.venv`, caches, `mdview.egg-info`,
+  repo-local Codex directories (`.codex-home`, `.codex-local`), and the
+  managed local launcher/start-guide files `bin/codex-local` and
+  `README-LOCAL-Start-Codex.md`.
+- The cached quality-gate fingerprint step uses the same generated local
+  environment exclusions for repo-root checks so local Codex state does not
+  invalidate entropy-related cache keys.
+
 Detection model
 ---------------
 - Determine a major file type from extension/content hints (`code`, `docs`,
@@ -107,6 +118,8 @@ Maintenance notes
 - Keep entropy thresholds conservative to avoid drowning in false positives.
 - Expand intentional exclusions only for explicit fixture files used to test
   the detector itself.
+- Keep scanner and tripwire-verifier default exclusions aligned when new
+  generated local-environment directories are introduced.
 - If a real leak is detected, rotate the secret first, then remove it from the
   repository and history as required by incident policy.
 - If tripwire verification starts failing unexpectedly:

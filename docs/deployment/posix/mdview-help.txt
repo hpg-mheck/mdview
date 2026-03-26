@@ -1,18 +1,18 @@
-usage: mdview [-h] [--verify-resize-detection] [--reflow]
-              [--reflow-mode {prose,all,none}] [--noreflow] [--verbose]
-              [--MIL] [--readability-first-tables]
+usage: mdview [-h] [--verify-resize-detection] [--test-input-feedback]
+              [--reflow] [--reflow-mode {prose,all,none}] [--noreflow]
+              [--verbose] [--MIL] [--readability-first-tables]
               [--automation-timeout SECONDS]
               [--automation-timeout-screenshot BASENAME]
               [--viewport-columns COLUMNS] [--viewport-rows ROWS]
-              [--automation-json SOURCE] [-V]
+              [--automation-json SOURCE] [--redraw-check-digit] [-V]
               [paths ...]
 
 Render Markdown in the terminal with integrated navigation.
 
 positional arguments:
   paths                     Path(s) to Markdown or text files to view.
-                            Required unless --verify-resize-detection is used.
-                            (default: None)
+                            Required unless --verify-resize-detection or
+                            --test-input-feedback is used. (default: None)
 
 optional arguments:
   -h, --help                show this help message and exit
@@ -20,6 +20,9 @@ optional arguments:
                             Guide a manual resize sequence, acknowledging
                             detected events and reporting pass/fail results.
                             (default: False)
+  --test-input-feedback     Run a two-stage terminal input diagnostic that
+                            compares plain stdin handling against the
+                            prompt_toolkit viewer stack. (default: False)
   --reflow                  Enable reflow processing. If no explicit mode is
                             supplied, defaults to --reflow-mode prose.
                             (default: False)
@@ -55,4 +58,7 @@ optional arguments:
   --automation-json SOURCE  Replay key events from JSON SOURCE (file path or
                             literal JSON string) as [[delay_seconds,
                             key_spec], ...]. (default: None)
+  --redraw-check-digit      Overlay a center-screen digit that advances from 0
+                            to 9 on each interactive pager redraw. (default:
+                            False)
   -V, --version             Show the mdview version and exit.

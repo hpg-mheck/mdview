@@ -193,6 +193,9 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# Local quality-gate cache
+.git/mdview-quality-cache.json
+
 # PyPI configuration file
 .pypirc
 

@@ -6,6 +6,123 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Aligned the branch with the project-local Codex takeover environment,
+  recorded at 2026-03-26T12:13:06-07:00 by Codex (GPT-5.4) from direct
+  operator instruction. Updated
+  `docs/specifications/quality_gate_black_scope_and_exclusions.txt` and
+  `scripts/tool_timeouts.json` so the required `black` command remains scoped
+  to repository-owned Python roots without relying on an unsupported flag in
+  the live formatter environment; extended
+  `docs/specifications/security_entropy_tripwire_git_workflow.txt` and
+  `docs/security/entropy-checks.txt` so repo-local Codex state is treated as
+  generated local environment data; updated
+  `dev-utils/security/entropy-check.py` and
+  `dev-utils/security/verify_entropy_tripwire.py` plus
+  `scripts/run_quality_gate_cached.py` to exclude `.codex-home`,
+  `.codex-local`, `bin/codex-local`, and
+  `README-LOCAL-Start-Codex.md`; added regression coverage in
+  `tests/test_entropy_harness.py`,
+  `tests/test_run_quality_gate_cached.py`, and
+  `tests/test_verify_entropy_tripwire.py`; fixed a segmented-render assertion
+  in `tests/test_rendering.py`; and recorded BUG-2026-03-26-01 in
+  `project-management/state/bugs/closed-bugs.txt` with a resolved report.
+  Validation: wrapper-based `black` (using the approved out-of-sandbox path
+  for this Codex session), `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, `scripts/run_quality_gate_cached.py --checks
+  entropy_tripwire_verify`, and full `pytest` all passed (`306 passed`).
+
+* Strengthened documentation/comment standards and resolved the quality-gate
+  `black` timeout, recorded at 2026-03-10T08:13:30-07:00 by Codex (GPT-5.4)
+  from direct operator instruction. Updated
+  `docs/development-workflow.txt`, `project-management/git-flow.txt`, and
+  `docs/specifications/documentation_standard_profile.txt`; expanded
+  explanatory maintenance comments in `src/mdview/cli.py`,
+  `src/mdview/input_feedback.py`, and `src/mdview/rendering.py`; added
+  `docs/specifications/quality_gate_black_scope_and_exclusions.txt`; changed
+  `scripts/tool_timeouts.json` so `black` formats only repository-owned Python
+  roots (`src`, `tests`, `scripts`, `dev-utils`) instead of recursively
+  scanning from repository root with an unsafe exclude pattern; added
+  regression coverage in `tests/test_entropy_harness.py`; and created
+  `project-management/state/bugs/reports/` with a resolved issue report for
+  BUG-2026-03-10-01. Validation: wrapper-based `black`, `ruff`, `compileall`,
+  `entropy_check`, `entropy_tripwire_verify`, and full `pytest` all passed
+  (`304 passed`).
+
+* Stabilized Markdown wrapping after list-boundary forced breaks, recorded at
+  2026-03-10T02:26:54-07:00 by Codex (GPT-5.4) from direct operator
+  instruction. Added
+  `docs/specifications/markdown_forced_break_wrap_stability.txt`; updated
+  `src/mdview/rendering.py` to use separate Rich break markers for structural
+  list/heading transitions versus prose-after-list spacing so hidden break
+  markers no longer contribute visible wrap width to paragraphs; added the
+  fixture
+  `resources/tests/markdown/lists/bulleted_followed_by_bold_paragraph.md`;
+  and extended `tests/test_markdown_bulleted_lists.py` with a width-62
+  regression that keeps `This repository does not include` on one line
+  after a list block. Validation: wrapper-based black, ruff, compileall,
+  entropy_check, entropy_tripwire_verify, and full pytest all passed
+  (`303 passed`). Manual reproduction against `../TheKnowledge/README.md`
+  confirmed the previous failure band around widths 62-66 and verified
+  that the fixed renderer no longer inserts the bad break there.
+
+* Fixed live prompt_toolkit redraw-check-digit drift and non-scrolling
+  vertical navigation, recorded at 2026-03-10T01:21:05-07:00 by Codex
+  (GPT-5.4) from direct operator instruction. Updated
+  `docs/specifications/redraw_check_digit_overlay.txt` to require a
+  viewport-relative overlay layer and a live render-loop regression; updated
+  `src/mdview/rendering.py` to anchor the digit as a screen-relative
+  prompt_toolkit float while routing viewport movement through supported
+  scroll callbacks and a hidden cursor position so `up`/`down` navigation
+  actually scrolls in real terminals; kept `src/mdview/input_feedback.py`
+  compatible with the expanded prompt_toolkit component tuple; and added a
+  live prompt_toolkit regression plus prompt_toolkit-availability-robust test
+  assertions in `tests/test_rendering.py`. Validation: wrapper-based black,
+  ruff, compileall, entropy_check, entropy_tripwire_verify, and full pytest
+  all passed (`302 passed`), and a launcher-level PTY smoke run of
+  `./mdview README.md --redraw-check-digit ... --automation-json '[[0.0,
+  \"down\"]]'` showed the viewport advancing on the first `down` key while
+  the digit remained centered.
+
+* Strengthened redraw-check-digit regression coverage for repeated vertical
+  scrolling, recorded at 2026-03-09T15:56:03-07:00 by Codex (GPT-5.4) from
+  direct operator instruction. Updated
+  `docs/specifications/redraw_check_digit_overlay.txt` to require repeated
+  vertical-scroll stability coverage, and added a prompt_toolkit stress test
+  in `tests/test_rendering.py` that runs five cycles of ten `up` presses
+  followed by ten `down` presses, asserting that every redraw advances the
+  digit modulo 10 and keeps it at the same absolute viewport cell after
+  cropping. Validation: wrapper-based black, ruff, compileall,
+  entropy_check, entropy_tripwire_verify, and full pytest all passed
+  (`301 passed`).
+
+* Added an optional interactive redraw check-digit overlay for viewport
+  debugging, recorded at 2026-03-09T15:50:36-07:00 by Codex (GPT-5.4) from
+  direct operator instruction. Added specification
+  `docs/specifications/redraw_check_digit_overlay.txt`; added
+  `--redraw-check-digit` in `src/mdview/cli.py`; updated
+  `src/mdview/rendering.py` so prompt_toolkit redraws overlay a center-screen
+  digit that advances modulo 10 at the formatted-text redraw boundary; added
+  regression coverage in `tests/test_cli.py` and `tests/test_rendering.py`;
+  and updated README, shared POSIX help text, Linux and macOS man pages,
+  `docs/specifications/project_overview.txt`, and
+  `docs/specifications/fallback-behavior.txt`.
+  Validation: wrapper-based black, ruff, compileall, entropy_check,
+  entropy_tripwire_verify, and full pytest all passed (`300 passed`).
+
+* Added standalone `--test-input-feedback` diagnostics for arrow-key
+  troubleshooting, recorded at 2026-03-09T15:36:22-07:00 by Codex
+  (GPT-5.4) from direct operator instruction. Added specification
+  `docs/specifications/test_input_feedback_mode.txt`; implemented
+  `src/mdview/input_feedback.py` with a line-oriented direct-input stage and
+  a full-screen prompt_toolkit stage, both supporting Left/Right arrows plus
+  `,` and `.` alternates with timestamped debug logging of input and redraw
+  events; wired the standalone mode through `src/mdview/cli.py`; added
+  regression coverage in `tests/test_input_feedback.py` and
+  `tests/test_cli.py`; and updated README, shared POSIX help text, Linux and
+  macOS man pages, and `docs/specifications/project_overview.txt`.
+  Validation: wrapper-based black, ruff, compileall, entropy_check,
+  entropy_tripwire_verify, and full pytest all passed (`295 passed`).
+
 * Fixed viewport movement key handling after operator report that arrow keys
   were not reliably moving the document. Recorded at
   2026-03-08T21:33:02-07:00 by Codex (GPT-5) from direct operator

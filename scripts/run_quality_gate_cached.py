@@ -22,8 +22,12 @@ DEFAULT_EXCLUDES = {
     ".venv",
     ".pytest_cache",
     ".ruff_cache",
+    ".codex-home",
+    ".codex-local",
     "mdview.egg-info",
     "__pycache__",
+    "bin/codex-local",
+    "README-LOCAL-Start-Codex.md",
 }
 
 CHECK_ORDER = [

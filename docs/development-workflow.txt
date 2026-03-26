@@ -64,6 +64,20 @@ documentation standards and the required checks. Run
 ready. If progress stalls, move the entry back to the backlog with an
 explanation and timestamp.
 
+Treat documentation and comments as part of the deliverable, not as optional
+cleanup. Public-facing docs, module docstrings, and complex runtime code paths
+must explain intent, invariants, library constraints, failure modes, and
+debugging cues clearly enough that a new maintainer can follow the behavior
+without reverse-engineering it from tests alone.
+
+When code coordinates terminal I/O, rendering, timers, fallback behavior,
+automation, or other multi-step state transitions, add section-level comments
+that map the control flow and explain why the sequence is arranged that way.
+Use comments to warn future maintainers away from tempting but unsafe
+"simplifications" when prior bugs or library quirks make those shortcuts
+dangerous. AI-assisted edits should have the same guidance available as human
+reviewers.
+
 For broad exploratory smoke runs, avoid ad hoc shell snippets. Implement
 repeatable checks as formal tests or reusable scripts under `dev-utils/`, and
 document usage in `docs/testing/` so they can be rerun consistently.
@@ -100,6 +114,10 @@ Before clearing, confirm the corresponding specification is complete, the
 required checks have passed, and reviewers can trace the change back to the
 proposal and backlog entries. If a follow-on task is needed, open a fresh
 backlog entry rather than rewriting the completed record.
+
+Also confirm that modified complex code remains adequately documented. If a
+reviewer cannot trace state transitions, fallback boundaries, or debugging
+hooks from the code and its comments, the work is not ready to clear.
 
 Deferrals
 ---------

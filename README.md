@@ -58,14 +58,35 @@ Optional flags:
 - `--automation-json <source>` to replay timed key input as
   `[[delay_seconds, key_spec], ...]` from a JSON file path or literal JSON
   string.
+- `--redraw-check-digit` to overlay a center-screen digit that advances
+  modulo 10 on each interactive pager redraw.
 - `--viewport-columns <int>` and `--viewport-rows <int>` to enforce synthetic
   viewport dimensions for deterministic automation captures.
 - `--verify-resize-detection` to run an interactive resize checklist that
   acknowledges detected events and reports PASS/FAIL per step.
+- `--test-input-feedback` to run a two-stage terminal input diagnostic that
+  compares direct stdin handling against the prompt_toolkit viewer stack while
+  logging timestamped input and redraw events.
 - `--version` to display the current version.
 
 Viewport movement behavior and automation replay format are documented in
 `docs/movement.txt`.
+
+To make full-screen redraws visible during normal viewing sessions, run:
+```bash
+mdview --redraw-check-digit path/to/file.md
+```
+The interactive pager will replace the center cell with a digit that advances
+from `0` to `9` on each redraw.
+
+For terminal key-diagnostics, run:
+```bash
+mdview --test-input-feedback
+```
+Stage 1 redraws a ten-cell dash bar on new lines using direct terminal input.
+Stage 2 repeats the same movement test in a full-screen prompt_toolkit view.
+Both stages accept Left/Right arrows plus `,` and `.` alternates, and emit
+timestamped debug logs to standard error.
 
 Markdown content reflows to current window dimensions by default.
 `--reflow` is therefore redundant for Markdown. The exception is Markdown

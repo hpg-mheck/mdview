@@ -18,26 +18,31 @@ Requirements
    - sentinel fixture detection when the fixture is not excluded
    - zero findings after normal harness exclusions are applied
    - scan-count verification against independent repository file enumeration
-3. The entropy scanner must support a `--json-output` flag that emits a
+3. The scanner, harness, and verifier must share default exclusions for
+   generated local-environment state that is not repository content,
+   including repo-local Codex install directories such as `.codex-home` and
+   `.codex-local` when present.
+4. The entropy scanner must support a `--json-output` flag that emits a
    machine-readable payload with `schema_version` as the first top-level key.
-4. The scanner JSON schema version must be explicit (`1.0.0`) so future
+5. The scanner JSON schema version must be explicit (`1.0.0`) so future
    changes can be version-gated by downstream tooling.
-5. A standardized commit/push utility must run the cached quality gate and
+6. A standardized commit/push utility must run the cached quality gate and
    abort before push if any configured check fails.
-6. The cached quality gate must persist per-check pass fingerprints in
+7. The cached quality gate must persist per-check pass fingerprints in
    `.git/mdview-quality-cache.json`, hashing both relative paths and file
-   contents for each check scope.
-7. A standardized pull utility must enforce a guarded pull workflow:
+   contents for each check scope while honoring the same generated local
+   environment exclusions used by repo-root checks.
+8. A standardized pull utility must enforce a guarded pull workflow:
    - clean working tree by default
    - `fetch --all --prune`
    - `pull --ff-only`
    - post-pull entropy check unless explicitly skipped
-8. Managed local hooks must include:
+9. Managed local hooks must include:
    - `pre-commit` entropy scan through timeout wrapper
    - `pre-push` cached quality gate execution
-9. Hook installation must preserve existing unmanaged hook behavior by
+10. Hook installation must preserve existing unmanaged hook behavior by
    wrapping non-managed hooks instead of appending shell content blindly.
-10. Setup scripts must install or refresh managed hook wrappers.
+11. Setup scripts must install or refresh managed hook wrappers.
 
 Out of scope
 ------------

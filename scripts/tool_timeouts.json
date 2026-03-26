@@ -11,10 +11,10 @@
         "python",
         "-m",
         "black",
-        ".",
-        "--no-cache",
-        "--exclude",
-        "/(\\.venv|mdview\\.egg-info)/"
+        "src",
+        "tests",
+        "scripts",
+        "dev-utils"
       ]
     },
     "ruff": {

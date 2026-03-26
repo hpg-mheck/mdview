@@ -68,13 +68,18 @@ Functional Requirements
     across the rendered virtual document within document bounds.
   - Supports multi-document sessions with ``n``/``p`` and compatible
     ``:n``/``:p`` commands for next/previous document.
-- CLI
+  - CLI
   - Command: ``mdview <path...>``.
   - Options: ``--version`` for program version; ``--reflow`` to enable
     reflow processing; ``--noreflow`` to disable reflow; and
     ``--reflow-mode prose|all|none`` to select policy behavior as defined in
     ``docs/specifications/reflow_mode.txt``. ``--readability-first-tables``
     forces readability-first table layout profile selection.
+    ``--test-input-feedback`` runs a standalone two-stage terminal
+    input diagnostic that compares direct stdin handling against the
+    prompt_toolkit viewer stack with timestamped input/redraw logging.
+    ``--redraw-check-digit`` overlays a center-screen digit that advances on
+    each interactive pager redraw for viewport-debugging sessions.
     ``--automation-timeout <seconds>`` injects synthetic quit after a bounded
     viewer runtime for unattended automation.
     ``--automation-timeout-screenshot <basename>`` writes timeout-exit

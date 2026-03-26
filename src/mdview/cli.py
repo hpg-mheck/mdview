@@ -1,4 +1,9 @@
-"""Command-line interface for mdview."""
+"""Command-line interface for mdview.
+
+The CLI stays deliberately explicit because the generated help text, release
+artifacts, and tests all depend on stable option behavior. Keep policy
+decisions readable here instead of hiding them behind clever abstractions.
+"""
 
 import argparse
 import json
@@ -10,6 +15,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from mdview import __version__
+from mdview.input_feedback import run_test_input_feedback
 from mdview.prerequisites import (
     detect_prerequisite_issues,
     report_prerequisite_issues,
@@ -72,6 +78,9 @@ def _parse_automation_json_source(source: str) -> list[AutomationReplayEvent]:
 
     payload = source
     candidate = Path(source).expanduser()
+    # The CLI accepts either a literal JSON string or a path. Prefer the file
+    # interpretation when the path exists so automation scripts can pass a
+    # filename without additional flag syntax.
     if candidate.exists():
         if not candidate.is_file():
             raise ValueError(f"automation JSON path is not a file: {candidate}")
@@ -134,7 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="*",
         help=(
             "Path(s) to Markdown or text files to view. Required unless "
-            "--verify-resize-detection is used."
+            "--verify-resize-detection or --test-input-feedback is used."
         ),
     )
     parser.add_argument(
@@ -143,6 +152,14 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Guide a manual resize sequence, acknowledging detected events and "
             "reporting pass/fail results."
+        ),
+    )
+    parser.add_argument(
+        "--test-input-feedback",
+        action="store_true",
+        help=(
+            "Run a two-stage terminal input diagnostic that compares plain "
+            "stdin handling against the prompt_toolkit viewer stack."
         ),
     )
     parser.add_argument(
@@ -232,6 +249,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--redraw-check-digit",
+        action="store_true",
+        help=(
+            "Overlay a center-screen digit that advances from 0 to 9 on each "
+            "interactive pager redraw."
+        ),
+    )
+    parser.add_argument(
         "-V",
         "--version",
         action="version",
@@ -300,17 +325,38 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     exit_code = 0
 
+    if args.verify_resize_detection and args.test_input_feedback:
+        print(
+            "mdview: --verify-resize-detection and --test-input-feedback "
+            "cannot be used together",
+            file=sys.stderr,
+        )
+        _emit_fallback_notices()
+        return 2
+
     if args.verify_resize_detection:
         verifier = ResizeDetectionVerifier()
         report = verifier.run()
         _emit_fallback_notices()
         return 0 if report.overall_passed else 1
 
+    if args.test_input_feedback:
+        if args.paths:
+            print(
+                "mdview: --test-input-feedback does not accept document paths",
+                file=sys.stderr,
+            )
+            _emit_fallback_notices()
+            return 2
+        exit_code = run_test_input_feedback()
+        _emit_fallback_notices()
+        return exit_code
+
     paths = list(args.paths)
     if not paths:
         print(
             "mdview: at least one path is required unless "
-            "--verify-resize-detection is used",
+            "--verify-resize-detection or --test-input-feedback is used",
             file=sys.stderr,
         )
         _emit_fallback_notices()
@@ -334,6 +380,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return 2
 
     loaded_documents: list[_LoadedDocument] = []
+    # Preload all inputs before starting the pager. This keeps document
+    # switching deterministic and avoids surprising filesystem I/O once the
+    # interactive session is already live.
     for path in paths:
         if not path.exists() or not path.is_file():
             print(
@@ -371,6 +420,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     current_index = 0
 
     def _render_document(index: int, width: Optional[int] = None) -> str:
+        # Rendering stays callback-driven so the pager can request a width-
+        # sensitive rerender without needing to understand file I/O or policy.
         document = loaded_documents[index]
         return render_to_ansi(
             document.content,
@@ -384,6 +435,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ansi_text = _render_document(current_index, width=initial_width)
 
     def _render_on_resize(width: int) -> str:
+        # Reuse the same document-selection logic during resize so first-frame
+        # rendering and resize-driven rendering stay aligned.
         return _render_document(current_index, width=width)
 
     def _switch_document(delta: int, width: Optional[int]) -> Optional[str]:
@@ -401,6 +454,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _render_document(current_index, width=width)
 
     def _ui_event_logger(action: str, context: dict[str, object]) -> None:
+        # MIL output intentionally keeps one narrow choke point so future
+        # instrumentation changes do not need to chase logging calls across the
+        # interactive stack.
         if not args.mil:
             return
         if args.verbose:
@@ -414,6 +470,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     timeout_screenshot_basename = args.automation_timeout_screenshot
     if args.automation_timeout is not None and timeout_screenshot_basename is None:
+        # Keep the implicit basename here, not in the pager, so help text,
+        # tests, and runtime behavior all describe the same default.
         timeout_screenshot_basename = Path("mdview-automation-timeout-framebuffer")
 
     try:
@@ -429,6 +487,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             viewport_columns=args.viewport_columns,
             viewport_rows=args.viewport_rows,
             automation_replay=automation_replay,
+            redraw_check_digit=args.redraw_check_digit,
         )
     except RuntimeError as error:
         print(f"mdview: pager error: {error}", file=sys.stderr)

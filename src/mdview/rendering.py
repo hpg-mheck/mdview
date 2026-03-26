@@ -1,8 +1,12 @@
 """Core rendering and paging utilities for mdview.
 
 The module keeps the Markdown-to-ANSI pipeline compact and drives an internal
-text viewer path for interactive paging. All public functions are covered by
-unit tests to ensure reliable behavior.
+text viewer path for interactive paging. The hard parts live in three places:
+Markdown normalization before Rich sees the text, ANSI-to-prompt_toolkit
+translation for the interactive pager, and defensive fallbacks when optional
+dependencies are missing. Keep those boundaries legible; regressions in this
+module tend to come from "simplifying" a path whose ordering or state owner
+was more important than it first looked.
 """
 
 import importlib.util
@@ -69,6 +73,7 @@ class _PlainConsole:
 _FALLBACK_NOTICES: List[str] = []
 _EMPTY_HEADING_SENTINEL = "MDVIEWEMPTYHEADING"
 _FORCED_BREAK_SENTINEL = "MDVIEWHEADINGBREAK"
+_SOFT_BREAK_SENTINEL = "<!--MDVIEWHEADINGBREAK-->"
 _ANSI_ESCAPE_PATTERN = r"\x1b\[[0-?]*[ -/]*[@-~]"
 _OSC_ESCAPE_PATTERN = r"\x1b\][^\x1b\x07]*(?:\x1b\\|\x07)"
 _LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
@@ -443,10 +448,13 @@ def _normalize_heading_input(text: str, has_rich: bool) -> str:
                 continue
 
             if has_rich and len(stripped) != len(line):
-                normalized.append(
-                    f"{line[: len(line) - len(stripped)]}\\{stripped}"
-                    f" {_FORCED_BREAK_SENTINEL}"
-                )
+                # Rich treats indented ``#`` headings as literal text unless we
+                # escape the marker and then force a hard paragraph break after
+                # it. Keep the paired structural sentinels here; collapsing
+                # them back into a single generic break marker reopens wrapping
+                # bugs that the heading tests cover.
+                normalized.append(f"{line[: len(line) - len(stripped)]}\\{stripped}")
+                normalized.extend([_FORCED_BREAK_SENTINEL, _FORCED_BREAK_SENTINEL])
                 continue
 
         normalized.append(line)
@@ -462,10 +470,16 @@ def _normalize_bulleted_lists(text: str, has_rich: bool) -> str:
     in_list = False
     current_marker: Optional[str] = None
 
-    def _append_break() -> None:
+    def _append_break(*, structural: bool) -> None:
         if has_rich:
             output.append("")
-            output.extend([_FORCED_BREAK_SENTINEL, _FORCED_BREAK_SENTINEL])
+            # Keep structural and soft breaks distinct. Structural breaks must
+            # survive long enough to force Rich out of list context; soft
+            # breaks must *not* consume visible wrap width inside prose. This
+            # distinction is easy to "simplify" away and doing so reintroduces
+            # the width-sensitive list/paragraph wrap regression.
+            marker = _FORCED_BREAK_SENTINEL if structural else _SOFT_BREAK_SENTINEL
+            output.extend([marker, marker])
         else:
             output.append("")
 
@@ -482,9 +496,9 @@ def _normalize_bulleted_lists(text: str, has_rich: bool) -> str:
 
         if is_bullet:
             if not in_list and output and output[-1].strip():
-                _append_break()
+                _append_break(structural=False)
             elif in_list and marker != current_marker:
-                _append_break()
+                _append_break(structural=False)
 
             output.append(line)
             in_list = True
@@ -493,7 +507,7 @@ def _normalize_bulleted_lists(text: str, has_rich: bool) -> str:
 
         if in_list:
             if not line.strip():
-                _append_break()
+                _append_break(structural=False)
                 in_list = False
                 current_marker = None
                 continue
@@ -505,7 +519,7 @@ def _normalize_bulleted_lists(text: str, has_rich: bool) -> str:
                 continue
 
             if output and output[-1].strip() and line.strip():
-                _append_break()
+                _append_break(structural=_is_indented_list_marker(line))
             in_list = False
             current_marker = None
 
@@ -731,6 +745,9 @@ def render_to_ansi(
     )
     if markdown:
         trailing_newline = document.trailing_newline
+        # The ordering here is intentional. Each normalization pass prepares
+        # the source for the next one, and later cleanup expects the current
+        # sentinel shapes exactly as produced below.
         normalized = _normalize_heading_input(source_text, HAS_RICH)
         normalized = _normalize_bulleted_lists(normalized, HAS_RICH)
         normalized = _normalize_horizontal_rules(normalized, HAS_RICH)
@@ -747,17 +764,23 @@ def render_to_ansi(
     rendered = console.export_text(styles=True)
     if markdown and HAS_RICH:
         empty_pattern = (
-            rf"\s*(?:{_ANSI_ESCAPE_PATTERN})*{_EMPTY_HEADING_SENTINEL}"
+            rf"\s*(?:{_ANSI_ESCAPE_PATTERN})*{re.escape(_EMPTY_HEADING_SENTINEL)}"
             rf"(?:{_ANSI_ESCAPE_PATTERN})*\s*"
         )
         break_pattern = (
-            rf"\s*(?:{_ANSI_ESCAPE_PATTERN})*{_FORCED_BREAK_SENTINEL}"
+            rf"\s*(?:{_ANSI_ESCAPE_PATTERN})*{re.escape(_FORCED_BREAK_SENTINEL)}"
+            rf"(?:{_ANSI_ESCAPE_PATTERN})*\s*"
+        )
+        soft_break_pattern = (
+            rf"\s*(?:{_ANSI_ESCAPE_PATTERN})*{re.escape(_SOFT_BREAK_SENTINEL)}"
             rf"(?:{_ANSI_ESCAPE_PATTERN})*\s*"
         )
 
         rendered = re.sub(empty_pattern, "\n", rendered)
         rendered = re.sub(break_pattern, "\n", rendered)
+        rendered = re.sub(soft_break_pattern, "\n", rendered)
         rendered = rendered.replace(_FORCED_BREAK_SENTINEL, "")
+        rendered = rendered.replace(_SOFT_BREAK_SENTINEL, "")
         rendered = rendered.replace(_EMPTY_HEADING_SENTINEL, "")
         rendered = _rstrip_exported_lines(rendered)
     return rendered
@@ -817,7 +840,7 @@ def _prompt_toolkit_components():
     from prompt_toolkit.application.current import get_app
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.layout import Layout
-    from prompt_toolkit.layout.containers import Window
+    from prompt_toolkit.layout.containers import Float, FloatContainer, Window
     from prompt_toolkit.layout.controls import FormattedTextControl
     from prompt_toolkit.styles import Style
 
@@ -829,6 +852,8 @@ def _prompt_toolkit_components():
         FormattedTextControl,
         Style,
         get_app,
+        FloatContainer,
+        Float,
     )
 
 
@@ -1088,18 +1113,44 @@ def _build_formatted_text(
     focused: Optional[Hyperlink],
     *,
     fill_width: Optional[int] = None,
+    overlay_line: Optional[int] = None,
+    overlay_column: Optional[int] = None,
+    overlay_character: Optional[str] = None,
+    overlay_style: str = "class:redraw-check-digit",
 ) -> List[Tuple[str, str]]:
     """Return formatted text segments with hyperlink styling applied."""
 
     segments: List[Tuple[str, str]] = []
     for line_number, line in enumerate(lines):
+        required_width = fill_width
+        if overlay_line == line_number and overlay_column is not None:
+            # Pad first, then overlay. The check digit and similar overlays are
+            # defined in absolute viewport cells, so they must be able to land
+            # past the natural text width without shifting from frame to frame.
+            required_width = max(fill_width or 0, overlay_column + 1)
+
         line_links = hyperlinks_by_line.get(line_number, [])
         if not line_links:
             ansi_segments = _ansi_line_to_formatted_segments(line)
             visible_length = sum(len(text) for _, text in ansi_segments)
-            if fill_width and fill_width > 0 and visible_length < fill_width:
-                ansi_segments.append(("", " " * (fill_width - visible_length)))
+            if (
+                required_width
+                and required_width > 0
+                and visible_length < required_width
+            ):
+                ansi_segments.append(("", " " * (required_width - visible_length)))
             ansi_segments.append(("", "\n"))
+            if (
+                overlay_line == line_number
+                and overlay_column is not None
+                and overlay_character is not None
+            ):
+                ansi_segments = _overlay_formatted_cell(
+                    ansi_segments,
+                    target_column=overlay_column,
+                    replacement=overlay_character,
+                    replacement_style=overlay_style,
+                )
             segments.extend(ansi_segments)
             continue
 
@@ -1123,12 +1174,103 @@ def _build_formatted_text(
 
         remainder = plain_line[cursor:]
         visible_length += _visible_length(remainder)
-        if fill_width and fill_width > 0 and visible_length < fill_width:
-            remainder += " " * (fill_width - visible_length)
+        if required_width and required_width > 0 and visible_length < required_width:
+            remainder += " " * (required_width - visible_length)
 
         line_segments.append(("", remainder + "\n"))
+        if (
+            overlay_line == line_number
+            and overlay_column is not None
+            and overlay_character is not None
+        ):
+            line_segments = _overlay_formatted_cell(
+                line_segments,
+                target_column=overlay_column,
+                replacement=overlay_character,
+                replacement_style=overlay_style,
+            )
         segments.extend(line_segments)
+
+    if overlay_line is not None and overlay_character is not None:
+        blank_width = fill_width or 0
+        if overlay_column is not None:
+            blank_width = max(blank_width, overlay_column + 1)
+        for line_number in range(len(lines), overlay_line + 1):
+            blank_segments: List[Tuple[str, str]] = []
+            if blank_width > 0:
+                # Preserve the requested viewport footprint even when the
+                # overlay targets a line past the end of the document.
+                blank_segments.append(("", " " * blank_width))
+            blank_segments.append(("", "\n"))
+            if overlay_line == line_number and overlay_column is not None:
+                blank_segments = _overlay_formatted_cell(
+                    blank_segments,
+                    target_column=overlay_column,
+                    replacement=overlay_character,
+                    replacement_style=overlay_style,
+                )
+            segments.extend(blank_segments)
     return segments
+
+
+def _append_formatted_segment(
+    segments: List[Tuple[str, str]], style: str, text: str
+) -> None:
+    """Append formatted text while coalescing adjacent identical styles."""
+
+    if not text:
+        return
+    if segments and segments[-1][0] == style:
+        previous_style, previous_text = segments[-1]
+        segments[-1] = (previous_style, previous_text + text)
+        return
+    segments.append((style, text))
+
+
+def _overlay_formatted_cell(
+    segments: Sequence[Tuple[str, str]],
+    *,
+    target_column: int,
+    replacement: str,
+    replacement_style: str,
+) -> List[Tuple[str, str]]:
+    """Return one line of formatted text with one visible cell replaced."""
+
+    if target_column < 0 or not replacement:
+        return list(segments)
+
+    visible_column = 0
+    replaced = False
+    overlaid: List[Tuple[str, str]] = []
+    for style, text in segments:
+        for character in text:
+            if character == "\n":
+                _append_formatted_segment(overlaid, style, character)
+                continue
+
+            width = _visible_length(character)
+            if width <= 0:
+                _append_formatted_segment(overlaid, style, character)
+                continue
+
+            if not replaced and visible_column <= target_column < (
+                visible_column + width
+            ):
+                # Replace exactly one visible cell while preserving the width
+                # footprint of wide characters. The framebuffer capture tests
+                # depend on this staying cell-stable.
+                _append_formatted_segment(
+                    overlaid,
+                    replacement_style,
+                    replacement,
+                )
+                if width > 1:
+                    _append_formatted_segment(overlaid, style, " " * (width - 1))
+                replaced = True
+            else:
+                _append_formatted_segment(overlaid, style, character)
+            visible_column += width
+    return overlaid
 
 
 def _align_focus(
@@ -1369,6 +1511,7 @@ def _attempt_prompt_toolkit_pager(
     automation_timeout_screenshot_basename: Optional[Path] = None,
     viewport_columns: Optional[int] = None,
     viewport_rows: Optional[int] = None,
+    redraw_check_digit: bool = False,
 ) -> bool:
     """Return True if text was paged interactively with prompt_toolkit."""
 
@@ -1384,6 +1527,11 @@ def _attempt_prompt_toolkit_pager(
                 "Automation key replay requested, but interactive pager is "
                 "unavailable; replay was skipped."
             )
+        if redraw_check_digit:
+            _add_fallback_notice(
+                "Redraw check digit requested, but interactive pager is "
+                "unavailable; overlay was skipped."
+            )
         if not sys.stdout.isatty():
             _add_fallback_notice(
                 "Interactive pager requires a TTY. Falling back to basic paging without hyperlink focus."
@@ -1398,7 +1546,9 @@ def _attempt_prompt_toolkit_pager(
         FormattedTextControl,
         Style,
         get_app,
-    ) = components
+    ) = components[:7]
+    FloatContainer = components[7] if len(components) > 7 else None
+    Float = components[8] if len(components) > 8 else None
 
     current_text = text
     lines, hyperlinks, hyperlinks_by_line = normalize_hyperlinks(
@@ -1408,10 +1558,22 @@ def _attempt_prompt_toolkit_pager(
     document_width = max((_visible_length(line) for line in lines), default=0)
     last_known_width: Optional[int] = None
     last_known_height: Optional[int] = None
+    # Track viewport scroll in our own state and feed it back to prompt_toolkit
+    # through the supported scroll callbacks below. Do not rely only on direct
+    # ``window.vertical_scroll`` mutation here; prompt_toolkit may otherwise
+    # snap back to the hidden cursor position in live terminals.
+    viewport_vertical_scroll = 0
+    viewport_horizontal_scroll = 0
     forced_columns = (
         max(int(viewport_columns), 1) if viewport_columns is not None else None
     )
     forced_rows = max(int(viewport_rows), 1) if viewport_rows is not None else None
+    redraw_check_digit_counter = 0
+    # A FloatContainer overlay keeps the check digit pinned to the screen
+    # center instead of letting it drift with the scrolled document content.
+    floating_redraw_check_digit = (
+        redraw_check_digit and FloatContainer is not None and Float is not None
+    )
 
     def _active_document_index() -> int:
         if current_document_index is None:
@@ -1427,8 +1589,8 @@ def _attempt_prompt_toolkit_pager(
         payload: Dict[str, object] = {
             "document_index": _active_document_index() + 1,
             "document_count": max(document_count, 1),
-            "vertical_scroll": int(getattr(window, "vertical_scroll", 0)),
-            "horizontal_scroll": int(getattr(window, "horizontal_scroll", 0)),
+            "vertical_scroll": viewport_vertical_scroll,
+            "horizontal_scroll": viewport_horizontal_scroll,
         }
         payload.update(context)
         ui_event_logger(action, payload)
@@ -1442,7 +1604,19 @@ def _attempt_prompt_toolkit_pager(
         width = _window_width()
         max_offset = _max_horizontal_offset(width)
         clamped = min(max(target, 0), max_offset)
+        nonlocal viewport_horizontal_scroll
+        viewport_horizontal_scroll = clamped
         setattr(window, "horizontal_scroll", clamped)
+
+    def _sync_viewport_state_from_window() -> None:
+        nonlocal viewport_vertical_scroll, viewport_horizontal_scroll
+        # Keep the mirrored state normalized in one place. Several callbacks
+        # emit UI events, restore focus, or rerender based on these values.
+        viewport_vertical_scroll = max(int(getattr(window, "vertical_scroll", 0)), 0)
+        viewport_horizontal_scroll = max(
+            int(getattr(window, "horizontal_scroll", 0)),
+            0,
+        )
 
     def _restore_focus(previous: Optional[Hyperlink]) -> None:
         nonlocal navigator
@@ -1475,7 +1649,10 @@ def _attempt_prompt_toolkit_pager(
         if width == last_known_width and height == last_known_height:
             return
 
-        previous_center_line = window.vertical_scroll + (last_known_height // 2)
+        # Preserve the reader's rough center point across width changes so
+        # pinch-zoom and resize flows feel stable instead of jumping back to
+        # the top on every geometry event.
+        previous_center_line = viewport_vertical_scroll + (last_known_height // 2)
         previous_focus = navigator.focus
         if render_on_resize is not None:
             current_text = render_on_resize(width)
@@ -1488,8 +1665,9 @@ def _attempt_prompt_toolkit_pager(
 
         last_known_width = width
         last_known_height = height
-        _set_horizontal_offset(int(getattr(window, "horizontal_scroll", 0)))
+        _set_horizontal_offset(viewport_horizontal_scroll)
         _recenter_on_line(window, previous_center_line, height, len(lines))
+        _sync_viewport_state_from_window()
         _emit_ui_event("resize", width=width, height=height)
 
     def _switch_to_document(event, delta: int, action: str) -> None:
@@ -1511,21 +1689,104 @@ def _attempt_prompt_toolkit_pager(
         )
         navigator = HyperlinkNavigator(hyperlinks)
         document_width = max((_visible_length(line) for line in lines), default=0)
+        nonlocal viewport_vertical_scroll, viewport_horizontal_scroll
+        # Document switches intentionally reset viewport position. Reusing the
+        # old scroll offsets across unrelated documents makes navigation and
+        # automation traces much harder to reason about.
+        viewport_vertical_scroll = 0
+        viewport_horizontal_scroll = 0
         window.vertical_scroll = 0
         setattr(window, "horizontal_scroll", 0)
         _emit_ui_event(action, width=width)
         event.app.invalidate()
 
     def formatted_text() -> List[Tuple[str, str]]:
+        nonlocal redraw_check_digit_counter
         width = _window_width()
         height = _window_height()
         _refresh_rendered_text(width, height)
+        overlay_line: Optional[int] = None
+        overlay_column: Optional[int] = None
+        overlay_character: Optional[str] = None
+        if (
+            redraw_check_digit
+            and not floating_redraw_check_digit
+            and width
+            and width > 0
+            and height > 0
+        ):
+            # Non-floating overlays are expressed in document coordinates so
+            # the formatter can stamp the digit into the correct absolute cell
+            # after scroll offsets have been applied.
+            overlay_line = viewport_vertical_scroll + ((height - 1) // 2)
+            overlay_column = viewport_horizontal_scroll + ((width - 1) // 2)
+            overlay_character = str(redraw_check_digit_counter % 10)
+            redraw_check_digit_counter = (redraw_check_digit_counter + 1) % 10
         return _build_formatted_text(
-            lines, hyperlinks_by_line, navigator.focus, fill_width=width
+            lines,
+            hyperlinks_by_line,
+            navigator.focus,
+            fill_width=width,
+            overlay_line=overlay_line,
+            overlay_column=overlay_column,
+            overlay_character=overlay_character,
         )
 
-    control = FormattedTextControl(formatted_text, focusable=False, show_cursor=False)
-    window = Window(content=control, wrap_lines=False, always_hide_cursor=True)
+    class _HiddenCursorPosition:
+        def __init__(self, x: int, y: int) -> None:
+            self.x = x
+            self.y = y
+
+    # Keep the hidden cursor aligned with the viewport origin. prompt_toolkit
+    # uses cursor position during scroll calculations even when the cursor is
+    # invisible, so this is part of the scrolling contract, not dead code.
+    control = FormattedTextControl(
+        formatted_text,
+        focusable=False,
+        show_cursor=False,
+        get_cursor_position=lambda: _HiddenCursorPosition(
+            viewport_horizontal_scroll,
+            viewport_vertical_scroll,
+        ),
+    )
+    window = Window(
+        content=control,
+        wrap_lines=False,
+        always_hide_cursor=True,
+        get_vertical_scroll=lambda _: viewport_vertical_scroll,
+        get_horizontal_scroll=lambda _: viewport_horizontal_scroll,
+    )
+    _sync_viewport_state_from_window()
+    overlay_float = None
+    if floating_redraw_check_digit:
+        overlay_control = FormattedTextControl(
+            lambda: [
+                (
+                    "class:redraw-check-digit",
+                    str(redraw_check_digit_counter % 10),
+                )
+            ],
+            focusable=False,
+            show_cursor=False,
+        )
+        overlay_window = Window(
+            content=overlay_control,
+            width=1,
+            height=1,
+            dont_extend_width=True,
+            dont_extend_height=True,
+            always_hide_cursor=True,
+        )
+        overlay_float = Float(
+            content=overlay_window,
+            left=0,
+            top=0,
+            transparent=True,
+            z_index=10,
+        )
+        root_container = FloatContainer(content=window, floats=[overlay_float])
+    else:
+        root_container = window
 
     bindings = KeyBindings()
 
@@ -1570,6 +1831,7 @@ def _attempt_prompt_toolkit_pager(
     def _(event) -> None:  # type: ignore[override]
         focus = navigator.focus_next(window.vertical_scroll, max(_window_height(), 1))
         _align_focus(window, focus, visible_width=_window_width())
+        _sync_viewport_state_from_window()
         _emit_ui_event("hyperlink-focus-next")
         event.app.invalidate()
 
@@ -1579,6 +1841,7 @@ def _attempt_prompt_toolkit_pager(
             window.vertical_scroll, max(_window_height(), 1)
         )
         _align_focus(window, focus, visible_width=_window_width())
+        _sync_viewport_state_from_window()
         _emit_ui_event("hyperlink-focus-previous")
         event.app.invalidate()
 
@@ -1605,6 +1868,7 @@ def _attempt_prompt_toolkit_pager(
     @bindings.add("j")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, 1, len(lines))
+        _sync_viewport_state_from_window()
         _emit_ui_event("scroll-down")
         event.app.invalidate()
 
@@ -1615,6 +1879,7 @@ def _attempt_prompt_toolkit_pager(
     @bindings.add("k")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, -1, len(lines))
+        _sync_viewport_state_from_window()
         _emit_ui_event("scroll-up")
         event.app.invalidate()
 
@@ -1624,6 +1889,7 @@ def _attempt_prompt_toolkit_pager(
     @bindings.add("c-s-pageup")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, -max(_window_height(), 1), len(lines))
+        _sync_viewport_state_from_window()
         _emit_ui_event("page-up")
         event.app.invalidate()
 
@@ -1633,18 +1899,21 @@ def _attempt_prompt_toolkit_pager(
     @bindings.add("c-s-pagedown")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, max(_window_height(), 1), len(lines))
+        _sync_viewport_state_from_window()
         _emit_ui_event("page-down")
         event.app.invalidate()
 
     @bindings.add("home")
     def _(event) -> None:  # type: ignore[override]
         window.vertical_scroll = 0
+        _sync_viewport_state_from_window()
         _emit_ui_event("jump-home")
         event.app.invalidate()
 
     @bindings.add("end")
     def _(event) -> None:  # type: ignore[override]
         _scroll_window(window, len(lines), len(lines))
+        _sync_viewport_state_from_window()
         _emit_ui_event("jump-end")
         event.app.invalidate()
 
@@ -1668,11 +1937,12 @@ def _attempt_prompt_toolkit_pager(
         {
             "hyperlink": "underline",
             "hyperlink.focused": "underline reverse",
+            "redraw-check-digit": "bold reverse",
         }
     )
 
     application = Application(
-        layout=Layout(window),
+        layout=Layout(root_container),
         key_bindings=bindings,
         full_screen=True,
         style=style,
@@ -1682,6 +1952,44 @@ def _attempt_prompt_toolkit_pager(
     # key sequences are not split into stray characters.
     application.ttimeoutlen = 1.5
     application.timeoutlen = 1.5
+
+    def _register_application_event(
+        event_name: str, handler: Callable[[object], None]
+    ) -> bool:
+        event = getattr(application, event_name, None)
+        if event is None:
+            return False
+        try:
+            event += handler
+        except Exception:
+            return False
+        return True
+
+    def _position_redraw_check_digit(_app: object = None) -> None:
+        if overlay_float is None:
+            return
+        # The float is screen-relative, so recompute it from live viewport
+        # geometry before each render rather than caching a stale location.
+        width = _window_width() or 0
+        height = _window_height()
+        overlay_float.left = max((width - 1) // 2, 0)
+        overlay_float.top = max((height - 1) // 2, 0)
+
+    def _advance_redraw_check_digit(app: object) -> None:
+        nonlocal redraw_check_digit_counter
+        if overlay_float is None:
+            return
+        renderer = getattr(app, "renderer", None)
+        if getattr(renderer, "last_rendered_screen", None) is None:
+            return
+        # Advance after the frame is drawn so the digit visible on-screen
+        # corresponds to the frame that was just rendered, not the next one.
+        redraw_check_digit_counter = (redraw_check_digit_counter + 1) % 10
+
+    if overlay_float is not None:
+        _position_redraw_check_digit()
+        _register_application_event("before_render", _position_redraw_check_digit)
+        _register_application_event("after_render", _advance_redraw_check_digit)
 
     def _capture_timeout_framebuffer() -> Optional[Tuple[Path, Path]]:
         if automation_timeout_screenshot_basename is None:
@@ -1699,6 +2007,9 @@ def _attempt_prompt_toolkit_pager(
         )
         capture_source = "prompt_toolkit-renderer"
         if captured_cells is None:
+            # Fall back to a synthetic text-buffer capture when prompt_toolkit
+            # does not expose a framebuffer. This keeps automation artifacts
+            # available even in lean or partially mocked environments.
             capture_source = "synthetic-text-buffer"
             captured_cells = _capture_text_buffer_framebuffer(
                 lines=lines,
@@ -1724,6 +2035,9 @@ def _attempt_prompt_toolkit_pager(
     pre_run_replay_callbacks: List[Callable[[], None]] = []
 
     def _dispatch_on_event_loop(callback: Callable[[], None]) -> None:
+        # Timer threads must hop onto the prompt_toolkit event loop before they
+        # touch application state. During startup the executor hook may not be
+        # ready yet, so keep the direct-call fallback for zero-delay flows.
         dispatcher = getattr(application, "call_from_executor", None)
         if callable(dispatcher):
             try:
@@ -1786,6 +2100,8 @@ def _attempt_prompt_toolkit_pager(
                 )
 
             if cumulative_delay == 0:
+                # Zero-delay events still need the app to exist, so queue them
+                # for the pre-run hook instead of firing them synchronously.
                 pre_run_replay_callbacks.append(_inject_replay_event)
                 continue
 
@@ -1839,6 +2155,8 @@ def _attempt_prompt_toolkit_pager(
         startup_delay_seconds = 0.05
 
         def _run_pre_run_replay_callbacks() -> None:
+            # Give prompt_toolkit one small scheduling turn before injecting the
+            # first replay event; this avoids races with startup rendering.
             for callback in list(pre_run_replay_callbacks):
                 replay_timer = threading.Timer(
                     startup_delay_seconds,
@@ -1882,6 +2200,7 @@ def page_text(
     automation_timeout_screenshot_basename: Optional[Path] = None,
     viewport_columns: Optional[int] = None,
     viewport_rows: Optional[int] = None,
+    redraw_check_digit: bool = False,
 ) -> None:
     """Display rendered text using the internal viewing stack.
 
@@ -1903,6 +2222,8 @@ def page_text(
             timeout framebuffer artifacts (`.txt` and `.attrs.json`).
         viewport_columns: Optional viewport width override for automation.
         viewport_rows: Optional viewport height override for automation.
+        redraw_check_digit: When ``True``, overlay a center-screen check digit
+            that advances on each interactive redraw.
     """
 
     if pager:
@@ -1921,6 +2242,7 @@ def page_text(
         automation_timeout_screenshot_basename=automation_timeout_screenshot_basename,
         viewport_columns=viewport_columns,
         viewport_rows=viewport_rows,
+        redraw_check_digit=redraw_check_digit,
     ):
         return
     sys.stdout.write(text)

@@ -1,0 +1,84 @@
+BUG-2026-03-10-01
+=================
+
+Title
+-----
+Quality-gate `black` invocation scanned local environment state and timed out.
+
+Status
+------
+Resolved on 2026-03-10T08:13:30-07:00 by Codex (GPT-5.4).
+
+Summary
+-------
+The repository quality-gate wrapper reported repeated `black` timeouts even
+though the project's own Python sources were small enough to format quickly.
+Direct reproduction showed that the configured formatter command was walking
+the local virtual environment and proposing rewrites for third-party packages
+under `.venv/lib/python3.9/site-packages`.
+
+Symptoms
+--------
+- `python scripts/run_tool_with_timeout.py black` exceeded the configured
+  timeout and prevented `git_standard_commit_push.py` from completing.
+- A direct run of `python -m black --check --verbose . --exclude
+  '/(\\.venv|mdview\\.egg-info)/'` entered full-repository traversal and
+  reported files from `.venv/`.
+- Example evidence from the failing run included paths such as
+  `.venv/lib/python3.9/site-packages/_pytest/python.py` and
+  `.venv/lib/python3.9/site-packages/_distutils_hack/__init__.py`.
+
+Investigation
+-------------
+- Repository file count at investigation time: 4,279 files total.
+- `.git/` alone contained 568 files.
+- Repository-owned source roots used by the quality gate contained 191 files
+  across `src`, `tests`, `scripts`, and `dev-utils`.
+- A direct run of `python -m black --check --verbose .` behaved correctly and
+  ignored `.git`, `.venv`, `.ruff_cache`, and `.pytest_cache` via
+  `.gitignore`.
+- The problem appeared only in the configured command from
+  `scripts/tool_timeouts.json`.
+
+Root cause
+----------
+The `black` command in `scripts/tool_timeouts.json` was:
+
+`python -m black . --exclude '/(\\.venv|mdview\\.egg-info)/'`
+
+That configuration had two defects:
+
+1. It formatted from repository root instead of the repository-owned Python
+   roots that the quality-gate cache already fingerprints.
+2. It supplied a custom `--exclude` expression, which replaced Black's safer
+   default exclusions. The regex also failed to protect the top-level `.venv`
+   in Black's recursive walk, allowing traversal into third-party packages.
+
+Resolution
+----------
+- Changed the configured command in `scripts/tool_timeouts.json` to:
+  `python -m black src tests scripts dev-utils`
+- Added regression coverage in `tests/test_entropy_harness.py` to assert that
+  the configured `black` command remains scoped to repository-owned Python
+  roots.
+- Added `docs/specifications/quality_gate_black_scope_and_exclusions.txt` as
+  the behavioral contract for this tooling path.
+- Added `project-management/state/bugs/reports/{open,in-progress,resolved}/`
+  so detailed issue reports can live alongside the existing summary bug logs.
+
+Validation
+----------
+- `python scripts/run_tool_with_timeout.py black` now completed successfully
+  within the default 120-second timeout and reported `71 files left
+  unchanged`.
+- `python -m pytest tests/test_entropy_harness.py` passed after the
+  configuration change.
+- Full required validation passed after the fix:
+  `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and full `pytest` (`304 passed in 3.56s`).
+
+Operator impact
+---------------
+The fix restores the intended quality-gate behavior, prevents formatter runs
+from touching local virtual-environment packages, and removes a false blocker
+from commit/push workflows that rely on the managed pre-push gate.

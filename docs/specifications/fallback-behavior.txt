@@ -27,6 +27,9 @@ Supported Fallbacks:
   lacks a TTY, fall back to non-interactive standard output and disable
   hyperlink highlighting with a user-facing notice explaining the reduced
   navigation features.
+- Redraw check digit: When `--redraw-check-digit` is requested without an
+  interactive pager, emit a user-facing notice that the overlay was skipped
+  instead of silently pretending redraw diagnostics are active.
 - Pre-flight prerequisite checks: When Rich or prompt_toolkit is missing,
   print immediate warnings before argument parsing, recommending
   scripts/install_prerequisites.sh or the appropriate package install.

@@ -105,3 +105,26 @@ def test_quality_gate_cache_invalidates_when_inputs_change(tmp_path: Path) -> No
 
     calls = _read_calls(repo)
     assert calls == ["black", "black"]
+
+
+def test_quality_gate_cache_ignores_repo_local_codex_state(tmp_path: Path) -> None:
+    repo = _make_fake_repo(tmp_path)
+    auth = repo / ".codex-home" / ".codex" / "auth.json"
+    auth.parent.mkdir(parents=True)
+    auth.write_text('{"access_token": "token-one"}\n', encoding="utf-8")
+    package_lock = repo / ".codex-local" / "package-lock.json"
+    package_lock.parent.mkdir(parents=True)
+    package_lock.write_text('{"integrity": "token-one"}\n', encoding="utf-8")
+
+    first = _run_cached(repo, "--checks", "entropy_tripwire_verify")
+    assert first.returncode == 0
+    assert "RUN entropy_tripwire_verify: cache miss" in first.stdout
+
+    auth.write_text('{"access_token": "token-two"}\n', encoding="utf-8")
+    package_lock.write_text('{"integrity": "token-two"}\n', encoding="utf-8")
+    second = _run_cached(repo, "--checks", "entropy_tripwire_verify")
+    assert second.returncode == 0
+    assert "SKIP entropy_tripwire_verify: cache hit" in second.stdout
+
+    calls = _read_calls(repo)
+    assert calls == ["entropy_tripwire_verify"]

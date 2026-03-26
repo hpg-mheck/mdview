@@ -1,0 +1,34 @@
+Quality-gate Black scope and exclusions
+=======================================
+
+Purpose
+-------
+Keep the required `black` quality-gate run bounded to repository-owned Python
+sources so local developer state such as `.venv/` and `.git/` does not turn
+the formatter step into an unbounded recursive scan.
+
+Requirements
+------------
+- The configured `black` command in `scripts/tool_timeouts.json` must not
+  recurse from repository root with a custom exclusion pattern that can
+  override Black's safe defaults incorrectly.
+- The configured `black` command must target the repository-owned Python
+  source roots directly: `src`, `tests`, `scripts`, and `dev-utils`.
+- The configured `black` command must remain compatible with the supported
+  local Black release instead of relying on optional flags that may not exist
+  across installations.
+- The quality-gate `black` configuration must not attempt to format Python
+  files from `.venv/`, `.git/`, or other local caches and third-party package
+  trees.
+- The repository must include a regression test that guards the configured
+  `black` command against drifting back to `black .` with an unsafe custom
+  exclusion pattern.
+
+Acceptance
+----------
+- `python scripts/run_tool_with_timeout.py black` completes against the
+  repository without walking `.venv/site-packages`.
+- The configured command runs successfully with the repository's supported
+  Black installation and exits cleanly after reporting file status.
+- The regression test passes and asserts that the configured `black` command
+  remains scoped to repository-owned Python roots.

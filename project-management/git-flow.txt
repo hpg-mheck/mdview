@@ -46,6 +46,17 @@ Conflict Resolution
   duplicative; if duplicates exist, consolidate without losing context.
 - Do not discard user-authored changes unless explicitly directed.
 
+Documentation and Comment Expectations
+--------------------------------------
+- Treat insufficient documentation in complex runtime code as a merge blocker,
+  not as a polish item.
+- Before merge, ensure modified control-flow-heavy code explains its phases,
+  invariants, external library constraints, and likely debugging touchpoints.
+- Prefer section comments that explain why the code is arranged as it is over
+  line-by-line narration of obvious syntax.
+- Add explicit maintenance warnings when a future human or AI editor might
+  reasonably "simplify" a branch in a way that would reintroduce a known bug.
+
 Required Checks Before Merge Completion
 ---------------------------------------
 Run all required checks via timeout wrapper:

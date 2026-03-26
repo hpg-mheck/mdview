@@ -1,0 +1,86 @@
+Test Input Feedback Mode
+========================
+
+Purpose
+-------
+Add a standalone diagnostic mode that isolates terminal input handling in two
+stages so operators can compare plain stdin behavior against the full
+prompt_toolkit viewer stack when arrow keys appear to stop working.
+
+CLI Surface
+-----------
+- Add `--test-input-feedback`.
+- The mode runs independently of document viewing and does not accept file
+  paths.
+- The mode is mutually exclusive with `--verify-resize-detection`.
+- The mode requires interactive TTY stdin/stdout. If either stream is not a
+  TTY, mdview exits with code `2` after printing a clear error.
+
+Shared Interaction Contract
+---------------------------
+- Each stage displays a ten-character bar made of dashes with a movable tab
+  marker.
+- Supported movement keys:
+  - Left Arrow moves the tab one position left.
+  - Right Arrow moves the tab one position right.
+  - `,` acts as an alternate for Left Arrow.
+  - `.` acts as an alternate for Right Arrow.
+  - `q` marks the stage as failed and exits that stage immediately.
+- A stage passes when the tab reaches the far-right cell of the bar.
+- After stage 1 ends, mdview must continue into stage 2 whether stage 1
+  passed or failed.
+- Overall mode exit code is `0` only when every executed stage passes.
+  Otherwise return `1`.
+
+Stage 1: Plain Input
+--------------------
+- Stage 1 must not use curses, prompt_toolkit, or any other screen-management
+  library.
+- Read input directly from the terminal using standard library input APIs.
+- Redraws are line-oriented: each redraw is printed on a new output line
+  rather than repainting the same screen region.
+- Log every recognized and unrecognized input event with timestamped debug
+  output that includes the raw key data, interpreted action, and tab position
+  before and after handling.
+- Log every redraw with timestamped debug output that includes the stage,
+  redraw reason, current bar contents, and tab position.
+
+Stage 2: Full Viewer Stack
+--------------------------
+- Stage 2 must use the same prompt_toolkit drawing and input primitives as
+  the main viewer path:
+  `Application`, `KeyBindings`, `Layout`, `Window`, and
+  `FormattedTextControl`.
+- Configure the same escape-sequence timing tolerance used by the viewer so
+  arrow-key handling is exercised under comparable conditions.
+- Run in full-screen mode and redraw in place as the tab moves.
+- Log every bound input event and every redraw with timestamped debug output.
+  Include the normalized key name or key-sequence description, tab position
+  before and after handling, redraw count, and visible bar contents.
+- If prompt_toolkit is unavailable, mark stage 2 as failed with a clear
+  diagnostic note instead of silently substituting another UI path.
+
+User-Facing Debug Output
+------------------------
+- Emit significant debug output to standard error for both stages.
+- Each debug line must include:
+  - a wall-clock timestamp with timezone,
+  - elapsed time from the start of the diagnostic mode,
+  - stage identifier,
+  - event type (`input`, `redraw`, `result`, or setup/teardown notes),
+  - key event details and bar state when applicable.
+- Stage 2 may defer printing debug lines until after the full-screen
+  application exits if that avoids corrupting the display.
+
+Testing Requirements
+--------------------
+- CLI tests for:
+  - help text and standalone-mode validation,
+  - dispatch into `--test-input-feedback` without document paths,
+  - rejection of invalid combinations such as document paths or
+    `--verify-resize-detection`.
+- Unit tests for:
+  - stage 1 raw-key interpretation for arrow keys and `,`/`.` alternates,
+  - stage 1 pass/fail progression,
+  - stage 2 prompt_toolkit bindings for arrow keys and `,`/`.` alternates,
+  - stage 2 debug logging and pass/fail completion behavior.

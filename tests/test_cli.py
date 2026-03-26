@@ -85,6 +85,21 @@ def test_main_runs_resize_verifier(monkeypatch):
     assert exit_code == 0
 
 
+def test_main_runs_test_input_feedback_mode(monkeypatch):
+    captured = {"called": False}
+
+    def fake_runner() -> int:
+        captured["called"] = True
+        return 1
+
+    monkeypatch.setattr(cli_module, "run_test_input_feedback", fake_runner)
+
+    exit_code = cli_module.main(["--test-input-feedback"])
+
+    assert exit_code == 1
+    assert captured["called"] is True
+
+
 def test_format_help_matches_expected_shape():
     help_text = cli_module.format_help()
 
@@ -100,6 +115,8 @@ def test_format_help_matches_expected_shape():
     assert "--automation-json" in help_text
     assert "--viewport-columns" in help_text
     assert "--viewport-rows" in help_text
+    assert "--redraw-check-digit" in help_text
+    assert "--test-input-feedback" in help_text
     assert "Render Markdown in the terminal" in help_text
     assert "--verify-resize-detection" in help_text
 
@@ -313,6 +330,25 @@ def test_main_rejects_timeout_screenshot_without_timeout(tmp_path, capsys):
     )
 
 
+def test_main_rejects_test_input_feedback_with_paths(tmp_path, capsys):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+
+    exit_code = cli_module.main(["--test-input-feedback", str(document)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "--test-input-feedback does not accept document paths" in captured.err
+
+
+def test_main_rejects_special_mode_combination(capsys):
+    exit_code = cli_module.main(["--verify-resize-detection", "--test-input-feedback"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "cannot be used together" in captured.err
+
+
 def test_main_passes_viewport_overrides_to_page_text(monkeypatch, tmp_path):
     document = tmp_path / "sample.md"
     document.write_text("# Title\n\nbody")
@@ -337,6 +373,22 @@ def test_main_passes_viewport_overrides_to_page_text(monkeypatch, tmp_path):
     assert exit_code == 0
     assert captured["columns"] == 120
     assert captured["rows"] == 33
+
+
+def test_main_passes_redraw_check_digit_to_page_text(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = {}
+
+    def fake_page_text(text: str, **kwargs):
+        captured["redraw_check_digit"] = kwargs.get("redraw_check_digit")
+
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main(["--redraw-check-digit", str(document)])
+
+    assert exit_code == 0
+    assert captured["redraw_check_digit"] is True
 
 
 def test_main_uses_terminal_width_for_initial_render(monkeypatch, tmp_path):
