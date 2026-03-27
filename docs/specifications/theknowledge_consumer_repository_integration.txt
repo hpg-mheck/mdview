@@ -1,0 +1,76 @@
+TheKnowledge consumer repository integration
+============================================
+
+Purpose
+-------
+Adopt `TheKnowledge` as an upstream-managed submodule and shared guidance
+source for mdview without moving mdview's mutable project state or replacing
+workflow scripts that already encode mdview-specific policy.
+
+Requirements
+------------
+1. Repository layout
+   - Track `TheKnowledge` as a Git submodule at the repository root path
+     `TheKnowledge/`.
+   - Use the configured SSH alias URL
+     `git@github-hpg:Hard-Problems-Group-LLC/TheKnowledge` for the submodule
+     remote.
+   - Keep mdview's mutable records in the existing
+     `project-management/state/` tree. Do not move backlog, task, bug, or
+     proposal state into the submodule.
+2. AGENTS integration
+   - `AGENTS.md` must instruct contributors to consult
+     `TheKnowledge/AGENTS.md`.
+   - `AGENTS.md` must contain TheKnowledge-managed header and footer blocks so
+     mdview can detect and refresh drift against the current submodule
+     templates.
+   - The project-local `AGENTS.md` body between those managed blocks remains
+     authoritative for mdview-specific overrides, including
+     `project-management/state/*`, repo-local wrapper preference, bootstrap
+     flow, and required local checks.
+3. Local bridge scripts
+   - Provide repo-local bridge scripts for TheKnowledge-managed AGENTS
+     maintenance:
+     `scripts/_theknowledge_delegate.py`,
+     `scripts/report_managed_agents_drift.py`, and
+     `scripts/refresh_managed_agents.py`.
+   - The drift helper must compare the current managed `AGENTS.md` blocks with
+     the current submodule templates.
+   - The refresh helper must rewrite only the managed `AGENTS.md` header and
+     footer while preserving the project-local body verbatim.
+4. Submodule update workflow
+   - Repository workflow documentation must instruct contributors to
+     initialize or update the `TheKnowledge` submodule in a fresh checkout
+     before relying on shared files or managed-AGENTS utilities.
+   - After updating the submodule, contributors must run
+     `python scripts/report_managed_agents_drift.py`.
+   - If drift is reported, contributors must run
+     `python scripts/refresh_managed_agents.py`, review the resulting
+     `git diff`, and stage only the intended updates.
+5. Shared-tool exclusions
+   - The `TheKnowledge/` tree must be excluded from repo-root entropy
+     scanning, entropy-tripwire coverage checks, the entropy harness default
+     exclusions, and cached quality-gate fingerprints for repo-root entropy
+     steps.
+   - The default `pytest` command used by `scripts/run_tool_with_timeout.py`
+     must limit discovery to mdview's own `tests/` tree so the checked-out
+     `TheKnowledge/tests/` suite is not collected as part of mdview
+     validation.
+   - Regression coverage must verify both the `TheKnowledge` exclusions and
+     the expected consumer-repository integration files.
+6. Script ownership
+   - mdview may keep existing repo-local workflow scripts when they enforce
+     project-specific behavior not yet provided by TheKnowledge.
+   - When a repo-local wrapper or helper exists, local documentation must
+     prefer that wrapper over direct `TheKnowledge/scripts` invocation.
+
+Acceptance
+----------
+- The root `TheKnowledge` submodule exists and is checked out.
+- `AGENTS.md` references `TheKnowledge/AGENTS.md`, the managed-section drift
+  helper passes, and the managed-section refresh helper succeeds in dry-run
+  mode.
+- High-entropy content inside `TheKnowledge/` is ignored by the default
+  entropy and cached quality-gate workflows.
+- Repository workflow documentation explains submodule initialization and the
+  managed-AGENTS refresh flow.

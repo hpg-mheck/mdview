@@ -25,6 +25,7 @@ DEFAULT_EXCLUDES = {
     ".ruff_cache",
     ".codex-home",
     ".codex-local",
+    "TheKnowledge",
     "mdview.egg-info",
     "__pycache__",
     "bin/codex-local",

@@ -21,10 +21,12 @@ Requirements
 3. The scanner, harness, and verifier must share default exclusions for
    generated local-environment state that is not repository content,
    including repo-local Codex install directories such as `.codex-home` and
-   `.codex-local` when present. Repo-root package-manager lockfiles with
-   deterministic integrity hashes, such as `package-lock.json`, must be
-   excluded consistently from scanner, verifier, and cached repo-root
-   entropy-check fingerprints.
+   `.codex-local` when present. Checked-out shared-guidance submodule trees
+   such as `TheKnowledge/` must also be excluded consistently from scanner,
+   harness, verifier, and cached repo-root entropy-check fingerprints.
+   Repo-root package-manager lockfiles with deterministic integrity hashes,
+   such as `package-lock.json`, must be excluded consistently from scanner,
+   verifier, and cached repo-root entropy-check fingerprints.
 4. The entropy scanner must support a `--json-output` flag that emits a
    machine-readable payload with `schema_version` as the first top-level key.
 5. The scanner JSON schema version must be explicit (`1.0.0`) so future

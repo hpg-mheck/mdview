@@ -129,6 +129,29 @@ def test_harness_ignores_repo_root_package_lock_by_default(tmp_path: Path) -> No
     assert "flagged 0 files" in result.stdout
 
 
+def test_harness_ignores_theknowledge_submodule_contents_by_default(
+    tmp_path: Path,
+) -> None:
+    secret = tmp_path / "TheKnowledge" / "secret.txt"
+    secret.parent.mkdir(parents=True)
+    secret.write_text(
+        "\n".join(
+            [
+                "ordinary prose for baseline stabilization.",
+                "ordinary prose for baseline stabilization.",
+                _token(),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_harness(tmp_path)
+
+    assert result.returncode == 0
+    assert "flagged 0 files" in result.stdout
+
+
 def test_timeout_wrapper_config_includes_entropy_harness() -> None:
     config_path = ROOT / "scripts" / "tool_timeouts.json"
     data = json.loads(config_path.read_text(encoding="utf-8"))

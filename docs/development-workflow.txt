@@ -72,6 +72,10 @@ resolution matters. Work from `trunk` unless an operator explicitly directs
 a different integration branch. If progress stalls, move the entry back to
 the backlog with an explanation and timestamp.
 
+Initialize the root `TheKnowledge` submodule in fresh checkouts or worktrees
+with `git submodule update --init --recursive TheKnowledge` before relying on
+shared guidance files or the managed-AGENTS maintenance helpers.
+
 Treat documentation and comments as part of the deliverable, not as optional
 cleanup. Public-facing docs, module docstrings, and complex runtime code paths
 must explain intent, invariants, library constraints, failure modes, and
@@ -99,6 +103,10 @@ For standardized git operations, use:
   pushes with mandatory cached quality gate checks (including entropy
   tripwire verification).
 - `python scripts/git_veteran_pull.py` for guarded fast-forward pull updates.
+- After updating the `TheKnowledge` submodule, run
+  `python scripts/report_managed_agents_drift.py`. If it reports drift, run
+  `python scripts/refresh_managed_agents.py`, review `git diff`, and stage
+  only the intended managed-section updates.
 See `docs/security/git-tripwire-operations.txt` for failure diagnostics and
 maintenance guidance.
 

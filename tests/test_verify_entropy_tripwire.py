@@ -111,6 +111,32 @@ def test_tripwire_verifier_ignores_repo_local_codex_state_and_package_lock(
     assert "PASS: tripwire verification complete." in result.stdout
 
 
+def test_tripwire_verifier_ignores_theknowledge_submodule_contents(
+    tmp_path: Path,
+) -> None:
+    tripwire = tmp_path / "tests" / "test_entropy_check.py"
+    tripwire.parent.mkdir(parents=True)
+    tripwire.write_text(_sentinel_fixture(), encoding="utf-8")
+    secret = tmp_path / "TheKnowledge" / "secret.txt"
+    secret.parent.mkdir(parents=True)
+    secret.write_text(
+        "\n".join(
+            [
+                "ordinary prose for baseline stabilization",
+                "another ordinary prose line for baseline",
+                _token(),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_tripwire(tmp_path)
+
+    assert result.returncode == 0
+    assert "PASS: tripwire verification complete." in result.stdout
+
+
 def test_tripwire_verifier_fails_when_non_sentinel_finding_exists(
     tmp_path: Path,
 ) -> None:

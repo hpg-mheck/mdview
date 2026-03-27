@@ -5,6 +5,7 @@ src/mdview/__init__.py
 src/mdview/cli.py
 src/mdview/dom.py
 src/mdview/hyperlinks.py
+src/mdview/input_feedback.py
 src/mdview/intake.py
 src/mdview/iteration_exit.py
 src/mdview/mode_switching.py
@@ -27,6 +28,7 @@ tests/test_entropy_harness.py
 tests/test_framebuffer_helpers.py
 tests/test_git_workflow_scripts.py
 tests/test_hyperlinks.py
+tests/test_input_feedback.py
 tests/test_install_git_hooks.py
 tests/test_install_prerequisites.py
 tests/test_intake_parser.py
@@ -52,9 +54,10 @@ tests/test_preferences.py
 tests/test_prerequisites_module.py
 tests/test_project_metadata.py
 tests/test_rendering.py
+tests/test_repository_setup.py
 tests/test_resize_verifier.py
-tests/test_run_tool_with_timeout.py
 tests/test_run_quality_gate_cached.py
+tests/test_run_tool_with_timeout.py
 tests/test_verify_entropy_tripwire.py
 tests/test_viewer.py
 tests/test_viewport.py

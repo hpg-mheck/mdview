@@ -135,6 +135,27 @@ def test_quality_gate_cache_ignores_repo_local_codex_state_and_package_lock(
     assert calls == ["entropy_tripwire_verify"]
 
 
+def test_quality_gate_cache_ignores_theknowledge_submodule_contents(
+    tmp_path: Path,
+) -> None:
+    repo = _make_fake_repo(tmp_path)
+    submodule_file = repo / "TheKnowledge" / "secret.txt"
+    submodule_file.parent.mkdir(parents=True)
+    submodule_file.write_text(_token_payload("token-one"), encoding="utf-8")
+
+    first = _run_cached(repo, "--checks", "entropy_tripwire_verify")
+    assert first.returncode == 0
+    assert "RUN entropy_tripwire_verify: cache miss" in first.stdout
+
+    submodule_file.write_text(_token_payload("token-two"), encoding="utf-8")
+    second = _run_cached(repo, "--checks", "entropy_tripwire_verify")
+    assert second.returncode == 0
+    assert "SKIP entropy_tripwire_verify: cache hit" in second.stdout
+
+    calls = _read_calls(repo)
+    assert calls == ["entropy_tripwire_verify"]
+
+
 def test_quality_gate_cache_uses_gitdir_when_git_is_a_file(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     git_dir = repo / ".git-worktree"
@@ -169,3 +190,14 @@ def test_quality_gate_cache_uses_gitdir_when_git_is_a_file(tmp_path: Path) -> No
     assert second.returncode == 0
     assert "SKIP black: cache hit" in second.stdout
     assert (git_dir / "mdview-quality-cache.json").exists()
+
+
+def _token_payload(token: str) -> str:
+    return "\n".join(
+        [
+            "{",
+            f'  "token": "{token}"',
+            "}",
+            "",
+        ]
+    )

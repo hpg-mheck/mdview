@@ -6,6 +6,30 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Integrated `TheKnowledge` as a root consumer submodule and wired mdview's
+  local bridge workflow, recorded at 2026-03-27T01:49:48-07:00 by Codex
+  (GPT-5.4) from direct operator instruction. Added `.gitmodules` and the
+  `TheKnowledge/` submodule via the configured `github-hpg` SSH alias; added
+  `docs/specifications/theknowledge_consumer_repository_integration.txt`;
+  moved the older overlay-layout proposal into
+  `project-management/state/proposals/superseded/`; wrapped `AGENTS.md`
+  with managed TheKnowledge header/footer sections plus mdview-specific
+  local overrides; added `scripts/_theknowledge_delegate.py`,
+  `scripts/report_managed_agents_drift.py`, and
+  `scripts/refresh_managed_agents.py`; updated workflow, entropy, and
+  timeout-wrapper configuration so default `pytest` discovery stays scoped to
+  mdview's `tests/` tree; excluded `TheKnowledge/` from entropy scanning,
+  tripwire verification, and cached repo-root entropy fingerprints; and
+  added regression coverage in `tests/test_repository_setup.py`,
+  `tests/test_entropy_harness.py`, `tests/test_run_quality_gate_cached.py`,
+  and `tests/test_verify_entropy_tripwire.py`. Follow-up: backlogged a
+  blocked review of upstream TheKnowledge `black` issues per operator
+  direction; no repo-side temporary `black` workaround was committed in
+  mdview. Validation: `black` passed outside the Codex sandbox via the
+  repo-local `.venv` because sandboxed `black` continued to hang; `ruff`,
+  `compileall`, `entropy_check`, `entropy_tripwire_verify`, and full
+  `pytest` all passed (`331 passed`).
+
 * Merged the accumulated `VERSIONS/0.5.0` work back into `trunk` and retired
   the version-branch experiment, recorded at 2026-03-26T12:58:39-07:00 by
   Codex (GPT-5.4) from direct operator instruction. Resolved trunk merge

@@ -23,6 +23,9 @@ Default path exclusions
   repo-local Codex directories (`.codex-home`, `.codex-local`), and the
   managed local launcher/start-guide files `bin/codex-local` and
   `README-LOCAL-Start-Codex.md`.
+- Scanner, harness, verifier, and cached repo-root entropy fingerprints also
+  exclude `TheKnowledge/`, whose checked-out shared submodule contents are
+  upstream guidance assets rather than mdview-owned source files.
 - Scanner, verifier, and cached repo-root entropy fingerprints also exclude
   `package-lock.json`, whose npm integrity hashes are expected high-entropy
   package metadata rather than secrets.

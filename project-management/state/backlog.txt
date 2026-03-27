@@ -18,3 +18,15 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
   implementation testing from non-Windows hosts.
   Requested by operator. Added: 2026-03-07T22:06:48-08:00. Updated:
   2026-03-08T03:31:02-07:00.
+
+*
+
+  [LOW][BLOCKED] Review the active TheKnowledge `black` issues after the
+  upstream fix lands and remove any mdview-side accommodations if they become
+  unnecessary.
+  The current mdview integration did not commit a repo-side `black`
+  workaround, but this follow-up should confirm that remains true after the
+  active upstream work in another terminal is resolved. Blocked on: operator
+  or upstream maintainer confirmation that the active TheKnowledge `black`
+  fixes are complete. Requested by operator. Added:
+  2026-03-27T01:49:48-07:00.

@@ -45,7 +45,8 @@
       "command": [
         "python",
         "-m",
-        "pytest"
+        "pytest",
+        "tests"
       ]
     },
     "entropy_check": {
