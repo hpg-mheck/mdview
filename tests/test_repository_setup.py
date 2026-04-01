@@ -116,6 +116,36 @@ def test_bootstrap_docs_cover_canonical_setup_path() -> None:
         assert "scripts/install_prerequisites.sh" in text
 
 
+def test_install_entrypoints_are_tracked_executable() -> None:
+    result = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--stage",
+            "--",
+            "install.sh",
+            "bootstrap.sh",
+            "scripts/install_prerequisites.sh",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=ROOT,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    modes: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        mode, _sha, _stage, path = line.split(maxsplit=3)
+        modes[path] = mode
+
+    assert modes == {
+        "bootstrap.sh": "100755",
+        "install.sh": "100755",
+        "scripts/install_prerequisites.sh": "100755",
+    }
+
+
 def test_python_environment_config_has_bootstrap_and_runtime_contexts() -> None:
     config = json.loads((ROOT / "python-environments.json").read_text())
 
