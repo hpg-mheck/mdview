@@ -22,6 +22,7 @@ Standard test run
   - `python scripts/run_tool_with_timeout.py compileall`
   - `python scripts/run_tool_with_timeout.py entropy_check`
   - `python scripts/run_tool_with_timeout.py entropy_tripwire_verify`
+  - `python scripts/run_tool_with_timeout.py demo_check`
 
 Focused execution
 -----------------
@@ -69,3 +70,7 @@ Environment Notes
   - `python scripts/run_quality_gate_cached.py`
   - Set `MDVIEW_QUALITY_GATE_NO_CACHE=1` or pass `--no-cache` to force an
     uncached rerun.
+- Demo-document validation:
+  - `python scripts/run_tool_with_timeout.py demo_check`
+  - Uses `.git/mdview-demo-validation-cache.json` so unchanged demo files are
+    skipped automatically.

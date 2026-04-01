@@ -55,10 +55,13 @@ def render_expected_block(
     templates_root: Path,
     template_name: str,
     knowledge_root: str,
+    project_name_slug: str,
 ) -> str:
-    return MODULE.render_file(templates_root / template_name, knowledge_root).decode(
-        "utf-8"
-    )
+    return MODULE.render_file(
+        templates_root / template_name,
+        knowledge_root,
+        project_name_slug,
+    ).decode("utf-8")
 
 
 def print_diff(label: str, current: str, expected: str) -> None:
@@ -81,6 +84,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     project_root = Path(args.project_root).resolve()
     knowledge_root = args.knowledge_root
+    project_name_slug = MODULE.project_slug(project_root)
     templates_root = (project_root / knowledge_root / "templates").resolve()
     if not templates_root.is_dir():
         print(
@@ -104,11 +108,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         templates_root,
         MODULE.AGENTS_HEADER,
         knowledge_root,
+        project_name_slug,
     )
     expected_footer = render_expected_block(
         templates_root,
         MODULE.AGENTS_FOOTER,
         knowledge_root,
+        project_name_slug,
     )
 
     drift_found = False

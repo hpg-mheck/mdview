@@ -3,11 +3,17 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import importlib.util
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "run_quality_gate_cached.py"
+SPEC = importlib.util.spec_from_file_location("run_quality_gate_cached", SCRIPT)
+assert SPEC is not None and SPEC.loader is not None
+run_quality_gate_cached = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = run_quality_gate_cached
+SPEC.loader.exec_module(run_quality_gate_cached)
 
 
 def _run_cached(repo_root: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -28,6 +34,7 @@ def _make_fake_repo(tmp_path: Path) -> Path:
     (repo / "scripts").mkdir(parents=True)
     (repo / "dev-utils").mkdir(parents=True)
     (repo / "resources").mkdir(parents=True)
+    (repo / "demos").mkdir(parents=True)
 
     (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
     (repo / "tests" / "test_app.py").write_text(
@@ -190,6 +197,36 @@ def test_quality_gate_cache_uses_gitdir_when_git_is_a_file(tmp_path: Path) -> No
     assert second.returncode == 0
     assert "SKIP black: cache hit" in second.stdout
     assert (git_dir / "mdview-quality-cache.json").exists()
+
+
+def test_quality_gate_default_order_includes_demo_check() -> None:
+    assert "demo_check" in run_quality_gate_cached.CHECK_ORDER
+    assert run_quality_gate_cached.CHECK_SCOPE["demo_check"]["roots"] == ["demos"]
+
+
+def test_quality_gate_demo_check_only_invalidates_on_demo_changes(
+    tmp_path: Path,
+) -> None:
+    repo = _make_fake_repo(tmp_path)
+    demo = repo / "demos" / "table-demo.md"
+    demo.write_text("# Demo\n\nInitial state.\n", encoding="utf-8")
+
+    first = _run_cached(repo, "--checks", "demo_check")
+    assert first.returncode == 0
+    assert "RUN demo_check: cache miss" in first.stdout
+
+    (repo / "src" / "app.py").write_text("print('changed')\n", encoding="utf-8")
+    second = _run_cached(repo, "--checks", "demo_check")
+    assert second.returncode == 0
+    assert "SKIP demo_check: cache hit" in second.stdout
+
+    demo.write_text("# Demo\n\nUpdated state.\n", encoding="utf-8")
+    third = _run_cached(repo, "--checks", "demo_check")
+    assert third.returncode == 0
+    assert "RUN demo_check: cache miss" in third.stdout
+
+    calls = _read_calls(repo)
+    assert calls == ["demo_check", "demo_check"]
 
 
 def _token_payload(token: str) -> str:

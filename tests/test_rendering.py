@@ -16,6 +16,7 @@ from mdview.rendering import (
     page_text,
     render_to_ansi,
 )
+from tests.helpers.framebuffer import strip_ansi
 
 
 def test_render_to_ansi_routes_content_through_intake(monkeypatch) -> None:
@@ -206,14 +207,18 @@ def test_format_pipe_tables_aligns_columns_and_skips_fences() -> None:
         / "markdown_table_alignment.md"
     )
     formatted = _format_pipe_tables(fixture.read_text(encoding="utf-8"))
-    lines = formatted.splitlines()
+    lines = [strip_ansi(line) for line in formatted.splitlines()]
 
-    assert lines[:5] == [
-        "| name         | score | delta |",
-        "| :----------- | ----: | :---: |",
-        "| Ada Lovelace |    99 |   +3  |",
-        "| Bob          |     7 |   -2  |",
-        "| Carol        |    13 |   0   |",
+    assert lines[:9] == [
+        "┌──────────────┬───────┬───────┐",
+        "│ name         │ score │ delta │",
+        "├──────────────┼───────┼───────┤",
+        "│ Ada Lovelace │    99 │   +3  │",
+        "├──────────────┼───────┼───────┤",
+        "│ Bob          │     7 │   -2  │",
+        "├──────────────┼───────┼───────┤",
+        "│ Carol        │    13 │   0   │",
+        "└──────────────┴───────┴───────┘",
     ]
     assert lines[-4:] == [
         "```",
@@ -258,9 +263,11 @@ def test_render_to_ansi_formats_tables_without_rich(monkeypatch) -> None:
     )
     ansi = reloaded.render_to_ansi(fixture.read_text(encoding="utf-8"), markdown=True)
     try:
-        assert "| name         | score | delta |" in ansi
-        assert "Outside table paragraph." in ansi
-        assert "| not | a | table |" in ansi
+        plain = strip_ansi(ansi)
+        assert "┌──────────────┬───────┬───────┐" in plain
+        assert "│ Ada Lovelace │    99 │   +3  │" in plain
+        assert "Outside table paragraph." in plain
+        assert "| not | a | table |" in plain
     finally:
         monkeypatch.undo()
         importlib.reload(rendering)
@@ -2160,6 +2167,356 @@ def test_prompt_toolkit_timeout_writes_screenshot_artifact(
     assert screenshot_events[0]["attrs_path"] == str(capture_attrs.resolve())
     assert actions.index("automation-timeout-screenshot") < actions.index(
         "automation-timeout"
+    )
+
+
+def test_prompt_toolkit_manual_capture_writes_screen_dump_artifacts(
+    monkeypatch, tmp_path: Path
+) -> None:
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def __init__(self) -> None:
+            self.size = DummySize(8, 3)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    class DummyTimer:
+        def __init__(self, interval, callback) -> None:
+            self.interval = interval
+            self.callback = callback
+
+        def start(self) -> None:
+            self.callback()
+
+        def cancel(self) -> None:
+            return
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(8, 3)
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def __init__(self) -> None:
+            self.handlers = {}
+
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                for key in keys:
+                    self.handlers[key] = func
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyEvent:
+        def __init__(self, app) -> None:
+            self.app = app
+
+    class DummyKeyProcessor:
+        def __init__(self, app) -> None:
+            self.app = app
+            self.pending = []
+
+        def feed_multiple(self, key_presses, first: bool = False) -> None:
+            self.pending.extend(list(key_presses))
+
+        def process_keys(self) -> None:
+            event = DummyEvent(self.app)
+            for key_press in self.pending:
+                key = getattr(key_press, "key", key_press)
+                resolved = getattr(key, "value", key)
+                handler = self.app.key_bindings.handlers.get(str(resolved))
+                if handler is not None:
+                    handler(event)
+            self.pending.clear()
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.key_bindings = key_bindings
+            self.output = DummyOutput()
+            self.key_processor = DummyKeyProcessor(self)
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            return
+
+        def exit(self) -> None:
+            return
+
+        def run(self) -> None:
+            self.layout.container.content.text_func()
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+    monkeypatch.setattr(rendering.threading, "Timer", DummyTimer)
+
+    capture_dir = tmp_path / "captures"
+    capture_txt = capture_dir / "mdview-screen.txt"
+    capture_attrs = capture_dir / "mdview-screen.attrs.json"
+    events: List[Tuple[str, dict]] = []
+
+    def logger(action: str, context: dict) -> None:
+        events.append((action, context))
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        "line-one\nline-two",
+        ui_event_logger=logger,
+        automation_replay=[(0.0, "!")],
+        screen_dump_dir=capture_dir,
+        viewport_columns=8,
+        viewport_rows=3,
+    )
+
+    assert capture_txt.read_bytes() == b"line-one\r\nline-two\r\n        \r\n"
+    payload = json.loads(capture_attrs.read_text(encoding="utf-8"))
+    assert payload["capture_source"] == "synthetic-text-buffer"
+    assert payload["txt_path"] == str(capture_txt.resolve())
+    assert payload["attrs_path"] == str(capture_attrs.resolve())
+
+    actions = [action for action, _ in events]
+    assert "manual-screen-capture" in actions
+    manual_events = [
+        context for action, context in events if action == "manual-screen-capture"
+    ]
+    assert manual_events[0]["directory"] == str(capture_dir)
+    assert manual_events[0]["txt_path"] == str(capture_txt.resolve())
+    assert manual_events[0]["attrs_path"] == str(capture_attrs.resolve())
+
+
+def test_manual_capture_attrs_json_preserves_span_color_foregrounds(
+    monkeypatch, tmp_path: Path
+) -> None:
+    class DummyCell:
+        def __init__(self, char: str, style: str = "") -> None:
+            self.char = char
+            self.style = style
+
+    class DummyRenderInfo:
+        def __init__(self, window_width: int, window_height: int) -> None:
+            self.window_width = window_width
+            self.window_height = window_height
+
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyScreen:
+        def __init__(self, data_buffer) -> None:
+            self.data_buffer = data_buffer
+
+    class DummyRenderer:
+        def __init__(self, data_buffer) -> None:
+            self.last_rendered_screen = DummyScreen(data_buffer)
+
+    class DummyOutput:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.size = DummySize(columns, rows)
+
+        def get_size(self) -> DummySize:
+            return self.size
+
+    class DummyTimer:
+        def __init__(self, interval, callback) -> None:
+            self.interval = interval
+            self.callback = callback
+
+        def start(self) -> None:
+            self.callback()
+
+        def cancel(self) -> None:
+            return
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info: DummyRenderInfo = DummyRenderInfo(
+                viewport_width, viewport_height
+            )
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def __init__(self) -> None:
+            self.handlers = {}
+
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                for key in keys:
+                    self.handlers[key] = func
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyEvent:
+        def __init__(self, app) -> None:
+            self.app = app
+
+    class DummyKeyProcessor:
+        def __init__(self, app) -> None:
+            self.app = app
+            self.pending = []
+
+        def feed_multiple(self, key_presses, first: bool = False) -> None:
+            self.pending.extend(list(key_presses))
+
+        def process_keys(self) -> None:
+            event = DummyEvent(self.app)
+            for key_press in self.pending:
+                key = getattr(key_press, "key", key_press)
+                resolved = getattr(key, "value", key)
+                handler = self.app.key_bindings.handlers.get(str(resolved))
+                if handler is not None:
+                    handler(event)
+            self.pending.clear()
+
+    content = (
+        "## Table Gap Heading\n"
+        "| Metric | Value |\n"
+        "| --- | --- |\n"
+        '| <span style="color: red">alpha</span> | '
+        '<span style="color: blue">beta</span> |\n'
+    )
+    rendered = render_to_ansi(content, markdown=True, width=80)
+    ansi_lines = rendered.splitlines()
+    viewport_width = max(
+        (rendering._visible_length(line) for line in ansi_lines), default=1
+    )
+    viewport_height = max(len(ansi_lines), 1)
+
+    data_buffer = {}
+    for row_index, line in enumerate(ansi_lines):
+        row_cells = {}
+        column_index = 0
+        for style, text in rendering._ansi_line_to_formatted_segments(line):
+            for character in text:
+                row_cells[column_index] = DummyCell(character, style)
+                column_index += 1
+        data_buffer[row_index] = row_cells
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.key_bindings = key_bindings
+            self.output = DummyOutput(viewport_width, viewport_height)
+            self.key_processor = DummyKeyProcessor(self)
+            self.renderer = DummyRenderer(data_buffer)
+            app_registry.append(self)
+
+        def invalidate(self) -> None:
+            return
+
+        def exit(self) -> None:
+            return
+
+        def run(self) -> None:
+            self.layout.container.content.text_func()
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+    monkeypatch.setattr(rendering.threading, "Timer", DummyTimer)
+
+    capture_dir = tmp_path / "captures"
+    capture_txt = capture_dir / "mdview-screen.txt"
+    capture_attrs = capture_dir / "mdview-screen.attrs.json"
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        rendered,
+        automation_replay=[(0.0, "!")],
+        screen_dump_dir=capture_dir,
+        viewport_columns=viewport_width,
+        viewport_rows=viewport_height,
+    )
+
+    txt_lines = capture_txt.read_text(encoding="ascii").splitlines()
+    payload = json.loads(capture_attrs.read_text(encoding="utf-8"))
+    table_row_index = next(
+        index
+        for index, line in enumerate(txt_lines)
+        if "alpha" in line and "beta" in line
+    )
+    table_cells = payload["rows"][table_row_index]["cells"]
+    alpha_start = txt_lines[table_row_index].index("alpha")
+    beta_start = txt_lines[table_row_index].index("beta")
+
+    assert all(
+        table_cells[column]["attributes"]["foreground"] == "#ff0000"
+        for column in range(alpha_start, alpha_start + len("alpha"))
+    )
+    assert all(
+        table_cells[column]["attributes"]["foreground"] == "#0000ff"
+        for column in range(beta_start, beta_start + len("beta"))
     )
 
 

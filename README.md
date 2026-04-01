@@ -49,12 +49,20 @@ Optional flags:
 - `--verbose` to report operational events such as document switches.
 - `--MIL` to emit Monkey-in-the-Loop action telemetry for live
   troubleshooting.
+- `--readability-first-tables` to keep Markdown tables at readable column
+  widths even when that means horizontal overflow.
+- `--no-table-borders` to suppress the outer gray border around Markdown
+  tables.
+- `--no-cell-borders` to suppress the internal gray cell separators within
+  Markdown tables.
 - `--automation-timeout <seconds>` to inject synthetic quit after a bounded
   viewer runtime during unattended automation.
 - `--automation-timeout-screenshot <basename>` to store timeout-exit
   framebuffer artifacts as `<basename>.txt` and `<basename>.attrs.json`
   (defaults to `./mdview-automation-timeout-framebuffer` when timeout is
   enabled).
+- `--screen-dump-dir <path>` to choose where interactive `!` captures write
+  `mdview-screen.txt` and `mdview-screen.attrs.json`.
 - `--automation-json <source>` to replay timed key input as
   `[[delay_seconds, key_spec], ...]` from a JSON file path or literal JSON
   string.
@@ -71,6 +79,14 @@ Optional flags:
 
 Viewport movement behavior and automation replay format are documented in
 `docs/movement.txt`.
+
+While viewing interactively, press `!` to dump the current visible viewport as
+paired text and JSON framebuffer artifacts.
+
+Bundled demos live under `demos/`. For a quick feature tour, run:
+```bash
+./mdview demos/table-demo.md
+```
 
 To make full-screen redraws visible during normal viewing sessions, run:
 ```bash
@@ -91,8 +107,11 @@ timestamped debug logs to standard error.
 Markdown content reflows to current window dimensions by default.
 `--reflow` is therefore redundant for Markdown. The exception is Markdown
 tables: they may exceed viewport width when minimum table sizing requires it.
-When any rendered line exceeds viewport width, a horizontal scrollbar becomes
-active and left/right arrow keys pan the viewport.
+By default, recognized Markdown tables render as gray boxed grids using
+Unicode box-drawing characters. Use `--no-table-borders` and/or
+`--no-cell-borders` to replace those border layers with whitespace gaps.
+When any rendered line exceeds viewport width, a horizontal scrollbar
+becomes active and left/right arrow keys pan the viewport.
 
 For plain-text (`.txt`) files without explicit reflow flags, mdview preserves
 source line breaks by default. Reflow for `.txt` content is opt-in via
@@ -112,6 +131,8 @@ Windows 11 workflow shortcuts:
     `scripts\\windows\\run-tool.bat pytest`
 
 ## Project Structure
+- `demos/` - Showcase Markdown documents validated through the cached
+  `demo_check` workflow.
 - `src/mdview/` – Library code for rendering and paging.
 - `docs/specifications/` – Written specifications and architecture notes.
 - `tests/` – Pytest-based unit tests covering the rendering pipeline and pager

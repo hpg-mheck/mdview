@@ -1,10 +1,12 @@
 usage: mdview [-h] [--verify-resize-detection] [--test-input-feedback]
               [--reflow] [--reflow-mode {prose,all,none}] [--noreflow]
               [--verbose] [--MIL] [--readability-first-tables]
+              [--no-table-borders] [--no-cell-borders]
               [--automation-timeout SECONDS]
               [--automation-timeout-screenshot BASENAME]
-              [--viewport-columns COLUMNS] [--viewport-rows ROWS]
-              [--automation-json SOURCE] [--redraw-check-digit] [-V]
+              [--screen-dump-dir DIRECTORY] [--viewport-columns COLUMNS]
+              [--viewport-rows ROWS] [--automation-json SOURCE]
+              [--redraw-check-digit] [-V]
               [paths ...]
 
 Render Markdown in the terminal with integrated navigation.
@@ -41,6 +43,12 @@ optional arguments:
                             Always use readability-first table layout, even
                             when fit-first could fit the viewport. (default:
                             False)
+  --no-table-borders        Suppress outer Markdown table borders and leave
+                            whitespace gaps at the table edges. (default:
+                            False)
+  --no-cell-borders         Suppress internal Markdown table cell borders and
+                            leave whitespace gaps between cells. (default:
+                            False)
   --automation-timeout SECONDS
                             Inject synthetic quit after the given viewer
                             runtime for automation runs. (default: None)
@@ -50,6 +58,10 @@ optional arguments:
                             BASENAME.attrs.json. Defaults to ./mdview-
                             automation-timeout-framebuffer when --automation-
                             timeout is set. (default: None)
+  --screen-dump-dir DIRECTORY
+                            Directory for manual ! framebuffer captures in the
+                            interactive pager. Defaults to the current working
+                            directory. (default: .)
   --viewport-columns COLUMNS
                             Override detected viewport width with a synthetic
                             value. (default: None)

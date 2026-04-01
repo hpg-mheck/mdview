@@ -110,8 +110,11 @@ def test_format_help_matches_expected_shape():
     assert "--verbose" in help_text
     assert "--MIL" in help_text
     assert "--readability-first-tables" in help_text
+    assert "--no-table-borders" in help_text
+    assert "--no-cell-borders" in help_text
     assert "--automation-timeout" in help_text
     assert "--automation-timeout-screenshot" in help_text
+    assert "--screen-dump-dir" in help_text
     assert "--automation-json" in help_text
     assert "--viewport-columns" in help_text
     assert "--viewport-rows" in help_text
@@ -258,6 +261,29 @@ def test_main_passes_automation_timeout_to_page_text(monkeypatch, tmp_path):
     )
 
 
+def test_main_passes_screen_dump_dir_to_page_text(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    capture_dir = tmp_path / "captures"
+    captured = {}
+
+    def fake_page_text(text: str, **kwargs):
+        captured["screen_dump_dir"] = kwargs.get("screen_dump_dir")
+
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main(
+        [
+            "--screen-dump-dir",
+            str(capture_dir),
+            str(document),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["screen_dump_dir"] == capture_dir
+
+
 def test_parse_automation_json_source_accepts_literal_json() -> None:
     events = cli_module._parse_automation_json_source(
         '[[0.0, "down"], [0.25, "m-c-x"]]'
@@ -328,6 +354,25 @@ def test_main_rejects_timeout_screenshot_without_timeout(tmp_path, capsys):
     assert (
         "--automation-timeout-screenshot requires --automation-timeout" in captured.err
     )
+
+
+def test_main_rejects_screen_dump_dir_when_path_is_not_directory(tmp_path, capsys):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    output_file = tmp_path / "capture.txt"
+    output_file.write_text("not a directory", encoding="utf-8")
+
+    exit_code = cli_module.main(
+        [
+            "--screen-dump-dir",
+            str(output_file),
+            str(document),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "--screen-dump-dir must name a directory" in captured.err
 
 
 def test_main_rejects_test_input_feedback_with_paths(tmp_path, capsys):
@@ -443,6 +488,40 @@ def test_main_uses_viewport_columns_for_initial_render(monkeypatch, tmp_path):
 
     assert exit_code == 0
     assert captured["widths"] == [120]
+
+
+def test_main_passes_table_border_flags_to_render_calls(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = []
+
+    def fake_render_to_ansi(content: str, markdown: bool, **kwargs):
+        captured.append(
+            (
+                kwargs.get("table_borders"),
+                kwargs.get("cell_borders"),
+            )
+        )
+        return "rendered"
+
+    def fake_page_text(text: str, **kwargs):
+        render_on_resize = kwargs["render_on_resize"]
+        assert render_on_resize is not None
+        _ = render_on_resize(88)
+
+    monkeypatch.setattr(cli_module, "render_to_ansi", fake_render_to_ansi)
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main(
+        [
+            "--no-table-borders",
+            "--no-cell-borders",
+            str(document),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured == [(False, False), (False, False)]
 
 
 def test_parser_rejects_non_positive_viewport_columns(capsys):

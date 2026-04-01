@@ -75,6 +75,26 @@ def test_workflow_docs_cover_submodule_init_and_agents_refresh() -> None:
         assert "python scripts/refresh_managed_agents.py" in text
 
 
+def test_workflow_docs_cover_demo_check() -> None:
+    texts = [
+        (ROOT / "AGENTS.md").read_text(encoding="utf-8"),
+        (ROOT / "docs" / "development-workflow.txt").read_text(encoding="utf-8"),
+        (ROOT / "docs" / "running-tests.txt").read_text(encoding="utf-8"),
+        (ROOT / "project-management" / "git-flow.txt").read_text(encoding="utf-8"),
+    ]
+
+    for text in texts:
+        assert "python scripts/run_tool_with_timeout.py demo_check" in text
+
+
 def test_timeout_wrapper_pytest_command_stays_scoped_to_mdview_tests() -> None:
     config = json.loads((ROOT / "scripts" / "tool_timeouts.json").read_text())
     assert config["tools"]["pytest"]["command"] == ["python", "-m", "pytest", "tests"]
+
+
+def test_timeout_wrapper_config_includes_demo_check() -> None:
+    config = json.loads((ROOT / "scripts" / "tool_timeouts.json").read_text())
+    assert config["tools"]["demo_check"]["command"] == [
+        "python",
+        "scripts/validate_demos.py",
+    ]

@@ -61,13 +61,15 @@ Run `python scripts/run_tool_with_timeout.py black`,
 `python scripts/run_tool_with_timeout.py ruff`,
 `python scripts/run_tool_with_timeout.py compileall`,
 `python scripts/run_tool_with_timeout.py entropy_check`,
-`python scripts/run_tool_with_timeout.py entropy_tripwire_verify`, and
-`python scripts/run_tool_with_timeout.py pytest` before declaring the work
-ready. Interactive bootstrap runs report whether another `mdview` command
-appears on PATH before prompting whether arbitrary-directory `mdview`
-invocations should prefer the checkout-local copy. In non-interactive
-sessions, pass `./scripts/install_prerequisites.sh --mdview-command local`
-or `./scripts/install_prerequisites.sh --mdview-command system` when command
+`python scripts/run_tool_with_timeout.py entropy_tripwire_verify`,
+`python scripts/run_tool_with_timeout.py pytest`, and
+`python scripts/run_tool_with_timeout.py demo_check` before declaring the
+work ready. Interactive bootstrap runs report whether another `mdview`
+command appears on PATH before prompting whether arbitrary-directory
+`mdview` invocations should prefer the checkout-local copy. In
+non-interactive sessions, pass
+`./scripts/install_prerequisites.sh --mdview-command local` or
+`./scripts/install_prerequisites.sh --mdview-command system` when command
 resolution matters. Work from `trunk` unless an operator explicitly directs
 a different integration branch. If progress stalls, move the entry back to
 the backlog with an explanation and timestamp.

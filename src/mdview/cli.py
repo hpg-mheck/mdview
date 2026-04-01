@@ -209,6 +209,22 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--no-table-borders",
+        action="store_true",
+        help=(
+            "Suppress outer Markdown table borders and leave whitespace gaps "
+            "at the table edges."
+        ),
+    )
+    parser.add_argument(
+        "--no-cell-borders",
+        action="store_true",
+        help=(
+            "Suppress internal Markdown table cell borders and leave "
+            "whitespace gaps between cells."
+        ),
+    )
+    parser.add_argument(
         "--automation-timeout",
         metavar="SECONDS",
         type=_non_negative_seconds,
@@ -226,6 +242,16 @@ def build_parser() -> argparse.ArgumentParser:
             "producing BASENAME.txt and BASENAME.attrs.json. Defaults to "
             "./mdview-automation-timeout-framebuffer when "
             "--automation-timeout is set."
+        ),
+    )
+    parser.add_argument(
+        "--screen-dump-dir",
+        metavar="DIRECTORY",
+        type=Path,
+        default=Path("."),
+        help=(
+            "Directory for manual ! framebuffer captures in the interactive "
+            "pager. Defaults to the current working directory."
         ),
     )
     parser.add_argument(
@@ -369,6 +395,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         _emit_fallback_notices()
         return 2
+    if args.screen_dump_dir.exists() and not args.screen_dump_dir.is_dir():
+        print(
+            "mdview: --screen-dump-dir must name a directory",
+            file=sys.stderr,
+        )
+        _emit_fallback_notices()
+        return 2
 
     automation_replay: Optional[list[AutomationReplayEvent]] = None
     if args.automation_json is not None:
@@ -429,6 +462,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             width=width,
             reflow_mode=document.reflow_mode,
             readability_first_tables=args.readability_first_tables,
+            table_borders=not args.no_table_borders,
+            cell_borders=not args.no_cell_borders,
         )
 
     initial_width = _initial_viewport_width(viewport_columns=args.viewport_columns)
@@ -484,6 +519,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             current_document_index=lambda: current_index,
             automation_timeout=args.automation_timeout,
             automation_timeout_screenshot_basename=timeout_screenshot_basename,
+            screen_dump_dir=args.screen_dump_dir,
             viewport_columns=args.viewport_columns,
             viewport_rows=args.viewport_rows,
             automation_replay=automation_replay,

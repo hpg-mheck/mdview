@@ -42,6 +42,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     project_root = Path(args.project_root).resolve()
+    project_name_slug = MODULE.project_slug(project_root)
     templates_root = (project_root / args.knowledge_root / "templates").resolve()
     if not templates_root.is_dir():
         print(
@@ -54,6 +55,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         templates_root=templates_root,
         project_root=project_root,
         knowledge_root=args.knowledge_root,
+        project_name_slug=project_name_slug,
         dry_run=args.dry_run,
     )
     action = "would refresh" if args.dry_run else "refreshed"

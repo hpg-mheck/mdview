@@ -43,14 +43,18 @@ Functional Requirements
   - Accepts files with ``.md`` or ``.markdown`` as Markdown; treats
     ``.txt`` and other extensions as plain text.
   - Reads content using UTF-8 with graceful error messaging on failure.
-- Rendering
-  - Markdown files: rendered using ``rich.markdown.Markdown``.
+  - Rendering
+  - Markdown files: rendered using ``rich.markdown.Markdown`` for general
+    prose, with mdview's own table formatter for pipe tables.
     Markdown reflows prose-like blocks to current viewport width by
     default under ``--reflow-mode prose`` semantics.
     ``--reflow`` is redundant for standard Markdown workflows.
     Markdown tables follow two-profile width selection defined in
     ``docs/specifications/table_width_profile_selection.txt`` and may remain
-    wider than the viewport when overflow is unavoidable.
+    wider than the viewport when overflow is unavoidable. By default, pipe
+    tables render as gray boxed grids using Unicode box-drawing characters.
+    ``--no-table-borders`` suppresses the outer border layer, and
+    ``--no-cell-borders`` suppresses the internal cell separators.
   - Plain text (``*.txt``): follows
     ``docs/specifications/plain_text_reflow_behavior.txt``. Default behavior
     preserves source line breaks with no reflow. ``--reflow`` enables
@@ -75,6 +79,8 @@ Functional Requirements
     ``--reflow-mode prose|all|none`` to select policy behavior as defined in
     ``docs/specifications/reflow_mode.txt``. ``--readability-first-tables``
     forces readability-first table layout profile selection.
+    ``--no-table-borders`` and ``--no-cell-borders`` independently suppress
+    outer and internal Markdown table border layers.
     ``--test-input-feedback`` runs a standalone two-stage terminal
     input diagnostic that compares direct stdin handling against the
     prompt_toolkit viewer stack with timestamped input/redraw logging.
@@ -84,6 +90,8 @@ Functional Requirements
     viewer runtime for unattended automation.
     ``--automation-timeout-screenshot <basename>`` writes timeout-exit
     artifacts as ``<basename>.txt`` and ``<basename>.attrs.json``, and
+    ``--screen-dump-dir <path>`` selects where interactive `!` captures write
+    ``mdview-screen.txt`` and ``mdview-screen.attrs.json``.
     ``--viewport-columns``/``--viewport-rows`` provide synthetic viewport
     size overrides for deterministic automation. ``--automation-json`` replays
     scripted key input as JSON ``[[delay_seconds, key_spec], ...]`` from a
@@ -95,6 +103,8 @@ Quality Attributes
 ------------------
 - Reliability: Clear error messages for missing files, unreadable files,
   or rendering issues.
+- Demonstrability: The repository includes curated Markdown demos under
+  ``demos/`` and validates changed demo files through cached demo checks.
 - Usability: Output should be immediately legible; headings and emphasis
   must stand out, and navigation should remain consistent and predictable.
 - Portability: Works on Unix-like systems with Python 3.9+; degrades

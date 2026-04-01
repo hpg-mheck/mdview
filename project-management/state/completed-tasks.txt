@@ -6,6 +6,92 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Added boxed Markdown table borders with gray border styling plus
+  `--no-table-borders` and `--no-cell-borders`, recorded at
+  2026-03-30T15:15:23-07:00 by Codex (GPT-5.4) from direct operator
+  instruction. Updated
+  `docs/specifications/markdown_table_rendering.txt`,
+  `docs/specifications/project_overview.txt`, README, and deployment
+  help/man text; extended `src/mdview/cli.py` with the new border flags; and
+  updated `src/mdview/rendering.py` so Markdown pipe tables always render
+  through mdview's custom boxed-table path, including gray border glyphs,
+  span-color preservation, and whitespace-gap fallbacks when border layers
+  are disabled. Added regression coverage in `tests/test_cli.py`,
+  `tests/test_markdown_tables.py`, and `tests/test_rendering.py` for boxed
+  output, border toggles, ANSI border styling, and consistent heading-to-
+  table spacing. Validation: approved out-of-sandbox wrapper-based `black`
+  passed after reformatting the touched files; wrapper-based `ruff`,
+  `compileall`, `entropy_check`, `entropy_tripwire_verify`, and full
+  `pytest` all passed (`350 passed`); and approved out-of-sandbox
+  `demo_check` passed with the expected cache hit (`validated=0 skipped=1
+  errors=0`).
+
+* Polished `demos/table-demo.md` so its Markdown source table is aligned
+  cleanly without sacrificing the nicer Rich-rendered table appearance,
+  recorded at 2026-03-30T15:03:38-07:00 by Codex (GPT-5.4) from direct
+  operator feedback. Tightened the source column spacing, kept the file
+  within the 78-column wrap rule, and preserved the span-color showcase by
+  using the Rich-friendly divider form that avoids mdview's literal-pipe
+  fallback for that demo. Validation: direct `render_to_ansi` inspection
+  confirmed the rendered table returned to aligned Rich table output, and the
+  approved out-of-sandbox `demo_check` run passed (`validated=1 skipped=0
+  errors=0`).
+
+* Added a cached demo-document workflow with a new Markdown showcase at
+  `demos/table-demo.md`, recorded at 2026-03-30T10:33:46-07:00 by Codex
+  (GPT-5.4) from direct operator instruction. Added
+  `docs/specifications/demo_documents.txt`; added
+  `scripts/validate_demos.py` plus timeout-wrapper and cached quality-gate
+  integration for `demo_check`; updated workflow guidance in `AGENTS.md`,
+  `docs/development-workflow.txt`, `docs/running-tests.txt`,
+  `project-management/git-flow.txt`, README, and
+  `docs/specifications/project_overview.txt`; and added regression coverage
+  in `tests/test_validate_demos.py`, `tests/test_run_quality_gate_cached.py`,
+  and `tests/test_repository_setup.py`. Validation: targeted `pytest` on
+  the new validator and workflow-doc tests passed; wrapper-based `black`,
+  approved out-of-sandbox `demo_check`, wrapper-based `ruff`, `compileall`,
+  `entropy_check`, `entropy_tripwire_verify`, and full `pytest` all passed
+  (`347 passed`). Note: the live Codex sandbox could not write the `.git`
+  demo-cache path, so the successful cache-writing `demo_check` runs used the
+  approved out-of-sandbox path for this session.
+
+* Restored Markdown `span` color attributes in rendered output and added
+  interactive `!` framebuffer capture support, recorded at
+  2026-03-27T10:49:02-07:00 by Codex (GPT-5.4) from direct operator
+  instruction. Added
+  `docs/specifications/manual_screen_capture_hotkey.txt`; updated
+  `docs/specifications/markdown_table_rendering.txt`,
+  `docs/specifications/project_overview.txt`, README, and deployment help/man
+  text; added `--screen-dump-dir` plumbing in `src/mdview/cli.py`; updated
+  `src/mdview/rendering.py` so supported HTML `span` color wrappers emit ANSI
+  foreground styling without disturbing table width calculations or
+  heading-adjacent table spacing; and added regression coverage in
+  `tests/test_cli.py`, `tests/test_markdown_tables.py`, and
+  `tests/test_rendering.py` for manual `!` capture artifacts plus JSON
+  foreground attributes on colored table cells. Validation: targeted
+  `pytest` on `tests/test_markdown_tables.py`, `tests/test_rendering.py`, and
+  `tests/test_cli.py` passed; approved out-of-sandbox wrapper-based `black`
+  passed after the in-sandbox formatter path remained unsuitable; and
+  wrapper-based `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and full `pytest` all passed (`338 passed`).
+
+* Fixed the heading-adjacent Markdown table spacing regression for table
+  cells wrapped in HTML `span` color tags, recorded at
+  2026-03-27T10:15:15-07:00 by Codex (GPT-5.4) from direct operator
+  instruction. Updated `docs/specifications/markdown_table_rendering.txt`
+  to require equal heading-to-table spacing for plain and span-wrapped
+  tables; added fixtures under `resources/tests/markdown/tables/`; extended
+  `tests/test_markdown_tables.py` with a formatter regression and a
+  framebuffer-based visual comparison; and updated `src/mdview/rendering.py`
+  so pipe-table cell parsing strips inline `span` wrappers while preserving
+  the visible cell text, preventing those tags from perturbing Rich's table
+  layout. Validation: targeted `pytest` on
+  `tests/test_markdown_tables.py` and `tests/test_markdown_headings.py`
+  passed, approved out-of-sandbox wrapper-based `black` passed after the
+  in-sandbox formatter path repeated the known hang pattern, and wrapper-
+  based `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and full `pytest` all passed (`333 passed`).
+
 * Integrated `TheKnowledge` as a root consumer submodule and wired mdview's
   local bridge workflow, recorded at 2026-03-27T01:49:48-07:00 by Codex
   (GPT-5.4) from direct operator instruction. Added `.gitmodules` and the

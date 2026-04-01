@@ -68,6 +68,7 @@ Run all required checks via timeout wrapper:
 - `python scripts/run_tool_with_timeout.py entropy_check`
 - `python scripts/run_tool_with_timeout.py entropy_tripwire_verify`
 - `python scripts/run_tool_with_timeout.py pytest`
+- `python scripts/run_tool_with_timeout.py demo_check`
 - Standardized push path:
   - `python scripts/git_standard_commit_push.py -m "<message>"`
   This command blocks push unless the cached quality gate passes, including

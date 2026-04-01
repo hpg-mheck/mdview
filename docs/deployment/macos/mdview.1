@@ -12,6 +12,9 @@ mdview \- render Markdown in the terminal with an internal viewer
 .I MODE
 .RI ]
 .RI [ \-\-noreflow ]
+.RI [ \-\-readability\-first\-tables ]
+.RI [ \-\-no\-table\-borders ]
+.RI [ \-\-no\-cell\-borders ]
 .RI [ \-\-automation\-timeout
 .I SECONDS
 .RI ]
@@ -40,7 +43,8 @@ are not used for display.
 For pure text files, default behavior preserves source line breaks and
 does not reflow unless reflow is explicitly enabled.
 Markdown reflows to viewport width by default. Markdown tables may exceed
-viewport width when minimum table sizing requires overflow.
+viewport width when minimum table sizing requires overflow. Recognized pipe
+tables render as gray boxed grids by default.
 .SH OPTIONS
 .TP
 .B path
@@ -76,6 +80,18 @@ or
 .BR \-\-noreflow
 Disable reflow in all cases (equivalent to mode none).
 .TP
+.BR \-\-readability\-first\-tables
+Always use readability-first table layout, even when fit-first could fit the
+viewport.
+.TP
+.BR \-\-no\-table\-borders
+Suppress outer Markdown table borders and leave whitespace gaps at the table
+edges.
+.TP
+.BR \-\-no\-cell\-borders
+Suppress internal Markdown table cell borders and leave whitespace gaps
+between cells.
+.TP
 .BR \-\-automation\-timeout " " SECONDS
 Inject synthetic quit after the given viewer runtime for automation runs.
 .TP
@@ -87,6 +103,15 @@ and
 If omitted while automation timeout is enabled, mdview uses default basename
 .B mdview-automation-timeout-framebuffer
 in the current working directory.
+.TP
+.BR \-\-screen\-dump\-dir " " DIRECTORY
+Choose the directory used when the interactive pager writes manual
+.B !
+captures as
+.B mdview-screen.txt
+and
+.B mdview-screen.attrs.json.
+The default is the current working directory.
 .TP
 .BR \-\-viewport\-columns " " COLUMNS
 Override detected viewport width with a synthetic value.

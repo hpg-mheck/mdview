@@ -1,0 +1,73 @@
+Demo Documents and Cached Validation
+====================================
+
+Scope
+-----
+Define the repository layout, showcase expectations, and cached validation
+workflow for Markdown demo documents stored under the top-level `demos/`
+directory.
+
+Goals
+-----
+- Keep a small set of renderer showcase documents in-tree so operators have
+  realistic material for manual and automated smoke checks.
+- Make demo validation cheap enough to leave in the standard workflow by
+  rechecking only demo files whose content changed.
+- Verify styled output, including supported HTML `span` foreground colors,
+  through mdview's real rendering pipeline instead of text-only parsing.
+
+Requirements
+------------
+- Demo Markdown documents must live under the repository's top-level
+  `demos/` directory.
+- `demos/table-demo.md` must exist as a showcase document and include:
+  - a heading-based document structure,
+  - a pipe-style Markdown table,
+  - supported inline color styling via HTML `span` wrappers, and
+  - at least one additional Markdown feature beyond tables, such as lists,
+    block quotes, fenced code blocks, links, or inline code.
+- Demo validation must be available through
+  `python scripts/run_tool_with_timeout.py demo_check`.
+- The validator must inspect Markdown files under `demos/` recursively so
+  future nested demos do not require validator changes.
+- The validator must maintain a per-demo hash cache at
+  `.git/mdview-demo-validation-cache.json`.
+- Unchanged demo files whose cached result was `pass` must be skipped on
+  subsequent validator runs unless the operator requests `--no-cache`.
+- The validator must prune cache entries for demo files that no longer exist.
+
+Lint Requirements
+-----------------
+- Each demo file must be valid UTF-8 text and must end with a trailing
+  newline.
+- Each demo file must be non-empty and include at least one ATX heading.
+- Tabs are not allowed in demo documents.
+- Fenced code blocks must be balanced.
+
+Render-Test Requirements
+------------------------
+- Each changed demo file must be rendered with mdview's Markdown pipeline.
+- Rendering failures are hard errors.
+- The rendered output must not leak raw HTML `span` tags.
+- When a demo contains supported HTML `span` color wrappers, the validator
+  must verify that the visible span text appears in the rendered framebuffer
+  with the expected foreground color attributes.
+- Color-span validation must use the same ANSI-to-framebuffer attribute path
+  used elsewhere in mdview so the checks reflect live viewer styling.
+
+Quality-gate Integration
+------------------------
+- `demo_check` must be available in `scripts/tool_timeouts.json`.
+- `scripts/run_quality_gate_cached.py` must include `demo_check` in the
+  standard ordered check set.
+- The cached quality-gate fingerprint for `demo_check` must track demo files
+  plus the demo-validator script, without forcing reruns for unrelated source
+  changes.
+
+Testing Requirements
+--------------------
+- Add regression coverage for the validator's per-demo cache behavior.
+- Add regression coverage showing that the cached quality gate reruns
+  `demo_check` when demo content changes and skips it when unrelated files
+  change.
+- Add coverage that the timeout-wrapper configuration exposes `demo_check`.

@@ -40,6 +40,7 @@ CHECK_ORDER = [
     "entropy_check",
     "entropy_tripwire_verify",
     "pytest",
+    "demo_check",
 ]
 
 CHECK_SCOPE: Dict[str, Dict[str, object]] = {
@@ -72,6 +73,11 @@ CHECK_SCOPE: Dict[str, Dict[str, object]] = {
         "roots": ["src", "tests", "resources", "scripts", "dev-utils"],
         "extensions": None,
         "extra_files": ["pyproject.toml"],
+    },
+    "demo_check": {
+        "roots": ["demos"],
+        "extensions": [".md"],
+        "extra_files": ["scripts/validate_demos.py"],
     },
 }
 

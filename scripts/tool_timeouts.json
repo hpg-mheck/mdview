@@ -49,6 +49,13 @@
         "tests"
       ]
     },
+    "demo_check": {
+      "timeout_seconds": 60,
+      "command": [
+        "python",
+        "scripts/validate_demos.py"
+      ]
+    },
     "entropy_check": {
       "timeout_seconds": 90,
       "command": [

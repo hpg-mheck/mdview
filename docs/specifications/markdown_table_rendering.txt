@@ -29,19 +29,36 @@ Rendering Rules
   interior spacing.
 - Compute column widths from the header, divider, and all subsequent table
   rows until a blank or non-table line appears.
+- By default, render recognized tables as boxed grids using Unicode box-
+  drawing characters, with border glyphs styled in gray. Border intersections
+  must use the appropriate junction characters where outer and cell borders
+  overlap.
 - Apply table width profile selection using the two-profile model:
   - default ``auto``: fit-first first, readability-first when unavoidable
     overflow remains.
   - ``--readability-first-tables``: force readability-first for table-like
     blocks.
+- Support border controls:
+  - default: both outer table borders and internal cell borders enabled.
+  - ``--no-table-borders``: suppress top, bottom, left, and right borders,
+    replacing those positions with whitespace gaps.
+  - ``--no-cell-borders``: suppress internal vertical and horizontal cell
+    separators, replacing those positions with whitespace gaps.
+  - both flags together: render aligned cell content with whitespace gaps
+    only.
 - Respect alignment markers in the divider row:
   - ``:---`` renders left-aligned cells.
   - ``---:`` renders right-aligned cells.
   - ``:---:`` renders centered cells.
   - Missing or malformed markers default to left alignment.
-- Emit formatted rows as ``|``-delimited text with padded cells so that column
-  boundaries align visually in plain text. Include a leading and trailing pipe
-  on every rendered row.
+- Emit padded cell content so that column boundaries remain stable regardless
+  of whether borders are visible. When borders are enabled, use boxed-grid
+  junction and edge glyphs instead of literal Markdown pipes.
+- When a table cell uses inline HTML ``span`` wrappers for color hints,
+  preserve the inner text and supported foreground color styling while
+  ignoring the wrapper tags for table layout. Those wrappers must not alter
+  column sizing or introduce extra vertical gap before a table that appears
+  immediately after a heading.
 - Leave fenced code blocks unchanged, even if their content resembles a table.
 - Do not attempt to merge adjacent tables or reorder rows; process each table
   block independently and preserve original row order.
@@ -56,11 +73,11 @@ Rendering Rules
 Fallback Behavior
 -----------------
 - When Rich is unavailable, apply the table formatter before sending
-  content to the plain-text renderer so that column alignment cues remain
-  visible.
-- When Rich is available, retain the formatted table text; Rich will
-  render the table styling while the padded text keeps plain renderings
-  readable if Rich omits table features.
+  content to the plain-text renderer so that boxed borders, alignment cues,
+  and any visible whitespace gaps remain stable.
+- When Rich is available, render table blocks through mdview's custom table
+  path instead of depending on Rich's Markdown table parser, because boxed
+  border text must not be reflowed back into paragraphs.
 
 Test Coverage
 -------------
@@ -73,5 +90,13 @@ Test Coverage
 - Verify that formatted output keeps header and body rows aligned,
   retains cell content verbatim, and does not alter non-table
   paragraphs.
+- Verify default boxed output uses the expected box-drawing glyphs.
+- Verify border glyphs carry gray styling in framebuffer attributes.
+- Verify ``--no-table-borders`` suppresses only the outer border layer.
+- Verify ``--no-cell-borders`` suppresses only the internal border layer.
+- Add fixtures for a heading immediately followed by a plain Markdown table
+  and by an equivalent table whose body cells use ``span``-based color
+  wrappers, then compare rendered framebuffers to confirm the heading-to-table
+  gap stays the same in both cases.
 - Confirm that fenced code blocks containing pipe characters bypass table
   formatting.
