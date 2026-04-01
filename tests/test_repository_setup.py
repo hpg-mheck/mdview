@@ -11,14 +11,29 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def test_theknowledge_consumer_files_exist() -> None:
     required_paths = [
+        ROOT / ".python-version",
         ROOT / ".gitmodules",
         ROOT / "AGENTS.md",
+        ROOT / "bootstrap-stage2.py",
+        ROOT / "bootstrap.sh",
+        ROOT / "ECRs" / "README.md",
+        ROOT / "ECRs" / "TheKnowledge" / "README.md",
         ROOT / "docs" / "development-workflow.txt",
+        ROOT / "install.sh",
         ROOT / "project-management" / "git-flow.txt",
+        ROOT / "python-environments.json",
         ROOT / "scripts" / "_theknowledge_delegate.py",
+        ROOT / "scripts" / "dev_setup.py",
+        ROOT / "scripts" / "install-stage-2.py",
+        ROOT / "scripts" / "python_environment_bootstrap.py",
         ROOT / "scripts" / "refresh_managed_agents.py",
         ROOT / "scripts" / "report_managed_agents_drift.py",
+        ROOT / "scripts" / "tool_validation_profiles.py",
+        ROOT / "set-context-bootstrap.sh",
+        ROOT / "set-context.sh",
         ROOT / "TheKnowledge" / "README.md",
+        ROOT / "tool_execution_constraints.json",
+        ROOT / "tool_validation_profiles.json",
     ]
 
     for path in required_paths:
@@ -85,6 +100,56 @@ def test_workflow_docs_cover_demo_check() -> None:
 
     for text in texts:
         assert "python scripts/run_tool_with_timeout.py demo_check" in text
+
+
+def test_bootstrap_docs_cover_canonical_setup_path() -> None:
+    texts = [
+        (ROOT / "AGENTS.md").read_text(encoding="utf-8"),
+        (ROOT / "docs" / "development-workflow.txt").read_text(encoding="utf-8"),
+        (ROOT / "docs" / "installation.txt").read_text(encoding="utf-8"),
+        (ROOT / "docs" / "running-tests.txt").read_text(encoding="utf-8"),
+    ]
+
+    for text in texts:
+        assert "./install.sh" in text
+        assert "bootstrap.sh" in text
+        assert "scripts/install_prerequisites.sh" in text
+
+
+def test_python_environment_config_has_bootstrap_and_runtime_contexts() -> None:
+    config = json.loads((ROOT / "python-environments.json").read_text())
+
+    assert config["bootstrap"]["required_version"] == "3.9"
+    assert config["runtime"]["required_version"] == "3.12"
+    assert (
+        config["bootstrap"]["environment_name"] == config["bootstrap"]["base_version"]
+    )
+    assert config["runtime"]["environment_name"] == config["runtime"]["base_version"]
+    assert (ROOT / ".python-version").read_text(encoding="utf-8").strip() == config[
+        "runtime"
+    ]["environment_name"]
+
+
+def test_tool_validation_profiles_match_mdview_paths() -> None:
+    config = json.loads((ROOT / "tool_validation_profiles.json").read_text())
+    policies = config["runtime_policies"]
+    black_tool = config["tools"]["black"]
+
+    assert (
+        "THEKNOWLEDGE_BOOTSTRAP_PYTHON"
+        in policies["bootstrap_python"]["environment_variables"]
+    )
+    assert (
+        "THEKNOWLEDGE_PYTHON_TOOLS"
+        in policies["steady_state_python_tools"]["environment_variables"]
+    )
+    assert black_tool["default_roots"] == [
+        "src",
+        "tests",
+        "scripts",
+        "standards-and-practices/dev-utils",
+        "templates/scripts",
+    ]
 
 
 def test_timeout_wrapper_pytest_command_stays_scoped_to_mdview_tests() -> None:

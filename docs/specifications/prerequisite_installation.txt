@@ -7,26 +7,29 @@ Fedora 43, Ubuntu 24.x, Linux Mint, Debian (current stable/testing), recent
 macOS versions, and Windows 11.
 
 ## Objectives
-- Provide a shell entry point that can run on minimal systems, ensure a
-  working Python interpreter, and invoke the Python installer safely.
-- Implement a Python installer that detects the operating system, selects a
-  package manager, and installs required system packages (Python, venv
-  support, and source-control helpers).
-- Create or reuse a project-scoped virtual environment and install mdview
-  with development extras through pip.
-- Ensure the bootstrap path installs runtime Python dependencies for normal
-  mdview usage and the mandatory local-check tools (`pytest`, `black`,
-  `ruff`) for development validation.
+- Provide a canonical shell entry point (`install.sh`) that can run on
+  minimal Unix-like systems, ensure a working bootstrap interpreter, and
+  invoke the managed stage-two installer safely.
+- Keep `bootstrap.sh` and `scripts/install_prerequisites.sh` as compatibility
+  wrappers to `install.sh`.
+- Implement `scripts/install-stage-2.py` as the managed stage-two installer
+  that detects install mode/scope, provisions bootstrap/runtime pyenv
+  contexts for repo-local development, refreshes `.venv`, and installs
+  managed hooks.
+- Keep mdview-specific install behavior in `scripts/install_project.py`,
+  including project package installation and launcher management.
+- Track bootstrap/runtime pyenv contexts through `python-environments.json`,
+  `.python-version`, `set-context.sh`, and `set-context-bootstrap.sh`.
+- Ensure repo-local development refreshes the pinned local-check tools through
+  `scripts/dev_setup.py`.
 - For interactive developer installs, prompt whether typing `mdview` outside
   the checkout should resolve to the local development copy or to another
   installed copy, and report whether another `mdview` executable appears on
   the current PATH before asking.
-- Offer a dry-run mode to show commands without executing them so tests can
-  validate logic without mutating the host.
-- Keep logic compatible with Python 3.9+ and avoid non-portable shell
-  features.
-- Ensure repository launchers invoke mdview's internal CLI and never depend on
-  external renderers such as `pandoc` or GUI openers.
+- Keep logic compatible with Python 3.9+ in bootstrap/setup paths and avoid
+  non-portable shell features.
+- Ensure repository launchers invoke mdview's internal CLI and never depend
+  on external renderers such as `pandoc` or GUI openers.
 
 ## System package expectations
 - Debian/Ubuntu/Mint: install `python3`, `python3-venv`, `python3-pip`,
@@ -40,42 +43,51 @@ macOS versions, and Windows 11.
   pip installation.
 
 ## Virtual environment strategy
-- Use `.venv` at the repository root, created by `python -m venv` if missing.
+- Use `install.sh --mode dev` as the canonical direct-checkout development
+  bootstrap entry point.
+- Let `install.sh` default to a user-local non-development install in
+  standard mode, while `--mode dev` and `--mode venv-only` remain repo-local.
+- Use `scripts/install-stage-2.py` to provision the configured pyenv
+  bootstrap and runtime selections and to write `.python-version` to the
+  runtime selection for repo-local development.
+- Use `.venv` at the repository root for development and venv-only modes.
 - Resolve project root independently of caller working directory so the
   installer can run from subdirectories such as `scripts/` and still install
   from repository root.
-  Running the installer from `scripts/` (or any other subdirectory) must
-  still install the editable project from repository root.
-- Upgrade `pip`, `setuptools`, and `wheel` inside the environment.
-- Install the project in editable mode with `interactive` extras in all modes
-  and include `dev` extras by default. Allow `--production` to skip only `dev`
-  extras.
-- Provide an option to skip system package installation when host packages are
-  already present or package-manager access is intentionally restricted.
+- Upgrade `pip`, `setuptools`, and `wheel` inside managed virtual
+  environments before project or tool installs.
+- Install the project in editable mode with `interactive` extras for
+  development and non-editable mode for standard installs.
+- Refresh the pinned Black/Ruff/pytest toolchain through
+  `scripts/dev_setup.py` for development and venv-only modes.
 - Repository-local checks must run with `.venv/bin/python` or an activated
-  `.venv` so the bootstrap environment remains authoritative.
+  `.venv` so the development environment remains authoritative.
 
 ## Safety and usability
-- Prefer `sudo` for system package operations when not running as root.
-- Skip package-manager installation when the required system tools are already
-  present on the host.
-- When running interactively, report whether a non-checkout `mdview`
-  executable appears on PATH before prompting about command resolution.
+- Prefer `sudo` only for explicit `./install.sh --system` installs.
+- Reject `sudo ./install.sh` without `--system`.
+- Reject `./install.sh --system` when the current process is not running as
+  root.
+- Skip package-manager installation when the required bootstrap tools are
+  already present on the host.
+- When running interactively in development mode, report whether a
+  non-checkout `mdview` executable appears on PATH before prompting about
+  command resolution.
 - If the developer chooses the local checkout, install a managed user-local
-  `mdview` shim that delegates to the checkout `.venv` entry point.
-- If the developer chooses the installed copy, remove any managed shim from a
-  prior local-choice install and otherwise leave PATH resolution unchanged.
+  dev launcher that delegates to the checkout `.venv` entry point.
+- If the developer chooses the non-development path, restore a managed
+  standard launcher when one was displaced by the dev launcher and otherwise
+  leave PATH resolution unchanged.
 - Never overwrite an unrelated existing `mdview` executable silently.
-- Print planned operations before executing; honor a `--dry-run` flag to
-  skip execution.
 - Fail with clear messaging when the platform is unsupported or required
-  tools (`sudo`, package manager) are unavailable.
+  tools are unavailable.
 
 ## Testing considerations
 - Expose pure functions for parsing `/etc/os-release`, mapping package
   managers, and building install commands so pytest can cover decision
   paths without invoking subprocesses.
-- Cover PATH probing, prompt selection, managed shim creation, and managed
-  shim removal without touching the real user environment.
+- Cover PATH probing, prompt selection, managed launcher creation, managed
+  standard-launcher restore, and venv-only no-op behavior without touching
+  the real user environment.
 - Keep subprocess calls isolated behind a runner utility that can be
   stubbed in tests.

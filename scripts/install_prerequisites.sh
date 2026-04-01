@@ -1,110 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Compatibility wrapper for long-standing mdview setup entry points.
+# `./install.sh` is now the canonical Unix-like installer/bootstrap command.
+# Keep this wrapper tiny and argument-transparent so older automation can
+# reach the new stage-one entry point without reimplementing any policy here.
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-VENV_DIR="${VENV_DIR:-${ROOT_DIR}/.venv}"
-PYTHON_CANDIDATES=(${PYTHON_BIN:-python3} python3 python)
 FORWARD_ARGS=("$@")
 
-# Backward-compatible passthrough for legacy invocation styles documented as:
-#   ./scripts/install_prerequisites.sh -- --production
+# Backward-compatible passthrough for legacy invocation styles that included a
+# leading `--` only to forward arguments to the old Python installer.
 if [ "${#FORWARD_ARGS[@]}" -gt 0 ] && [ "${FORWARD_ARGS[0]}" = "--" ]; then
   FORWARD_ARGS=("${FORWARD_ARGS[@]:1}")
 fi
 
-log() {
-  echo "[install_prerequisites.sh] $*"
-}
-
-command_exists() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-detect_package_manager() {
-  for candidate in apt-get dnf yum brew; do
-    if command_exists "$candidate"; then
-      echo "$candidate"
-      return 0
-    fi
-  done
-  return 1
-}
-
-need_sudo() {
-  if [ "$(id -u)" -eq 0 ]; then
-    return 1
-  fi
-  if command_exists sudo; then
-    return 0
-  fi
-  return 1
-}
-
-install_python_if_missing() {
-  local manager sudo_cmd
-  manager=$(detect_package_manager) || true
-  if [ -z "$manager" ]; then
-    return 1
-  fi
-  if need_sudo; then
-    sudo_cmd="sudo"
-  else
-    sudo_cmd=""
-  fi
-
-  case "$manager" in
-    apt-get)
-      log "Installing python3 and venv tooling with apt-get"
-      ${sudo_cmd:+$sudo_cmd }$manager update
-      ${sudo_cmd:+$sudo_cmd }$manager install -y python3 python3-venv python3-pip
-      ;;
-    dnf|yum)
-      log "Installing python3 and venv tooling with $manager"
-      ${sudo_cmd:+$sudo_cmd }$manager -y install python3 python3-pip python3-virtualenv
-      ;;
-    brew)
-      log "Installing python via Homebrew"
-      $manager update
-      $manager install python
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
-select_python() {
-  local candidate
-  for candidate in "${PYTHON_CANDIDATES[@]}"; do
-    if command_exists "$candidate"; then
-      echo "$candidate"
-      return 0
-    fi
-  done
-  install_python_if_missing || true
-  for candidate in "${PYTHON_CANDIDATES[@]}"; do
-    if command_exists "$candidate"; then
-      echo "$candidate"
-      return 0
-    fi
-  done
-  return 1
-}
-
-PYTHON_BIN_PATH=$(select_python) || {
-  log "Python 3 is required but could not be installed automatically."
-  exit 1
-}
-
-if [ ! -d "$VENV_DIR" ]; then
-  log "Creating virtual environment at $VENV_DIR"
-  "$PYTHON_BIN_PATH" -m venv "$VENV_DIR"
-fi
-
-# shellcheck disable=SC1090
-source "$VENV_DIR/bin/activate"
-python "$ROOT_DIR/scripts/install_prerequisites.py" \
-  --project-root "$ROOT_DIR" \
-  --venv "$VENV_DIR" \
-  "${FORWARD_ARGS[@]}"
+exec "$ROOT_DIR/install.sh" "${FORWARD_ARGS[@]}"

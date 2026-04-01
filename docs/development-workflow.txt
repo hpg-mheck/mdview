@@ -55,8 +55,10 @@ notes concise and dated.
 
 Implement the specification, keeping code and tests aligned with Chicago style
 documentation standards and the required checks. In a fresh checkout, run
-`./scripts/install_prerequisites.sh` first, then use an activated `.venv` or
+`./install.sh --mode dev` first, then use an activated `.venv` or
 `.venv/bin/python` so `python` resolves to the repository-local toolchain.
+The legacy `./bootstrap.sh` and `./scripts/install_prerequisites.sh` entry
+points remain as compatibility wrappers to `./install.sh`.
 Run `python scripts/run_tool_with_timeout.py black`,
 `python scripts/run_tool_with_timeout.py ruff`,
 `python scripts/run_tool_with_timeout.py compileall`,
@@ -64,15 +66,16 @@ Run `python scripts/run_tool_with_timeout.py black`,
 `python scripts/run_tool_with_timeout.py entropy_tripwire_verify`,
 `python scripts/run_tool_with_timeout.py pytest`, and
 `python scripts/run_tool_with_timeout.py demo_check` before declaring the
-work ready. Interactive bootstrap runs report whether another `mdview`
+work ready. Interactive development installs report whether another `mdview`
 command appears on PATH before prompting whether arbitrary-directory
-`mdview` invocations should prefer the checkout-local copy. In
-non-interactive sessions, pass
-`./scripts/install_prerequisites.sh --mdview-command local` or
-`./scripts/install_prerequisites.sh --mdview-command system` when command
-resolution matters. Work from `trunk` unless an operator explicitly directs
-a different integration branch. If progress stalls, move the entry back to
-the backlog with an explanation and timestamp.
+invocations should prefer the checkout-local copy. Non-interactive
+development installs leave PATH resolution unchanged by default; set
+`MDVIEW_DEV_LAUNCHER_MODE=local` or `MDVIEW_DEV_LAUNCHER_MODE=system`
+when automation must force that choice. On Unix-like hosts, the managed
+development path provisions user-scoped pyenv selections and expects
+`direnv` during development mode. Work from `trunk` unless an operator
+explicitly directs a different integration branch. If progress stalls, move
+the entry back to the backlog with an explanation and timestamp.
 
 Initialize the root `TheKnowledge` submodule in fresh checkouts or worktrees
 with `git submodule update --init --recursive TheKnowledge` before relying on

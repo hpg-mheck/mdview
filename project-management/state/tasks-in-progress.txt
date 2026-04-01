@@ -6,3 +6,22 @@ marked with an asterisk followed by a blank line. Include brief status notes
 and cite any blockers by name, task identifier, bug link, or person
 responsible for unblocking. Remove tasks from this file as soon as they are
 completed or moved back to the backlog.
+
+*
+
+  Bring mdview's bootstrap, prerequisite installation, dev-setup tooling,
+  and setup-path documentation into compliance with current TheKnowledge
+  managed starter expectations, and raise installer/source documentation
+  quality to the newer standard.
+  Focus first on setup/prerequisite/devsetup/installer work; record any
+  approval-requiring or environment-specific follow-ups separately instead of
+  blocking this branch.
+  Status: the branch has now adopted TheKnowledge's newer `install.sh` plus
+  `scripts/install-stage-2.py` model, restored mdview-local runtime-policy
+  overrides, added `scripts/install_project.py` for project-specific launcher
+  behavior, and updated setup docs/specs to point at
+  `./install.sh --mode dev`. Execution validation is intentionally deferred
+  until the operator returns.
+  Requested by operator. Added: 2026-03-31T18:54:35-07:00.
+  Owner: Codex. Started: 2026-03-31T18:54:35-07:00.
+  Updated: 2026-04-01T10:19:04-07:00.

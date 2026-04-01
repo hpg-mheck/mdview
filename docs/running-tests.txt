@@ -4,12 +4,18 @@ Running Tests
 Prerequisites
 -------------
 - Python 3.9 or newer available on your PATH.
-- Run `./scripts/install_prerequisites.sh` from the repository root before
-  first use in a fresh checkout or environment.
-- The installer provisions `.venv/` in the checkout, installs required system
-  tools when available, and installs the project with development extras in
-  an isolated environment.
-- After bootstrap, run commands with `.venv/bin/python` or activate `.venv`
+- Run `./install.sh --mode dev` from the repository root before first use in
+  a fresh checkout or environment. The legacy `./bootstrap.sh` and
+  `./scripts/install_prerequisites.sh` paths remain available as
+  compatibility wrappers.
+- The managed development flow provisions the configured pyenv
+  bootstrap/runtime selections, writes `.python-version`, refreshes `.venv/`
+  in the checkout, and installs mdview plus the pinned developer toolchain.
+- On Unix-like hosts, development mode expects `direnv`. Supported Linux
+  flows can install a user-local `direnv` binary automatically when it is
+  missing; other hosts should provide `direnv` on PATH already. Windows
+  users should continue to use the PowerShell or cmd bootstrap shims.
+- After setup, run commands with `.venv/bin/python` or activate `.venv`
   before using `python`.
 
 Standard test run

@@ -13,6 +13,7 @@ from scripts.install_prerequisites import (
     detect_noncheckout_mdview,
     default_mdview_command_path,
     ensure_virtualenv,
+    install_pinned_dev_tools,
     install_project,
     install_git_hooks,
     parse_os_release,
@@ -23,6 +24,8 @@ from scripts.install_prerequisites import (
     system_packages_for,
     venv_python_path,
 )
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 class RecordingRunner(CommandRunner):
@@ -83,6 +86,16 @@ def test_system_packages_for_fedora_like_systems():
     assert "python3-virtualenv" in packages
     assert "git" in packages
     assert "less" not in packages
+
+
+def test_install_prerequisites_shell_wrapper_delegates_to_install_sh():
+    shell_wrapper = (ROOT / "scripts" / "install_prerequisites.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Compatibility wrapper" in shell_wrapper
+    assert 'exec "$ROOT_DIR/install.sh" "${FORWARD_ARGS[@]}"' in shell_wrapper
+    assert "install_prerequisites.py" not in shell_wrapper
 
 
 def test_ensure_virtualenv_requests_creation_when_missing(tmp_path: Path):
@@ -299,7 +312,7 @@ def test_install_project_runs_from_project_root(tmp_path: Path, monkeypatch):
     runner = RecordingRunner()
     install_project(sys.executable, dev=True, runner=runner, project_root=project_root)
 
-    assert runner.commands[0][-2:] == ["-e", ".[dev,interactive]"]
+    assert runner.commands[0][-2:] == ["-e", ".[interactive]"]
     assert runner.cwds[0] == project_root
 
 
@@ -337,4 +350,18 @@ def test_install_project_production_keeps_interactive_extra(
     install_project(sys.executable, dev=False, runner=runner, project_root=project_root)
 
     assert runner.commands[0][-2:] == ["-e", ".[interactive]"]
+    assert runner.cwds[0] == project_root
+
+
+def test_install_pinned_dev_tools_runs_dev_setup_from_project_root(tmp_path: Path):
+    project_root = tmp_path / "repo"
+    project_root.mkdir()
+
+    runner = RecordingRunner()
+    install_pinned_dev_tools(runner, project_root, project_root / ".venv")
+
+    command = runner.commands[0]
+    assert command[0] == sys.executable
+    assert command[1].endswith("scripts/dev_setup.py")
+    assert command[-2:] == ["--venv", str(project_root / ".venv")]
     assert runner.cwds[0] == project_root

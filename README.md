@@ -19,6 +19,24 @@ so Markdown reads naturally in the terminal.
   anchors.
 
 ## Installation
+For repository development, use the managed bootstrap flow:
+```bash
+./install.sh --mode dev
+```
+
+For a user-local non-development install, use:
+```bash
+./install.sh
+```
+
+The legacy `./bootstrap.sh` and `./scripts/install_prerequisites.sh` entry
+points remain available as compatibility wrappers to `./install.sh`.
+On Unix-like hosts, development mode provisions the configured pyenv
+selections, refreshes `.venv`, and enables direnv-backed project activation.
+If non-interactive automation must force the optional dev-launcher choice,
+set `MDVIEW_DEV_LAUNCHER_MODE=local` or `MDVIEW_DEV_LAUNCHER_MODE=system`.
+
+For an editable install without the full bootstrap flow:
 ```bash
 pip install .
 ```

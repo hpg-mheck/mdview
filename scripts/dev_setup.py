@@ -5,10 +5,10 @@ from __future__ import annotations
 
 import argparse
 import os
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
-from typing import Sequence
+from typing import Optional, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_VENV = REPO_ROOT / ".venv"
@@ -18,7 +18,7 @@ STEADY_STATE_RUNTIME_POLICY = "steady_state_python_tools"
 try:
     from tool_validation_profiles import resolve_runtime_policy_executable
 except ImportError:  # pragma: no cover - the installed starter has the helper.
-    helper_dir = Path(__file__).resolve().parents[2] / "scripts"
+    helper_dir = REPO_ROOT / "scripts"
     if str(helper_dir) not in sys.path:
         sys.path.insert(0, str(helper_dir))
     from tool_validation_profiles import resolve_runtime_policy_executable
@@ -59,22 +59,45 @@ def venv_python_path(venv_path: Path) -> Path:
     return venv_path / bin_dir / executable
 
 
-def run(command: Sequence[str | Path]) -> None:
+def run(command: Sequence[object]) -> None:
     printable = " ".join(str(part) for part in command)
     print(f"[dev-setup] -> {printable}")
     subprocess.run([str(part) for part in command], cwd=REPO_ROOT, check=True)
 
 
+def python_version(executable: object) -> str:
+    """Return the interpreter's reported Python version string."""
+
+    completed = subprocess.run(
+        [str(executable), "--version"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    version_text = (completed.stdout or completed.stderr).strip()
+    prefix = "Python "
+    if not version_text.startswith(prefix):
+        raise RuntimeError(
+            "Unexpected version output from {}: {}".format(executable, version_text)
+        )
+    return version_text[len(prefix) :]
+
+
 def ensure_virtualenv(python_executable: str, venv_path: Path) -> Path:
+    """Create `.venv`, or rebuild it when the interpreter version changed."""
+
     python_path = venv_python_path(venv_path)
     if python_path.exists():
+        if python_version(python_path) != python_version(python_executable):
+            run([python_executable, "-m", "venv", "--clear", venv_path])
         return python_path
 
     run([python_executable, "-m", "venv", venv_path])
     return python_path
 
 
-def select_tool_python(python_override: str | None) -> str:
+def select_tool_python(python_override: Optional[str]) -> str:
     return resolve_runtime_policy_executable(
         REPO_ROOT,
         STEADY_STATE_RUNTIME_POLICY,
@@ -112,7 +135,7 @@ def install_requirements(python_executable: Path) -> None:
     run([python_executable, "--version"])
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     try:
         tool_python = select_tool_python(args.python)

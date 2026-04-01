@@ -7,7 +7,7 @@ Goal
   scripts normally provide and inform the operator immediately.
 
 Background
-- Operators sometimes skip scripts/install_prerequisites.sh, leaving optional
+- Operators sometimes skip the bootstrap/install flow, leaving optional
   dependencies such as rich or prompt_toolkit uninstalled.
 - When that happens the mdview shim may execute but produce no visible
   output, leaving the user without guidance.
@@ -16,8 +16,9 @@ Requirements
 - Before argument parsing, mdview must check for missing optional
   dependencies (rich, prompt_toolkit).
 - When any prerequisite is missing, mdview must print a short, actionable
-  warning to stderr, suggesting running scripts/install_prerequisites.sh or
-  installing the named tool.
+  warning to stderr, suggesting running `./install.sh --mode dev` (or the
+  `./bootstrap.sh` / `scripts/install_prerequisites.sh` compatibility
+  wrappers) or installing the named tool.
 - The warnings must appear even when the process exits early due to
   --help or argument parsing errors.
 - Add unit coverage that simulates missing prerequisites and asserts the

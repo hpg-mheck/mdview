@@ -1,0 +1,127 @@
+Python Bootstrap and Context Strategy
+=====================================
+
+Scope
+-----
+Define how mdview adopts TheKnowledge's current managed bootstrap/runtime
+model while preserving mdview-specific launcher/install behavior,
+compatibility wrappers, and higher-rigor installer documentation.
+
+Adoption Context
+----------------
+TheKnowledge's managed starter now centers on `install.sh` and
+`scripts/install-stage-2.py`, with `bootstrap.sh`,
+`bootstrap-stage2.py`, and `scripts/install_prerequisites.sh` retained as
+compatibility wrappers. mdview needs to adopt that newer staged model while
+keeping project-specific behavior reviewable and local.
+
+Requirements
+------------
+- The repository root must include:
+  - `install.sh`
+  - `bootstrap.sh`
+  - `bootstrap-stage2.py`
+  - `python-environments.json`
+  - `.python-version`
+  - `set-context-bootstrap.sh`
+  - `set-context.sh`
+  - `tool_validation_profiles.json`
+- The repository `scripts/` directory must include:
+  - `dev_setup.py`
+  - `install-stage-2.py`
+  - `install_project.py`
+  - `python_environment_bootstrap.py`
+  - `tool_validation_profiles.py`
+- The repository root must continue to include
+  `tool_execution_constraints.json`.
+- `install.sh` must be the canonical direct-checkout bootstrap entry point
+  for mdview.
+- `install.sh` must support default standard mode, explicit `--mode dev`, and
+  explicit `--mode venv-only`.
+- `scripts/install-stage-2.py` must:
+  - load `python-environments.json`;
+  - verify the bootstrap Python floor before any heavier work begins;
+  - provision the configured pyenv bootstrap/runtime contexts for repo-local
+    development;
+  - write `.python-version` so the runtime context is the default local pyenv
+    selection; and
+  - hand off mdview-specific install behavior to `scripts/install_project.py`.
+- `bootstrap.sh` and `bootstrap-stage2.py` must remain valid compatibility
+  wrappers around the managed staged install path.
+- `scripts/install_prerequisites.sh` must remain available as a compatibility
+  wrapper and delegate to `install.sh`.
+- `scripts/install_project.py` must remain mdview's project-specific install
+  hook. It must install mdview into the selected managed virtualenv and
+  manage the user-facing `mdview` launcher for development versus standard
+  installs without duplicating stage-two bootstrap responsibilities.
+- `scripts/install_prerequisites.py` may remain as a local compatibility path
+  for older or platform-specific entry points, but new docs and new POSIX
+  automation must not treat it as canonical.
+- Installer and bootstrap code must remain usable from Python 3.9+ for the
+  initial bootstrap phase.
+- The steady-state local tool/runtime policy must target Python 3.12 unless a
+  narrower exception is explicitly documented.
+
+Installer-Path Documentation Requirements
+-----------------------------------------
+- `scripts/install_prerequisites.py`, `scripts/install_prerequisites.sh`,
+  `install.sh`, `bootstrap.sh`, `bootstrap-stage2.py`,
+  `scripts/install-stage-2.py`, `scripts/install_project.py`,
+  `scripts/dev_setup.py`,
+  `scripts/python_environment_bootstrap.py`, and
+  `scripts/tool_validation_profiles.py` must carry top-of-file docstrings that
+  explain:
+  - their role in the overall bootstrap/install flow;
+  - what phase of setup they own;
+  - what they intentionally delegate elsewhere; and
+  - the main failure boundaries or maintenance traps.
+- Non-trivial installer code paths must include section comments that explain
+  phase ordering, state ownership, and why similar-looking responsibilities
+  remain separated instead of being merged.
+- Comments should be denser in bootstrap/install code than in routine data
+  transforms, because setup failures are disproportionately expensive to
+  debug for new contributors.
+
+Compatibility and Safety
+------------------------
+- Existing documented entry points must remain valid unless explicitly
+  superseded in documentation and project policy.
+- The bootstrap/install path must preserve mdview's current managed hook
+  installation behavior, editable-install workflow for development mode, and
+  stable launcher behavior for standard mode.
+- The installer must continue to surface PATH-resolution behavior for the
+  `mdview` command in interactive setups unless that behavior is explicitly
+  retired by a later approved specification.
+- Any work that requires operator approval, host-specific pyenv setup, or
+  non-portable environment mutation must be recorded in project-management
+  state or AI-human requests instead of blocking repository-local progress.
+
+Documentation Updates
+---------------------
+- Update `README.md`, `docs/installation.txt`,
+  `docs/development-workflow.txt`, `docs/running-tests.txt`, and any related
+  deployment/help records so they describe:
+  - `install.sh` as the canonical bootstrap entry point;
+  - `./install.sh --mode dev` as the normal repo-local development path;
+  - `scripts/install_prerequisites.sh` as the compatibility wrapper;
+  - the compatibility status of `bootstrap.sh` and `bootstrap-stage2.py`;
+  - the bootstrap/runtime split and `.python-version`;
+  - the role of `python-environments.json`; and
+  - how `scripts/install-stage-2.py`, `scripts/install_project.py`, and
+    `scripts/dev_setup.py` fit into the setup flow.
+
+Testing Expectations
+--------------------
+- Add or update tests that verify:
+  - the managed bootstrap/context files exist in the consuming project;
+  - `install.sh` and `scripts/install-stage-2.py` exist in the consuming
+    project;
+  - `scripts/install_prerequisites.sh` delegates to `install.sh`;
+  - `scripts/install_project.py` handles development launcher install and
+    restore behavior;
+  - `scripts/dev_setup.py` can import its required helper module locally;
+  - managed runtime/tool profile files are present and structurally valid; and
+  - repo-local workflow documentation references the canonical bootstrap path
+    accurately.
+- Do not block implementation progress on live pyenv execution from this
+  session; environment-dependent execution validation can follow later.

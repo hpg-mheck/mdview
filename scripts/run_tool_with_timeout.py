@@ -113,8 +113,9 @@ def _require_installed_tool(tool: str, command: List[str]) -> None:
 
     raise RuntimeError(
         "Required tool '{tool}' is not installed for interpreter '{python}'. "
-        "Run ./scripts/install_prerequisites.sh, then invoke checks with "
-        ".venv/bin/python or an activated .venv.".format(
+        "Run ./install.sh --mode dev (or ./bootstrap.sh / "
+        "./scripts/install_prerequisites.sh as compatibility wrappers), then "
+        "invoke checks with .venv/bin/python or an activated .venv.".format(
             tool=tool, python=sys.executable
         )
     )

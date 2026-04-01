@@ -15,6 +15,22 @@ Pending Requests
 
 *
 
+  Summary: Run or confirm one real-host validation pass for the new
+  `install.sh --mode dev` / stage-two / direnv flow after the installer
+  overhaul.
+  Why it matters: this session updated mdview's canonical setup path to the
+  managed staged-install model and added compatibility wrappers plus the
+  mdview-specific install hook, but did not execute live pyenv/direnv/dev-
+  launcher validation while the operator was away.
+  Requested operator action: run the updated development install flow on a
+  host with pyenv available and confirm a later validation session will cover
+  the launcher and direnv behavior before merge.
+  Requested by: Codex (GPT-5.4).
+  Added: 2026-03-31T18:54:35-07:00.
+  Updated: 2026-04-01T10:19:04-07:00.
+
+*
+
   Summary: Finalize the remaining `TBD` behavior for underline style fallback
   and rank rationale in markdown style specs.
   Why it matters: `docs/specifications/style_strategies.txt` and

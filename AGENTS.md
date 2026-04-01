@@ -161,16 +161,23 @@ environment notes that must not be committed.
 ## Testing Expectations
 - Before running local checks in a fresh checkout or environment, bootstrap
   the repository-local toolchain from the repository root with
-  `./scripts/install_prerequisites.sh`. The installer provisions `.venv/`
-  inside the checkout, installs required system tools when available, and
-  installs the project with development extras. Interactive installs report
-  whether another `mdview` command appears on PATH before prompting whether
-  arbitrary-directory `mdview` invocations should prefer the checkout-local
-  copy. Non-interactive runs can override that choice with
-  `./scripts/install_prerequisites.sh -- --mdview-command local` or
-  `./scripts/install_prerequisites.sh -- --mdview-command system`. After
-  bootstrap, run local checks with `.venv/bin/python` or an activated
-  `.venv`.
+  `./install.sh --mode dev`. That canonical development path provisions the
+  configured pyenv bootstrap/runtime selections, writes `.python-version`,
+  refreshes `.venv/` inside the checkout, installs mdview through
+  `scripts/install_project.py`, and installs repo-local workflow helpers.
+  `./bootstrap.sh` and `./scripts/install_prerequisites.sh` remain available
+  as compatibility wrappers to `./install.sh`. Interactive development
+  installs report whether another `mdview` command appears on PATH before
+  prompting whether arbitrary-directory invocations should prefer the
+  checkout-local copy. Non-interactive development installs leave PATH
+  resolution unchanged by default; set `MDVIEW_DEV_LAUNCHER_MODE=local` or
+  `MDVIEW_DEV_LAUNCHER_MODE=system` when automation must force that choice.
+  After setup, run local checks with `.venv/bin/python` or an activated
+  `.venv`. On Unix-like hosts, the managed development path provisions
+  user-scoped pyenv selections and expects `direnv` during development mode.
+  Supported Linux flows can install a user-local `direnv` binary
+  automatically when needed. Windows users should continue to use the
+  platform bootstrap shims under `scripts/windows/`.
 - Default to extensive, paranoid, pessimistic unit tests. Cover edge cases,
   error handling, and failure modes alongside happy paths.
 - Derive tests from user stories and scenarios; keep them executable and
@@ -210,7 +217,7 @@ environment notes that must not be committed.
 
 ## Required Local Checks (run before submitting any change)
 0. Bootstrap the local environment in a fresh checkout:
-   - `./scripts/install_prerequisites.sh`
+   - `./install.sh --mode dev`
 1. Format and lint:
    - `python scripts/run_tool_with_timeout.py black`
    - `python scripts/run_tool_with_timeout.py ruff`
@@ -297,16 +304,19 @@ project needs behavior different from TheKnowledge's own repository setup. -->
   follow Python 3.9 best practices unless a higher floor is documented.
 - Normal runtime, automation, test, and developer-tooling code should follow
   Python 3.12 best practices unless a component is intentionally constrained.
-- Use `./bootstrap.sh` when the project is relying on the managed starter
-  Python toolchain. The default starter installs `bootstrap.sh`,
-  `bootstrap-stage2.py`, `python-environments.json`, `.python-version`,
-  `set-context.sh`, `set-context-bootstrap.sh`, `requirements-dev.txt`,
+- Use `./install.sh` when the project is relying on the managed starter
+  Python toolchain. The default starter installs `install.sh`,
+  `bootstrap.sh`, `scripts/install-stage-2.py`, `bootstrap-stage2.py`,
+  `python-environments.json`, `.python-version`, `set-context.sh`,
+  `set-context-bootstrap.sh`, `requirements-dev.txt`,
   `scripts/dev_setup.py`, `scripts/python_environment_bootstrap.py`,
   `scripts/tool_validation_profiles.py`, `tool_execution_constraints.json`,
   and `tool_validation_profiles.json`. That flow starts from Python 3.9+,
-  provisions the named pyenv bootstrap/runtime contexts, and then refreshes
-  the tool virtual environment with the managed steady-state runtime unless
-  the project overrides that flow locally.
+  defaults to a user-local standard install, supports explicit repo-local
+  development mode and venv-only mode, permits system installs only with
+  `--system` under root, and requires `direnv` for development mode.
+  `bootstrap.sh` and
+  `bootstrap-stage2.py` remain compatibility wrappers.
 - For substantive development work, prefix intermediary status
   updates with an inline bracketed ISO 8601 timestamp including the
   timezone offset, for example
@@ -325,9 +335,14 @@ project needs behavior different from TheKnowledge's own repository setup. -->
   suppress review prompts for the rest of the current session until the
   operator asks to resume them.
 - If review is requested, prefer changeset review in Meld when
-  available as the default visual review path. Otherwise offer
-  file-by-file review in the conversation or abort the staging
-  step.
+  available as the default visual review path.
+- Launch `meld .` from the repository or submodule root so Meld opens its
+  version-control view for the full working tree.
+- If Meld version-control view is unavailable or unsuitable, compare a
+  temporary clean snapshot directory against the working tree in Meld's
+  folder-comparison mode.
+- Otherwise offer file-by-file review in the conversation or abort the
+  staging step.
 - Never guess a Git author or committer email address from commit history,
   hostnames, remote URLs, network overlays, or similar context.
 - Require an explicit commit identity before creating a commit. Prefer

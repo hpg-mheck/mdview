@@ -109,8 +109,11 @@ Exit codes
 Pre-commit and pre-push hook integration
 ----------------------------------------
 - Installer script: `scripts/install_git_hooks.py`
-- Setup flow: `scripts/install_prerequisites.py` calls the hook installer, so
-  `scripts/install_prerequisites.sh` installs/updates managed hooks.
+- Setup flow: `scripts/install-stage-2.py` calls the hook installer for
+  repo-local development and venv-only modes, so `install.sh --mode dev`
+  installs/updates managed hooks, and the legacy `bootstrap.sh` plus
+  `scripts/install_prerequisites.sh` compatibility wrappers still reach that
+  same path.
 - Managed `pre-commit` executes:
   - `python scripts/run_tool_with_timeout.py entropy_check`
   with a `python3` fallback when `python` is unavailable.
