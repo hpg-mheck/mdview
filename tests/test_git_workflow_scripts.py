@@ -4,7 +4,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent.parent
 COMMIT_PUSH = ROOT / "scripts" / "git_standard_commit_push.py"
 VETERAN_PULL = ROOT / "scripts" / "git_veteran_pull.py"

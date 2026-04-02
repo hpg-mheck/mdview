@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 THEKNOWLEDGE_ROOT = REPO_ROOT / "TheKnowledge"
 THEKNOWLEDGE_SCRIPTS_ROOT = THEKNOWLEDGE_ROOT / "scripts"

@@ -516,7 +516,10 @@ def resolve_runtime_policy_executable(
         isinstance(name, str) for name in configured_modules
     ):
         raise ValueError("runtime policy required_modules must be a list of strings")
-    requested_modules = list(required_modules or configured_modules)
+    if required_modules is None:
+        requested_modules = list(configured_modules)
+    else:
+        requested_modules = list(required_modules)
 
     if explicit_candidate is not None:
         candidate = _normalize_executable_candidate(repo_root, explicit_candidate)

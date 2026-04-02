@@ -11,7 +11,6 @@ import re
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
-
 _LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 

@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
@@ -21,7 +20,6 @@ if str(SRC_ROOT) not in sys.path:
 
 from mdview import rendering  # noqa: E402
 from mdview.rendering import render_to_ansi  # noqa: E402
-
 
 SCHEMA_VERSION = "1.0.0"
 DEFAULT_CACHE_FILE = ".git/mdview-demo-validation-cache.json"

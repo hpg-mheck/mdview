@@ -6,7 +6,6 @@ import sys
 import importlib.util
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "run_quality_gate_cached.py"
 SPEC = importlib.util.spec_from_file_location("run_quality_gate_cached", SCRIPT)

@@ -4,9 +4,18 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+import importlib.util
 
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
+TOOL_VALIDATION_SPEC = importlib.util.spec_from_file_location(
+    "tool_validation_profiles",
+    ROOT / "scripts" / "tool_validation_profiles.py",
+)
+assert TOOL_VALIDATION_SPEC is not None and TOOL_VALIDATION_SPEC.loader is not None
+TOOL_VALIDATION_PROFILES = importlib.util.module_from_spec(TOOL_VALIDATION_SPEC)
+TOOL_VALIDATION_SPEC.loader.exec_module(TOOL_VALIDATION_PROFILES)
 
 
 def test_theknowledge_consumer_files_exist() -> None:
@@ -193,3 +202,82 @@ def test_timeout_wrapper_config_includes_demo_check() -> None:
         "python",
         "scripts/validate_demos.py",
     ]
+
+
+def test_runtime_policy_empty_module_override_bypasses_policy_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        TOOL_VALIDATION_PROFILES,
+        "_runtime_policies",
+        lambda _repo_root: {
+            "steady_state_python_tools": {
+                "minimum_version": "3.12",
+                "required_modules": ["black"],
+                "environment_variables": [],
+                "preferred_executables": [],
+            }
+        },
+    )
+    monkeypatch.setattr(
+        TOOL_VALIDATION_PROFILES,
+        "_normalize_executable_candidate",
+        lambda _repo_root, candidate: candidate,
+    )
+
+    def fake_probe(
+        candidate: str, requested_modules: list[str]
+    ) -> tuple[tuple[int, int], bool]:
+        assert candidate == "/tmp/python"
+        return (3, 12), requested_modules == []
+
+    monkeypatch.setattr(TOOL_VALIDATION_PROFILES, "_probe_python_candidate", fake_probe)
+
+    assert (
+        TOOL_VALIDATION_PROFILES.resolve_runtime_policy_executable(
+            ROOT,
+            "steady_state_python_tools",
+            explicit_candidate="/tmp/python",
+            required_modules=[],
+        )
+        == "/tmp/python"
+    )
+
+
+def test_runtime_policy_default_modules_apply_when_no_override_is_provided(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        TOOL_VALIDATION_PROFILES,
+        "_runtime_policies",
+        lambda _repo_root: {
+            "steady_state_python_tools": {
+                "minimum_version": "3.12",
+                "required_modules": ["black"],
+                "environment_variables": [],
+                "preferred_executables": [],
+            }
+        },
+    )
+    monkeypatch.setattr(
+        TOOL_VALIDATION_PROFILES,
+        "_normalize_executable_candidate",
+        lambda _repo_root, candidate: candidate,
+    )
+
+    def fake_probe(
+        candidate: str, requested_modules: list[str]
+    ) -> tuple[tuple[int, int], bool]:
+        assert candidate == "/tmp/python"
+        return (3, 12), requested_modules == ["black"]
+
+    monkeypatch.setattr(TOOL_VALIDATION_PROFILES, "_probe_python_candidate", fake_probe)
+
+    assert (
+        TOOL_VALIDATION_PROFILES.resolve_runtime_policy_executable(
+            ROOT,
+            "steady_state_python_tools",
+            explicit_candidate="/tmp/python",
+        )
+        == "/tmp/python"
+    )

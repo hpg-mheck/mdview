@@ -26,6 +26,12 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
 
 *
 
+  Add stdin support so mdview can render Markdown piped from another command,
+  including workflows like `realitycheck --format md | mdview`.
+  Requested by operator. Added: 2026-04-01T20:48:49-07:00.
+
+*
+
   [LOW][BLOCKED] Implement and validate the mirrored cross-platform strategy
   for running Linux test workflows through WSL2 when development happens on
   Windows.

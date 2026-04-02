@@ -12,7 +12,6 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterable, Sequence
 
-
 DEFAULT_EXCLUDES = {
     ".git",
     ".venv",

@@ -12,7 +12,6 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-
 CONFIG_FILE = Path(__file__).resolve().with_name("tool_timeouts.json")
 MANDATORY_TOOL_MODULES = {"black", "pytest", "ruff"}
 

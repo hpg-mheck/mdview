@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-
 DEFAULT_EXCLUDES = [
     "TheKnowledge",
     "tests/test_entropy_check.py",

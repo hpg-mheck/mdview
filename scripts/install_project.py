@@ -32,7 +32,6 @@ from install_prerequisites import (  # noqa: E402
     resolve_mdview_command_mode,
 )
 
-
 DEV_LAUNCHER_MARKER = "# mdview-managed-dev-launcher"
 STANDARD_LAUNCHER_MARKER = "# mdview-managed-standard-launcher"
 STANDARD_LAUNCHER_BACKUP_NAME = ".mdview-standard-launcher.backup"

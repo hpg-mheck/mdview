@@ -9,7 +9,6 @@ from mdview.rendering import _format_pipe_tables, render_to_ansi
 from mdview.viewer import ViewerSession
 from tests.helpers.framebuffer import RenderContainer, find_line, strip_ansi
 
-
 FIXTURE_ROOT = Path(__file__).resolve().parent.parent / "resources" / "tests"
 MARKDOWN_TABLE_FIXTURE_ROOT = FIXTURE_ROOT / "markdown" / "tables"
 

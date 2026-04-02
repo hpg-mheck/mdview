@@ -3,7 +3,6 @@ from typing import Dict, List, Tuple
 
 from mdview.intake import BLOCK_TYPES, ingest_content
 
-
 FIXTURE_ROOT = Path(__file__).resolve().parent.parent / "resources" / "tests"
 
 

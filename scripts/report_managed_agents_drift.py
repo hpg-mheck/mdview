@@ -11,7 +11,6 @@ from typing import Sequence
 
 from _theknowledge_delegate import REPO_ROOT, load_script_module
 
-
 MODULE = load_script_module("initial_setup.py")
 
 HEADER_START = "<!-- THEKNOWLEDGE_MANAGED_HEADER_START -->"

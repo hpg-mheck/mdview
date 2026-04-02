@@ -4,7 +4,6 @@ import importlib.util
 import subprocess
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent.parent
 SPEC = importlib.util.spec_from_file_location(
     "install_stage_2",

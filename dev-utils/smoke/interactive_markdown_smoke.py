@@ -26,7 +26,6 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
-
 MARKDOWN_SUFFIXES = {".md", ".markdown"}
 DEFAULT_CANDIDATE_ROOTS = [Path("/usr/share"), Path("/home/mheck/codebase")]
 DEFAULT_KEY_CHUNKS = [

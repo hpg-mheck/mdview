@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Sequence
 
-
 DEFAULT_EXCLUDES = {
     ".git",
     ".venv",

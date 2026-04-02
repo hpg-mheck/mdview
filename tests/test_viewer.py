@@ -4,7 +4,6 @@ from mdview.dom import Block, ConstraintProfile, Line, StyleProfile
 from mdview.intake import ingest_content
 from mdview.viewer import ViewerSession, block_reflowable
 
-
 FIXTURE_ROOT = Path(__file__).resolve().parent.parent / "resources" / "tests"
 
 
