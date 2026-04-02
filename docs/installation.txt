@@ -78,6 +78,9 @@ Notes and expectations
   the checkout-local copy. Non-interactive development installs leave PATH
   resolution unchanged by default; set `MDVIEW_DEV_LAUNCHER_MODE=local` or
   `MDVIEW_DEV_LAUNCHER_MODE=system` when automation must force that choice.
+- If a managed install refuses to overwrite an unrelated existing `mdview`
+  copy in the target launcher directory, rerun with `--force` only when you
+  intentionally want the managed install to replace that existing copy.
 - `sudo ./install.sh` without `--system` must fail with an explanation. Use
   `sudo` only for explicit system installs.
 - `./install.sh --system` without root privileges must fail with an

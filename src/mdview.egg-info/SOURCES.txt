@@ -31,6 +31,8 @@ tests/test_hyperlinks.py
 tests/test_input_feedback.py
 tests/test_install_git_hooks.py
 tests/test_install_prerequisites.py
+tests/test_install_project.py
+tests/test_install_stage_2.py
 tests/test_intake_parser.py
 tests/test_markdown_blockquote.py
 tests/test_markdown_bold.py
@@ -58,6 +60,7 @@ tests/test_repository_setup.py
 tests/test_resize_verifier.py
 tests/test_run_quality_gate_cached.py
 tests/test_run_tool_with_timeout.py
+tests/test_validate_demos.py
 tests/test_verify_entropy_tripwire.py
 tests/test_viewer.py
 tests/test_viewport.py

@@ -79,6 +79,12 @@ macOS versions, and Windows 11.
   standard launcher when one was displaced by the dev launcher and otherwise
   leave PATH resolution unchanged.
 - Never overwrite an unrelated existing `mdview` executable silently.
+- When an unmanaged existing `mdview` launcher blocks a managed install, end
+  the refusal output with:
+  `Use --force if you really want to overwrite your existing installed copy`
+  `at <directory>.`
+- `--force` must explicitly allow standard or development installs to replace
+  that existing installed copy in the target launcher directory.
 - Fail with clear messaging when the platform is unsupported or required
   tools are unavailable.
 

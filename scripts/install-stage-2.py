@@ -94,7 +94,31 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         action="store_true",
         help="Bypass the stage-1 guard for explicit debugging.",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow overwriting an unmanaged existing mdview launcher target.",
+    )
     return parser.parse_args(argv)
+
+
+def suppress_child_failure_summary(error: subprocess.CalledProcessError) -> bool:
+    """Return True when the failing child already printed the actionable error.
+
+    `install_project.py` owns the user-facing launcher-overwrite guidance.
+    Suppress the stage-two wrapper summary for that child so the final output
+    line remains the force-guidance line the operator actually needs.
+    """
+
+    command = getattr(error, "cmd", None) or []
+    normalized = [os.fspath(part) for part in command]
+    target = str(REPO_ROOT / "scripts" / "install_project.py")
+    return any(
+        part == target
+        or part.endswith("/scripts/install_project.py")
+        or part.endswith("\\scripts\\install_project.py")
+        for part in normalized
+    )
 
 
 def ensure_started_by_stage_1(force_direct_run: bool) -> None:
@@ -300,29 +324,31 @@ def run_project_install_hook(
     mode: str,
     scope: str,
     venv_path: Path,
+    *,
+    force: bool,
 ) -> bool:
     """Run an optional project install hook when the repository provides one."""
 
     hook = REPO_ROOT / "scripts" / "install_project.py"
     if not hook.is_file():
         return False
-    run(
-        [
-            str(venv_python),
-            str(hook),
-            "--mode",
-            mode,
-            "--scope",
-            scope,
-            "--python",
-            str(venv_python),
-            "--venv",
-            str(venv_path),
-            "--bin-dir",
-            str(launcher_dir_for_scope(scope)),
-        ],
-        cwd=REPO_ROOT,
-    )
+    command = [
+        str(venv_python),
+        str(hook),
+        "--mode",
+        mode,
+        "--scope",
+        scope,
+        "--python",
+        str(venv_python),
+        "--venv",
+        str(venv_path),
+        "--bin-dir",
+        str(launcher_dir_for_scope(scope)),
+    ]
+    if force:
+        command.append("--force")
+    run(command, cwd=REPO_ROOT)
     return True
 
 
@@ -345,13 +371,15 @@ def install_project(
     venv_path: Path,
     mode: str,
     scope: str,
+    *,
+    force: bool,
 ) -> None:
     """Install the repository according to the selected mode and scope."""
 
     if mode == "venv-only":
-        run_project_install_hook(venv_python, mode, scope, venv_path)
+        run_project_install_hook(venv_python, mode, scope, venv_path, force=force)
         return
-    if run_project_install_hook(venv_python, mode, scope, venv_path):
+    if run_project_install_hook(venv_python, mode, scope, venv_path, force=force):
         return
     run(default_install_command(venv_python, mode), cwd=REPO_ROOT)
 
@@ -465,7 +493,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
             venv_python = ensure_repo_venv(runtime_python)
             install_venv = REPO_ROOT / ".venv"
-            install_project(venv_python, install_venv, args.mode, scope)
+            install_project(
+                venv_python,
+                install_venv,
+                args.mode,
+                scope,
+                force=args.force,
+            )
             install_git_hooks(venv_python)
             if not args.skip_shell_init_update:
                 ensure_shell_init(args.mode)
@@ -477,9 +511,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             install_venv, venv_python, selected_base_python = (
                 ensure_standard_install_venv(scope)
             )
-            install_project(venv_python, install_venv, args.mode, scope)
+            install_project(
+                venv_python,
+                install_venv,
+                args.mode,
+                scope,
+                force=args.force,
+            )
         verify_install(venv_python)
-    except (RuntimeError, subprocess.CalledProcessError, OSError, ValueError) as error:
+    except subprocess.CalledProcessError as error:
+        if suppress_child_failure_summary(error):
+            return 1
+        print("[install-stage-2] FAIL: {}".format(error), file=sys.stderr)
+        return 1
+    except (RuntimeError, OSError, ValueError) as error:
         print("[install-stage-2] FAIL: {}".format(error), file=sys.stderr)
         return 1
 

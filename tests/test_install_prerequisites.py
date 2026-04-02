@@ -279,8 +279,33 @@ def test_apply_mdview_command_mode_local_rejects_unmanaged_shim(tmp_path):
         apply_mdview_command_mode("local", local_mdview, command_path=shim_path)
     except RuntimeError as error:
         assert "Refusing to overwrite unmanaged mdview command" in str(error)
+        assert str(error).splitlines()[-1] == (
+            "Use --force if you really want to overwrite your existing "
+            f"installed copy at {shim_path.parent}."
+        )
     else:
         raise AssertionError("Expected unmanaged shim overwrite to fail.")
+
+
+def test_apply_mdview_command_mode_local_force_overwrites_unmanaged_shim(tmp_path):
+    local_mdview = tmp_path / "repo" / ".venv" / "bin" / "mdview"
+    local_mdview.parent.mkdir(parents=True)
+    local_mdview.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+    local_mdview.chmod(0o755)
+    shim_path = tmp_path / "home" / ".local" / "bin" / "mdview"
+    shim_path.parent.mkdir(parents=True)
+    shim_path.write_text("#!/usr/bin/env bash\necho old\n", encoding="utf-8")
+
+    apply_mdview_command_mode(
+        "local",
+        local_mdview,
+        command_path=shim_path,
+        force=True,
+    )
+
+    contents = shim_path.read_text(encoding="utf-8")
+    assert MANAGED_MDVIEW_SHIM_MARKER in contents
+    assert str(local_mdview) in contents
 
 
 def test_venv_python_path_uses_windows_layout(monkeypatch, tmp_path: Path):

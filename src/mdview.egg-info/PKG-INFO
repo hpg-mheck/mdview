@@ -65,6 +65,24 @@ so Markdown reads naturally in the terminal.
   anchors.
 
 ## Installation
+For repository development, use the managed bootstrap flow:
+```bash
+./install.sh --mode dev
+```
+
+For a user-local non-development install, use:
+```bash
+./install.sh
+```
+
+The legacy `./bootstrap.sh` and `./scripts/install_prerequisites.sh` entry
+points remain available as compatibility wrappers to `./install.sh`.
+On Unix-like hosts, development mode provisions the configured pyenv
+selections, refreshes `.venv`, and enables direnv-backed project activation.
+If non-interactive automation must force the optional dev-launcher choice,
+set `MDVIEW_DEV_LAUNCHER_MODE=local` or `MDVIEW_DEV_LAUNCHER_MODE=system`.
+
+For an editable install without the full bootstrap flow:
 ```bash
 pip install .
 ```
@@ -95,50 +113,69 @@ Optional flags:
 - `--verbose` to report operational events such as document switches.
 - `--MIL` to emit Monkey-in-the-Loop action telemetry for live
   troubleshooting.
+- `--readability-first-tables` to keep Markdown tables at readable column
+  widths even when that means horizontal overflow.
+- `--no-table-borders` to suppress the outer gray border around Markdown
+  tables.
+- `--no-cell-borders` to suppress the internal gray cell separators within
+  Markdown tables.
 - `--automation-timeout <seconds>` to inject synthetic quit after a bounded
   viewer runtime during unattended automation.
 - `--automation-timeout-screenshot <basename>` to store timeout-exit
   framebuffer artifacts as `<basename>.txt` and `<basename>.attrs.json`
   (defaults to `./mdview-automation-timeout-framebuffer` when timeout is
   enabled).
+- `--screen-dump-dir <path>` to choose where interactive `!` captures write
+  `mdview-screen.txt` and `mdview-screen.attrs.json`.
 - `--automation-json <source>` to replay timed key input as
   `[[delay_seconds, key_spec], ...]` from a JSON file path or literal JSON
   string.
 - `--redraw-check-digit` to overlay a center-screen digit that advances
   modulo 10 on each interactive pager redraw.
-- `--viewport-columns <int>` and `--viewport-rows <int>` to enforce
-  synthetic viewport dimensions for deterministic automation captures.
+- `--viewport-columns <int>` and `--viewport-rows <int>` to enforce synthetic
+  viewport dimensions for deterministic automation captures.
 - `--verify-resize-detection` to run an interactive resize checklist that
   acknowledges detected events and reports PASS/FAIL per step.
 - `--test-input-feedback` to run a two-stage terminal input diagnostic that
-  compares direct stdin handling against the prompt_toolkit viewer stack
-  while logging timestamped input and redraw events.
+  compares direct stdin handling against the prompt_toolkit viewer stack while
+  logging timestamped input and redraw events.
 - `--version` to display the current version.
 
 Viewport movement behavior and automation replay format are documented in
 `docs/movement.txt`.
 
+While viewing interactively, press `!` to dump the current visible viewport as
+paired text and JSON framebuffer artifacts.
+
+Bundled demos live under `demos/`. For a quick feature tour, run:
+```bash
+./mdview demos/table-demo.md
+```
+
 To make full-screen redraws visible during normal viewing sessions, run:
 ```bash
 mdview --redraw-check-digit path/to/file.md
 ```
-The interactive pager will replace the center cell with a digit that
-advances from `0` to `9` on each redraw.
+The interactive pager will replace the center cell with a digit that advances
+from `0` to `9` on each redraw.
 
 For terminal key-diagnostics, run:
 ```bash
 mdview --test-input-feedback
 ```
-Stage 1 redraws a ten-cell dash bar on new lines using direct terminal
-input. Stage 2 repeats the same movement test in a full-screen
-prompt_toolkit view. Both stages accept Left/Right arrows plus `,` and `.`
-alternates, and emit timestamped debug logs to standard error.
+Stage 1 redraws a ten-cell dash bar on new lines using direct terminal input.
+Stage 2 repeats the same movement test in a full-screen prompt_toolkit view.
+Both stages accept Left/Right arrows plus `,` and `.` alternates, and emit
+timestamped debug logs to standard error.
 
 Markdown content reflows to current window dimensions by default.
 `--reflow` is therefore redundant for Markdown. The exception is Markdown
 tables: they may exceed viewport width when minimum table sizing requires it.
-When any rendered line exceeds viewport width, a horizontal scrollbar becomes
-active and left/right arrow keys pan the viewport.
+By default, recognized Markdown tables render as gray boxed grids using
+Unicode box-drawing characters. Use `--no-table-borders` and/or
+`--no-cell-borders` to replace those border layers with whitespace gaps.
+When any rendered line exceeds viewport width, a horizontal scrollbar
+becomes active and left/right arrow keys pan the viewport.
 
 For plain-text (`.txt`) files without explicit reflow flags, mdview preserves
 source line breaks by default. Reflow for `.txt` content is opt-in via
@@ -158,6 +195,8 @@ Windows 11 workflow shortcuts:
     `scripts\\windows\\run-tool.bat pytest`
 
 ## Project Structure
+- `demos/` - Showcase Markdown documents validated through the cached
+  `demo_check` workflow.
 - `src/mdview/` – Library code for rendering and paging.
 - `docs/specifications/` – Written specifications and architecture notes.
 - `tests/` – Pytest-based unit tests covering the rendering pipeline and pager

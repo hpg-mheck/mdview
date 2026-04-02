@@ -27,7 +27,10 @@ SCRIPT_DIR = REPO_ROOT / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from install_prerequisites import resolve_mdview_command_mode  # noqa: E402
+from install_prerequisites import (  # noqa: E402
+    overwrite_unmanaged_mdview_message,
+    resolve_mdview_command_mode,
+)
 
 
 DEV_LAUNCHER_MARKER = "# mdview-managed-dev-launcher"
@@ -73,6 +76,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=Path,
         required=True,
         help="Directory where the managed launcher should live for this scope.",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow overwriting an unmanaged existing mdview launcher target.",
     )
     return parser.parse_args(argv)
 
@@ -225,27 +233,41 @@ def requested_dev_launcher_mode() -> str:
 
 
 def install_standard_launcher(
-    launcher_path: Path, target: Path, backup_path: Path
+    launcher_path: Path, target: Path, backup_path: Path, *, force: bool
 ) -> None:
     """Install or refresh the stable user/system launcher for mdview."""
 
     if launcher_path.exists() and not is_managed_launcher(launcher_path):
-        raise RuntimeError(
-            f"Refusing to overwrite unmanaged mdview launcher at {launcher_path}."
-        )
+        if not force:
+            raise RuntimeError(
+                overwrite_unmanaged_mdview_message(
+                    launcher_path,
+                    label="launcher",
+                )
+            )
     write_executable(launcher_path, standard_launcher_contents(target))
     if backup_path.exists():
         backup_path.unlink()
     print(f"[install-project] Installed standard launcher at {launcher_path}")
 
 
-def install_dev_launcher(launcher_path: Path, target: Path, backup_path: Path) -> None:
+def install_dev_launcher(
+    launcher_path: Path,
+    target: Path,
+    backup_path: Path,
+    *,
+    force: bool,
+) -> None:
     """Install the project-bound dev launcher, preserving any standard one."""
 
     if launcher_path.exists() and not is_managed_launcher(launcher_path):
-        raise RuntimeError(
-            f"Refusing to overwrite unmanaged mdview launcher at {launcher_path}."
-        )
+        if not force:
+            raise RuntimeError(
+                overwrite_unmanaged_mdview_message(
+                    launcher_path,
+                    label="launcher",
+                )
+            )
     if launcher_path.exists() and is_managed_standard_launcher(launcher_path):
         backup_path.write_text(read_text_if_file(launcher_path), encoding="utf-8")
     write_executable(launcher_path, dev_launcher_contents(target))
@@ -271,7 +293,7 @@ def restore_nondev_launcher(launcher_path: Path, backup_path: Path) -> None:
 
 
 def handle_standard_install(
-    python_executable: str, venv_path: Path, bin_dir: Path
+    python_executable: str, venv_path: Path, bin_dir: Path, *, force: bool
 ) -> None:
     """Install mdview for standard mode and publish its stable launcher."""
 
@@ -279,10 +301,16 @@ def handle_standard_install(
     launcher_path = mdview_launcher_path(bin_dir)
     backup_path = launcher_backup_path(bin_dir)
     target = venv_command_path(venv_path, "mdview")
-    install_standard_launcher(launcher_path, target, backup_path)
+    install_standard_launcher(launcher_path, target, backup_path, force=force)
 
 
-def handle_dev_install(python_executable: str, venv_path: Path, bin_dir: Path) -> None:
+def handle_dev_install(
+    python_executable: str,
+    venv_path: Path,
+    bin_dir: Path,
+    *,
+    force: bool,
+) -> None:
     """Install mdview for development mode and manage the optional dev launcher."""
 
     install_package(python_executable, editable=True)
@@ -296,7 +324,12 @@ def handle_dev_install(python_executable: str, venv_path: Path, bin_dir: Path) -
         alternate_mdview=alternate_mdview,
     )
     if command_mode == "local":
-        install_dev_launcher(launcher_path, local_mdview, backup_path)
+        install_dev_launcher(
+            launcher_path,
+            local_mdview,
+            backup_path,
+            force=force,
+        )
         return
     restore_nondev_launcher(launcher_path, backup_path)
 
@@ -310,9 +343,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("[install-project] venv-only mode: no project install requested.")
             return 0
         if args.mode == "dev":
-            handle_dev_install(args.python, args.venv, args.bin_dir)
+            handle_dev_install(
+                args.python,
+                args.venv,
+                args.bin_dir,
+                force=args.force,
+            )
             return 0
-        handle_standard_install(args.python, args.venv, args.bin_dir)
+        handle_standard_install(
+            args.python,
+            args.venv,
+            args.bin_dir,
+            force=args.force,
+        )
         return 0
     except (RuntimeError, subprocess.CalledProcessError) as error:
         print(f"[install-project] FAIL: {error}", file=sys.stderr)

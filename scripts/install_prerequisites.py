@@ -197,6 +197,24 @@ MANAGED_MDVIEW_SHIM_MARKER = "# mdview-managed-local-shim"
 DEV_SETUP_SCRIPT = Path(__file__).resolve().with_name("dev_setup.py")
 
 
+def overwrite_unmanaged_mdview_message(path: Path, *, label: str) -> str:
+    """Return the refusal text for an unmanaged mdview overwrite target.
+
+    Keep the final line explicit and stable because operator guidance now
+    depends on that line staying easy to spot in layered installer output.
+    """
+
+    return "\n".join(
+        [
+            f"Refusing to overwrite unmanaged mdview {label} at {path}.",
+            (
+                "Use --force if you really want to overwrite your existing "
+                f"installed copy at {path.parent}."
+            ),
+        ]
+    )
+
+
 def _python_module_available(python_executable: str, module_name: str) -> bool:
     """Return True when one Python executable can import the named module."""
 
@@ -362,6 +380,7 @@ def apply_mdview_command_mode(
     local_mdview: Path,
     *,
     command_path: Optional[Path] = None,
+    force: bool = False,
     dry_run: bool = False,
     output: Optional[TextIO] = None,
 ) -> None:
@@ -372,9 +391,13 @@ def apply_mdview_command_mode(
 
     if mode == "local":
         if shim_path.exists() and not _is_managed_mdview_shim(shim_path):
-            raise RuntimeError(
-                f"Refusing to overwrite unmanaged mdview command at {shim_path}."
-            )
+            if not force:
+                raise RuntimeError(
+                    overwrite_unmanaged_mdview_message(
+                        shim_path,
+                        label="command",
+                    )
+                )
         if not dry_run and not local_mdview.exists():
             raise RuntimeError(
                 f"Local development mdview entry point does not exist: {local_mdview}"
@@ -606,6 +629,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Skip apt/dnf/yum/brew bootstrap and only configure Python tooling.",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow overwriting an unmanaged existing mdview launcher target.",
+    )
     return parser.parse_args(argv)
 
 
@@ -678,7 +706,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             interactive=sys.stdin.isatty() and sys.stdout.isatty(),
             alternate_mdview=alternate_mdview,
         )
-        apply_mdview_command_mode(command_mode, local_mdview, dry_run=args.dry_run)
+        apply_mdview_command_mode(
+            command_mode,
+            local_mdview,
+            force=args.force,
+            dry_run=args.dry_run,
+        )
     except (RuntimeError, subprocess.CalledProcessError, ValueError) as error:
         print(f"[install-prerequisites] FAIL: {error}", file=sys.stderr)
         return 1
