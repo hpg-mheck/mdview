@@ -1203,6 +1203,20 @@ def _prompt_toolkit_components():
     )
 
 
+def _prefer_prompt_toolkit_tty_input():
+    """Return a prompt_toolkit input object that prefers the controlling TTY."""
+
+    from prompt_toolkit.input.base import DummyInput
+    from prompt_toolkit.input.defaults import create_input
+
+    candidate = create_input(always_prefer_tty=True)
+    if isinstance(candidate, DummyInput):
+        raise RuntimeError(
+            "Interactive pager could not open a controlling terminal for input."
+        )
+    return candidate
+
+
 def _visible_length(text: str) -> int:
     """Return the printable length of text without ANSI escapes."""
 
@@ -1859,6 +1873,7 @@ def _attempt_prompt_toolkit_pager(
     render_on_resize: Optional[Callable[[int], str]] = None,
     switch_document: Optional[SwitchDocument] = None,
     ui_event_logger: Optional[UiEventLogger] = None,
+    prefer_tty_input: bool = False,
     document_count: int = 1,
     current_document_index: Optional[CurrentDocumentIndex] = None,
     automation_timeout: Optional[float] = None,
@@ -2319,11 +2334,24 @@ def _attempt_prompt_toolkit_pager(
         }
     )
 
+    application_kwargs = {
+        "layout": Layout(root_container),
+        "key_bindings": bindings,
+        "full_screen": True,
+        "style": style,
+    }
+    if prefer_tty_input:
+        try:
+            application_kwargs["input"] = _prefer_prompt_toolkit_tty_input()
+        except Exception as error:
+            _add_fallback_notice(
+                "Interactive pager could not reopen a TTY for input: "
+                f"falling back to non-interactive output. ({error})"
+            )
+            return False
+
     application = Application(
-        layout=Layout(root_container),
-        key_bindings=bindings,
-        full_screen=True,
-        style=style,
+        **application_kwargs,
     )
     # Remote/mobile terminals can deliver escape-sequence bytes with jitter.
     # Keep both parser and key-buffer flush timeouts long enough that cursor
@@ -2573,6 +2601,7 @@ def page_text(
     render_on_resize: Optional[Callable[[int], str]] = None,
     switch_document: Optional[SwitchDocument] = None,
     ui_event_logger: Optional[UiEventLogger] = None,
+    prefer_tty_input: bool = False,
     document_count: int = 1,
     current_document_index: Optional[CurrentDocumentIndex] = None,
     automation_timeout: Optional[float] = None,
@@ -2593,6 +2622,8 @@ def page_text(
         switch_document: Optional callback to load the next/previous
             document. Receives delta (+1/-1) and current viewport width.
         ui_event_logger: Optional callback that receives user action events.
+        prefer_tty_input: When ``True``, prompt_toolkit should prefer the
+            controlling terminal over stdin for live key input.
         document_count: Number of open documents in the active session.
         current_document_index: Callback returning the active 0-based index.
         automation_timeout: Optional max runtime in seconds before
@@ -2617,6 +2648,7 @@ def page_text(
         render_on_resize=render_on_resize,
         switch_document=switch_document,
         ui_event_logger=ui_event_logger,
+        prefer_tty_input=prefer_tty_input,
         document_count=document_count,
         current_document_index=current_document_index,
         automation_timeout=automation_timeout,

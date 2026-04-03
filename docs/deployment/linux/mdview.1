@@ -1,7 +1,7 @@
 ." mdview manual page for Linux
-.TH MDVIEW 1 "2025-12-09" "mdview 0.1.0" "User Commands"
+.TH MDVIEW 1 "2026-04-02" "mdview 0.1.0" "User Commands"
 .SH NAME
-mdview \- render Markdown in the terminal with an internal viewer
+mdview \- render Markdown or plain text with an internal viewer
 .SH SYNOPSIS
 .B mdview
 .RI [ \-h ]
@@ -12,6 +12,14 @@ mdview \- render Markdown in the terminal with an internal viewer
 .I MODE
 .RI ]
 .RI [ \-\-noreflow ]
+.RI [ \-\-verbose ]
+.RI [ \-\-stdin\-timeout\-in\-seconds
+.I SECONDS
+.RI ]
+.RI [ \-\-max\-stdin\-buffer\-megabytes
+.I MEGABYTES
+.RI ]
+.RI [ \-\-MIL ]
 .RI [ \-\-readability\-first\-tables ]
 .RI [ \-\-no\-table\-borders ]
 .RI [ \-\-no\-cell\-borders ]
@@ -20,6 +28,9 @@ mdview \- render Markdown in the terminal with an internal viewer
 .RI ]
 .RI [ \-\-automation\-timeout\-screenshot
 .I BASENAME
+.RI ]
+.RI [ \-\-screen\-dump\-dir
+.I DIRECTORY
 .RI ]
 .RI [ \-\-viewport\-columns
 .I COLUMNS
@@ -35,21 +46,25 @@ mdview \- render Markdown in the terminal with an internal viewer
 .RI [ path " ..." ]
 .SH DESCRIPTION
 mdview renders Markdown and plain text with ANSI styling and displays content
-through its internal viewing engine. External pagers such as
-.BR less (1)
-and
-.BR more (1)
-are not used for display.
-For pure text files, default behavior preserves source line breaks and
-does not reflow unless reflow is explicitly enabled.
-Markdown reflows to viewport width by default. Markdown tables may exceed
-viewport width when minimum table sizing requires overflow. Recognized pipe
-tables render as gray boxed grids by default.
+through its internal viewing engine. When no document paths are supplied,
+non-interactive stdin is treated as a buffered pipe-target candidate. When the
+buffered document has clear valid Markdown structure, mdview renders it as
+Markdown. Otherwise it falls back to plain-text rendering so arbitrary process
+output is not reformatted accidentally.
+.PP
+For pure text files, default behavior preserves source line breaks and does
+not reflow unless reflow is explicitly enabled. Markdown reflows to viewport
+width by default. Markdown tables may exceed viewport width when minimum table
+sizing requires overflow. Recognized pipe tables render as gray boxed grids by
+default.
 .SH OPTIONS
 .TP
 .B path
-Path to a Markdown or text file to view when not using the standalone
-diagnostic modes.
+Path to a Markdown or text file to view. When no paths are supplied, mdview
+may buffer a non-interactive stdin document instead. Buffered stdin uses a
+16 MB safety ceiling by default and stops waiting after 2 seconds of idle time
+once bytes have started arriving. If no bytes arrive before that timeout,
+stdin is treated as absent and mdview reports the normal missing-input error.
 .TP
 .BR \-h , " \-\-help"
 Show the help message and exit.
@@ -58,8 +73,8 @@ Show the help message and exit.
 Run the interactive resize-detection checklist and report PASS or FAIL.
 .TP
 .BR \-\-test\-input\-feedback
-Run a two-stage terminal input diagnostic. Stage 1 uses direct terminal
-input and line-oriented redraws. Stage 2 uses the full-screen
+Run a two-stage terminal input diagnostic. Stage 1 uses direct terminal input
+and line-oriented redraws. Stage 2 uses the full-screen
 .BR prompt_toolkit
 viewer stack. Both stages accept Left/Right arrows plus
 .B ,
@@ -79,6 +94,22 @@ or
 .TP
 .BR \-\-noreflow
 Disable reflow in all cases (equivalent to mode none).
+.TP
+.BR \-\-verbose
+Report key operational events, including document switches in multi-document
+sessions.
+.TP
+.BR \-\-stdin\-timeout\-in\-seconds " " SECONDS
+Stop waiting for additional stdin bytes after SECONDS have elapsed with no
+further input.
+.TP
+.BR \-\-max\-stdin\-buffer\-megabytes " " MEGABYTES
+Refuse buffered stdin documents larger than MEGABYTES unless the operator
+explicitly raises the safety ceiling.
+.TP
+.BR \-\-MIL , " \-\-mil"
+Enable Monkey-in-the-Loop telemetry: emit operator action events and targeted
+troubleshooting context.
 .TP
 .BR \-\-readability\-first\-tables
 Always use readability-first table layout, even when fit-first could fit the

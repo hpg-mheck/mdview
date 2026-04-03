@@ -474,6 +474,84 @@ def test_prompt_toolkit_pager_rerenders_on_resize(monkeypatch) -> None:
     )
 
 
+def test_prompt_toolkit_pager_uses_tty_input_override_when_requested(
+    monkeypatch,
+) -> None:
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def get_size(self) -> DummySize:
+            return DummySize(40, 10)
+
+    app_registry: List["DummyApplication"] = []
+    tty_input = object()
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info = None
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def add(self, *args, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyApplication:
+        def __init__(self, **kwargs) -> None:
+            self.kwargs = kwargs
+            self.output = DummyOutput()
+            app_registry.append(self)
+
+        def run(self) -> None:
+            return
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+    monkeypatch.setattr(
+        rendering, "_prefer_prompt_toolkit_tty_input", lambda: tty_input
+    )
+
+    assert rendering._attempt_prompt_toolkit_pager(
+        "sample",
+        prefer_tty_input=True,
+    )
+    assert app_registry[0].kwargs["input"] is tty_input
+
+
 def test_prompt_toolkit_pager_advances_redraw_check_digit(monkeypatch) -> None:
     class DummyRenderInfo:
         def __init__(self, window_width: int, window_height: int) -> None:
@@ -562,6 +640,90 @@ def test_prompt_toolkit_pager_advances_redraw_check_digit(monkeypatch) -> None:
     second_render = "".join(text for _, text in controls[0].rendered[1]).splitlines()
     assert first_render[4][8] == "0"
     assert second_render[4][8] == "1"
+
+
+def test_page_text_falls_back_when_tty_input_override_is_unavailable(
+    monkeypatch,
+    capsys,
+) -> None:
+    class DummySize:
+        def __init__(self, columns: int, rows: int) -> None:
+            self.columns = columns
+            self.rows = rows
+
+    class DummyOutput:
+        def get_size(self) -> DummySize:
+            return DummySize(40, 10)
+
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info = None
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def add(self, *args, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyApplication:
+        def __init__(self, **kwargs) -> None:
+            self.kwargs = kwargs
+            self.output = DummyOutput()
+            app_registry.append(self)
+
+        def run(self) -> None:
+            return
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    rendering._FALLBACK_NOTICES.clear()
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+    monkeypatch.setattr(
+        rendering,
+        "_prefer_prompt_toolkit_tty_input",
+        lambda: (_ for _ in ()).throw(RuntimeError("no tty")),
+    )
+
+    rendering.page_text("sample", prefer_tty_input=True)
+
+    captured = capsys.readouterr()
+    assert captured.out == "sample\n"
+    assert any(
+        "Interactive pager could not reopen a TTY for input" in notice
+        for notice in rendering.get_fallback_notices()
+    )
 
 
 def test_prompt_toolkit_pager_keeps_redraw_check_digit_centered_during_scroll(

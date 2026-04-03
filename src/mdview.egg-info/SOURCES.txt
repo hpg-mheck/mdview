@@ -6,6 +6,7 @@ src/mdview/cli.py
 src/mdview/dom.py
 src/mdview/hyperlinks.py
 src/mdview/input_feedback.py
+src/mdview/input_formats.py
 src/mdview/intake.py
 src/mdview/iteration_exit.py
 src/mdview/mode_switching.py
@@ -29,6 +30,7 @@ tests/test_framebuffer_helpers.py
 tests/test_git_workflow_scripts.py
 tests/test_hyperlinks.py
 tests/test_input_feedback.py
+tests/test_input_formats.py
 tests/test_install_git_hooks.py
 tests/test_install_prerequisites.py
 tests/test_install_project.py

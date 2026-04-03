@@ -6,15 +6,22 @@ decisions readable here instead of hiding them behind clever abstractions.
 """
 
 import argparse
+import codecs
+import io
 import json
 import math
+import os
+import queue
+import selectors
 import shutil
 import sys
+import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence, TextIO
 
 from mdview import __version__
+from mdview.input_formats import DetectedInputFormat, detect_input_format
 from mdview.input_feedback import run_test_input_feedback
 from mdview.prerequisites import (
     detect_prerequisite_issues,
@@ -41,6 +48,38 @@ class _LoadedDocument:
 
 
 AutomationReplayEvent = tuple[float, str]
+_STDIN_IDLE_TIMEOUT_SECONDS = 2.0
+_STDIN_MAX_BUFFER_MEGABYTES = 16.0
+_BYTES_PER_MEGABYTE = 1024 * 1024
+_STDIN_READ_CHUNK_SIZE = 4096
+_STDIN_SOURCE_LABEL = Path("<stdin>")
+_STDIN_BUFFERING_INITIAL_STATUS = "Buffering stdin..."
+_STDIN_BUFFERING_COMPLETE_STATUS = "Buffering stdin... complete."
+_STDIN_BUFFERING_TIMEOUT_STATUS = "Buffering stdin... giving up after timeout"
+_STDIN_BUFFERING_LIMIT_STATUS = "Buffering stdin... failed: exceeds max size limit"
+
+
+class _StdinBufferLimitExceeded(RuntimeError):
+    """Raised when buffered stdin would exceed the configured safety ceiling."""
+
+
+@dataclass(frozen=True)
+class _BufferedStdinReadResult:
+    """Buffered stdin text plus the reason buffering stopped."""
+
+    content: str
+    received_data: bool
+    timed_out: bool
+
+
+@dataclass(frozen=True)
+class _BufferedStdinResult:
+    """Buffered stdin payload plus the final startup status line."""
+
+    content: str
+    detected_format: DetectedInputFormat
+    timed_out: bool
+    final_status_line: str
 
 
 def _non_negative_seconds(value: str) -> float:
@@ -59,6 +98,22 @@ def _non_negative_seconds(value: str) -> float:
     return seconds
 
 
+def _non_negative_stdin_timeout_seconds(value: str) -> float:
+    """Return a validated non-negative stdin timeout value in seconds."""
+
+    try:
+        seconds = float(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            f"invalid timeout seconds value: {value!r}"
+        ) from error
+    if not math.isfinite(seconds) or seconds < 0:
+        raise argparse.ArgumentTypeError(
+            "stdin timeout must be a non-negative finite number"
+        )
+    return seconds
+
+
 def _positive_int(value: str) -> int:
     """Return a validated positive integer option value."""
 
@@ -71,6 +126,273 @@ def _positive_int(value: str) -> int:
     if parsed <= 0:
         raise argparse.ArgumentTypeError("value must be a positive integer")
     return parsed
+
+
+def _positive_megabytes(value: str) -> float:
+    """Return a validated positive megabyte limit."""
+
+    try:
+        megabytes = float(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            f"invalid megabyte value: {value!r}"
+        ) from error
+    if not math.isfinite(megabytes) or megabytes <= 0:
+        raise argparse.ArgumentTypeError(
+            "stdin buffer megabytes must be a positive finite number"
+        )
+    return megabytes
+
+
+def _stdin_supports_buffered_document(input_stream: TextIO = sys.stdin) -> bool:
+    """Return whether ``input_stream`` looks like a real non-TTY document source."""
+
+    if bool(getattr(input_stream, "isatty", lambda: True)()):
+        return False
+
+    fileno = getattr(input_stream, "fileno", None)
+    if not callable(fileno):
+        return False
+    try:
+        fileno()
+    except (AttributeError, OSError, ValueError, io.UnsupportedOperation):
+        return False
+    return True
+
+
+def _stdin_buffer_limit_bytes(max_buffer_megabytes: float) -> int:
+    """Return the configured stdin ceiling in bytes."""
+
+    return max(1, math.ceil(max_buffer_megabytes * _BYTES_PER_MEGABYTE))
+
+
+def _stdin_buffer_limit_error(max_buffer_bytes: int) -> _StdinBufferLimitExceeded:
+    """Return the standardized oversize-stdin error message."""
+
+    configured_limit = max_buffer_bytes / _BYTES_PER_MEGABYTE
+    return _StdinBufferLimitExceeded(
+        "buffered stdin exceeded the configured "
+        f"{configured_limit:g} megabyte safety limit. Re-run with "
+        "--max-stdin-buffer-megabytes=<override-value-in-megabytes> to allow "
+        "a larger stdin document."
+    )
+
+
+def _emit_startup_status_line(
+    message: str,
+    *,
+    output_stream: TextIO = sys.stdout,
+    replace_previous: bool = False,
+) -> None:
+    """Write one buffered-stdin status line to stdout when it is a TTY.
+
+    The pager uses the terminal's alternate screen. Keep the status line on the
+    main screen so it becomes visible again after full-screen mode exits.
+    """
+
+    if not bool(getattr(output_stream, "isatty", lambda: False)()):
+        return
+
+    if replace_previous:
+        output_stream.write(f"\x1b[1F\x1b[2K{message}\n")
+    else:
+        output_stream.write(f"{message}\n")
+    output_stream.flush()
+
+
+def _close_stream_quietly(input_stream: TextIO) -> None:
+    """Close one input stream, ignoring cleanup failures."""
+
+    try:
+        input_stream.close()
+    except (AttributeError, OSError, ValueError):
+        return
+
+
+def _read_stdin_with_thread(
+    input_stream: TextIO,
+    *,
+    idle_timeout_seconds: float,
+    max_buffer_bytes: int,
+    on_first_chunk: Optional[Callable[[], None]] = None,
+) -> _BufferedStdinReadResult:
+    """Return buffered stdin text, timing out after one idle interval.
+
+    This path exists for environments where selector-based polling cannot watch
+    the incoming stream directly. It preserves the same idle-timeout contract
+    as the file-descriptor path below.
+    """
+
+    item_queue: "queue.Queue[tuple[str, object]]" = queue.Queue()
+
+    def _reader() -> None:
+        try:
+            while True:
+                chunk = input_stream.read(_STDIN_READ_CHUNK_SIZE)
+                item_queue.put(("chunk", chunk))
+                if chunk == "":
+                    return
+        except BaseException as error:  # pragma: no cover - defensive bridge
+            item_queue.put(("error", error))
+
+    thread = threading.Thread(target=_reader, daemon=True)
+    thread.start()
+
+    encoding = getattr(input_stream, "encoding", None) or "utf-8"
+    error_mode = getattr(input_stream, "errors", None) or "strict"
+    chunks: list[str] = []
+    received_data = False
+    bytes_read = 0
+    while True:
+        try:
+            kind, payload = item_queue.get(timeout=idle_timeout_seconds)
+        except queue.Empty:
+            return _BufferedStdinReadResult(
+                content="".join(chunks),
+                received_data=received_data,
+                timed_out=True,
+            )
+
+        if kind == "error":
+            raise payload  # type: ignore[misc]
+
+        chunk = str(payload)
+        if chunk == "":
+            return _BufferedStdinReadResult(
+                content="".join(chunks),
+                received_data=received_data,
+                timed_out=False,
+            )
+        if not received_data:
+            received_data = True
+            if on_first_chunk is not None:
+                on_first_chunk()
+        bytes_read += len(chunk.encode(encoding, errors=error_mode))
+        if bytes_read > max_buffer_bytes:
+            raise _stdin_buffer_limit_error(max_buffer_bytes)
+        chunks.append(chunk)
+
+
+def _read_buffered_stdin_content(
+    input_stream: TextIO = sys.stdin,
+    *,
+    idle_timeout_seconds: float = _STDIN_IDLE_TIMEOUT_SECONDS,
+    max_buffer_bytes: int = _stdin_buffer_limit_bytes(_STDIN_MAX_BUFFER_MEGABYTES),
+    on_first_chunk: Optional[Callable[[], None]] = None,
+) -> _BufferedStdinReadResult:
+    """Return buffered stdin text plus whether buffering stopped on timeout."""
+
+    encoding = getattr(input_stream, "encoding", None) or "utf-8"
+    error_mode = getattr(input_stream, "errors", None) or "strict"
+
+    try:
+        fileno = input_stream.fileno()
+        selector = selectors.DefaultSelector()
+        selector.register(fileno, selectors.EVENT_READ)
+    except (AttributeError, OSError, ValueError, io.UnsupportedOperation):
+        return _read_stdin_with_thread(
+            input_stream,
+            idle_timeout_seconds=idle_timeout_seconds,
+            max_buffer_bytes=max_buffer_bytes,
+            on_first_chunk=on_first_chunk,
+        )
+
+    decoder_factory = codecs.getincrementaldecoder(encoding)
+    decoder = decoder_factory(errors=error_mode)
+    chunks: list[str] = []
+    received_data = False
+    bytes_read = 0
+
+    try:
+        while True:
+            ready = selector.select(idle_timeout_seconds)
+            if not ready:
+                return _BufferedStdinReadResult(
+                    content="".join(chunks) + decoder.decode(b"", final=True),
+                    received_data=received_data,
+                    timed_out=True,
+                )
+
+            raw_chunk = os.read(fileno, _STDIN_READ_CHUNK_SIZE)
+            if not raw_chunk:
+                return _BufferedStdinReadResult(
+                    content="".join(chunks) + decoder.decode(b"", final=True),
+                    received_data=received_data,
+                    timed_out=False,
+                )
+            bytes_read += len(raw_chunk)
+            if bytes_read > max_buffer_bytes:
+                raise _stdin_buffer_limit_error(max_buffer_bytes)
+            if not received_data:
+                received_data = True
+                if on_first_chunk is not None:
+                    on_first_chunk()
+            chunks.append(decoder.decode(raw_chunk))
+    finally:
+        selector.close()
+
+
+def _buffer_stdin_document(
+    input_stream: TextIO = sys.stdin,
+    *,
+    output_stream: TextIO = sys.stdout,
+    idle_timeout_seconds: float = _STDIN_IDLE_TIMEOUT_SECONDS,
+    max_buffer_megabytes: float = _STDIN_MAX_BUFFER_MEGABYTES,
+) -> Optional[_BufferedStdinResult]:
+    """Buffer one piped stdin document before rendering begins."""
+
+    emitted_initial_status = False
+
+    def _emit_initial_status() -> None:
+        nonlocal emitted_initial_status
+        if emitted_initial_status:
+            return
+        emitted_initial_status = True
+        _emit_startup_status_line(
+            _STDIN_BUFFERING_INITIAL_STATUS,
+            output_stream=output_stream,
+        )
+
+    try:
+        read_result = _read_buffered_stdin_content(
+            input_stream,
+            idle_timeout_seconds=idle_timeout_seconds,
+            max_buffer_bytes=_stdin_buffer_limit_bytes(max_buffer_megabytes),
+            on_first_chunk=_emit_initial_status,
+        )
+    except _StdinBufferLimitExceeded:
+        if emitted_initial_status:
+            _emit_startup_status_line(
+                _STDIN_BUFFERING_LIMIT_STATUS,
+                output_stream=output_stream,
+                replace_previous=True,
+            )
+        raise
+
+    if not read_result.received_data:
+        if read_result.timed_out:
+            _close_stream_quietly(input_stream)
+        return None
+
+    if read_result.timed_out:
+        _close_stream_quietly(input_stream)
+    final_status_line = (
+        _STDIN_BUFFERING_TIMEOUT_STATUS
+        if read_result.timed_out
+        else _STDIN_BUFFERING_COMPLETE_STATUS
+    )
+    if emitted_initial_status:
+        _emit_startup_status_line(
+            final_status_line,
+            output_stream=output_stream,
+            replace_previous=True,
+        )
+    return _BufferedStdinResult(
+        content=read_result.content,
+        detected_format=detect_input_format(read_result.content),
+        timed_out=read_result.timed_out,
+        final_status_line=final_status_line,
+    )
 
 
 def _parse_automation_json_source(source: str) -> list[AutomationReplayEvent]:
@@ -132,7 +454,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser = argparse.ArgumentParser(
         prog="mdview",
-        description="Render Markdown in the terminal with integrated navigation.",
+        description=(
+            "Render Markdown or plain text in the terminal with integrated "
+            "navigation."
+        ),
         formatter_class=formatter,
         add_help=True,
         allow_abbrev=False,
@@ -143,7 +468,8 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="*",
         help=(
             "Path(s) to Markdown or text files to view. Required unless "
-            "--verify-resize-detection or --test-input-feedback is used."
+            "--verify-resize-detection or --test-input-feedback is used, "
+            "or stdin provides a buffered document."
         ),
     )
     parser.add_argument(
@@ -188,6 +514,26 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Report key operational events, including document switches in "
             "multi-document sessions."
+        ),
+    )
+    parser.add_argument(
+        "--stdin-timeout-in-seconds",
+        metavar="SECONDS",
+        type=_non_negative_stdin_timeout_seconds,
+        default=_STDIN_IDLE_TIMEOUT_SECONDS,
+        help=(
+            "Stop waiting for additional stdin bytes after SECONDS have "
+            "elapsed with no further input."
+        ),
+    )
+    parser.add_argument(
+        "--max-stdin-buffer-megabytes",
+        metavar="MEGABYTES",
+        type=_positive_megabytes,
+        default=_STDIN_MAX_BUFFER_MEGABYTES,
+        help=(
+            "Refuse buffered stdin documents larger than MEGABYTES unless "
+            "the operator explicitly raises the safety ceiling."
         ),
     )
     parser.add_argument(
@@ -379,9 +725,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return exit_code
 
     paths = list(args.paths)
-    if not paths:
+    buffered_stdin: Optional[_BufferedStdinResult] = None
+    if not paths and _stdin_supports_buffered_document():
+        try:
+            buffered_stdin = _buffer_stdin_document(
+                idle_timeout_seconds=args.stdin_timeout_in_seconds,
+                max_buffer_megabytes=args.max_stdin_buffer_megabytes,
+            )
+        except (_StdinBufferLimitExceeded, OSError, UnicodeDecodeError) as error:
+            print(f"mdview: failed to read stdin: {error}", file=sys.stderr)
+            _emit_fallback_notices()
+            return 3
+
+    if not paths and buffered_stdin is None:
         print(
-            "mdview: at least one path is required unless "
+            "mdview: at least one path or buffered stdin input is required unless "
             "--verify-resize-detection or --test-input-feedback is used",
             file=sys.stderr,
         )
@@ -413,6 +771,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return 2
 
     loaded_documents: list[_LoadedDocument] = []
+    prefer_tty_input = buffered_stdin is not None
+    if buffered_stdin is not None:
+        stdin_reflow_mode = resolve_reflow_mode(
+            markdown=buffered_stdin.detected_format.markdown,
+            reflow=args.reflow,
+            reflow_mode=args.reflow_mode,
+            noreflow=args.noreflow,
+        )
+        loaded_documents.append(
+            _LoadedDocument(
+                path=_STDIN_SOURCE_LABEL,
+                content=buffered_stdin.content,
+                markdown=buffered_stdin.detected_format.markdown,
+                reflow_mode=stdin_reflow_mode,
+            )
+        )
+
     # Preload all inputs before starting the pager. This keeps document
     # switching deterministic and avoids surprising filesystem I/O once the
     # interactive session is already live.
@@ -515,6 +890,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             render_on_resize=_render_on_resize,
             switch_document=_switch_document if len(loaded_documents) > 1 else None,
             ui_event_logger=_ui_event_logger if args.mil else None,
+            prefer_tty_input=prefer_tty_input,
             document_count=len(loaded_documents),
             current_document_index=lambda: current_index,
             automation_timeout=args.automation_timeout,

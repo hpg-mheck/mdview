@@ -26,8 +26,12 @@ Goals and Non-Goals
 
 User Workflow
 -------------
-1. Invoke ``mdview <path...>`` with one or more files.
+1. Invoke ``mdview <path...>`` with one or more files, or invoke ``mdview``
+   without paths when non-interactive stdin is being used as a pipe target.
 2. mdview determines per file whether content is Markdown or plain text.
+   When using buffered stdin, mdview first buffers the incoming document,
+   then classifies that buffered text conservatively as Markdown or plain
+   text.
 3. mdview ingests content into the common internal content model using
    the three-pass classification pipeline described in
    ``docs/specifications/unified_content_intake_model.txt``.
@@ -42,6 +46,26 @@ Functional Requirements
 - File Handling
   - Accepts files with ``.md`` or ``.markdown`` as Markdown; treats
     ``.txt`` and other extensions as plain text.
+  - When no paths are supplied and stdin is a non-interactive source, mdview
+    may treat stdin as a buffered document input instead of erroring
+    immediately.
+  - Buffered stdin uses a default 16 MB safety ceiling. If that ceiling is
+    exceeded, mdview aborts with an error that instructs the operator to
+    re-run with ``--max-stdin-buffer-megabytes=<override-value-in-
+    megabytes>``.
+  - Buffered stdin waits until EOF when the producer closes cleanly. If bytes
+    have started arriving and then no further bytes arrive for 2 seconds,
+    mdview closes stdin and proceeds with the partial buffered document.
+    If no bytes arrive before the timeout, mdview treats stdin as absent and
+    preserves the normal missing-input error behavior.
+  - While stdin is buffered, mdview writes one startup status line on stdout:
+    ``Buffering stdin...`` followed by either
+    ``Buffering stdin... complete.`` or
+    ``Buffering stdin... giving up after timeout``. That status line remains
+    visible again after the alternate-screen pager exits.
+  - Buffered stdin format detection is conservative and extensible. Markdown
+    is selected only when the full buffered content passes the explicit
+    Markdown detector. Otherwise stdin content is rendered as plain text.
   - Reads content using UTF-8 with graceful error messaging on failure.
   - Rendering
   - Markdown files: rendered using ``rich.markdown.Markdown`` for general
@@ -73,7 +97,8 @@ Functional Requirements
   - Supports multi-document sessions with ``n``/``p`` and compatible
     ``:n``/``:p`` commands for next/previous document.
   - CLI
-  - Command: ``mdview <path...>``.
+  - Command: ``mdview <path...>`` or ``producer | mdview`` when stdin is a
+    buffered non-interactive document source.
   - Options: ``--version`` for program version; ``--reflow`` to enable
     reflow processing; ``--noreflow`` to disable reflow; and
     ``--reflow-mode prose|all|none`` to select policy behavior as defined in
@@ -92,6 +117,9 @@ Functional Requirements
     artifacts as ``<basename>.txt`` and ``<basename>.attrs.json``, and
     ``--screen-dump-dir <path>`` selects where interactive `!` captures write
     ``mdview-screen.txt`` and ``mdview-screen.attrs.json``.
+    ``--stdin-timeout-in-seconds <seconds>`` overrides the buffered-stdin
+    idle timeout, and ``--max-stdin-buffer-megabytes <megabytes>`` overrides
+    the buffered-stdin safety ceiling.
     ``--viewport-columns``/``--viewport-rows`` provide synthetic viewport
     size overrides for deterministic automation. ``--automation-json`` replays
     scripted key input as JSON ``[[delay_seconds, key_spec], ...]`` from a
@@ -115,7 +143,8 @@ Quality Attributes
 Dependencies
 ------------
 - Runtime: ``rich`` for Markdown rendering.
-- Standard library: ``argparse``, ``pathlib``, and ``typing``.
+- Standard library: ``argparse``, ``codecs``, ``pathlib``, ``selectors``,
+  and ``typing``.
 - Dev/Test: ``pytest`` for unit tests.
 
 Future Enhancements (Out of Scope for Initial Scaffold)
@@ -125,3 +154,5 @@ Future Enhancements (Out of Scope for Initial Scaffold)
 - Inline link rendering improvements (e.g., hiding raw URLs behind link
   text).
 - Basic HTML input support by translating HTML tags to terminal styling.
+- Additional buffered-stdin format recognizers beyond Markdown and plain
+  text.

@@ -1,22 +1,24 @@
 usage: mdview [-h] [--verify-resize-detection] [--test-input-feedback]
               [--reflow] [--reflow-mode {prose,all,none}] [--noreflow]
-              [--verbose] [--MIL] [--readability-first-tables]
-              [--no-table-borders] [--no-cell-borders]
-              [--automation-timeout SECONDS]
+              [--verbose] [--stdin-timeout-in-seconds SECONDS]
+              [--max-stdin-buffer-megabytes MEGABYTES] [--MIL]
+              [--readability-first-tables] [--no-table-borders]
+              [--no-cell-borders] [--automation-timeout SECONDS]
               [--automation-timeout-screenshot BASENAME]
               [--screen-dump-dir DIRECTORY] [--viewport-columns COLUMNS]
               [--viewport-rows ROWS] [--automation-json SOURCE]
               [--redraw-check-digit] [-V]
               [paths ...]
 
-Render Markdown in the terminal with integrated navigation.
+Render Markdown or plain text in the terminal with integrated navigation.
 
 positional arguments:
   paths                     Path(s) to Markdown or text files to view.
                             Required unless --verify-resize-detection or
-                            --test-input-feedback is used. (default: None)
+                            --test-input-feedback is used, or stdin provides a
+                            buffered document. (default: None)
 
-optional arguments:
+options:
   -h, --help                show this help message and exit
   --verify-resize-detection
                             Guide a manual resize sequence, acknowledging
@@ -36,6 +38,14 @@ optional arguments:
   --verbose                 Report key operational events, including document
                             switches in multi-document sessions. (default:
                             False)
+  --stdin-timeout-in-seconds SECONDS
+                            Stop waiting for additional stdin bytes after
+                            SECONDS have elapsed with no further input.
+                            (default: 2.0)
+  --max-stdin-buffer-megabytes MEGABYTES
+                            Refuse buffered stdin documents larger than
+                            MEGABYTES unless the operator explicitly raises
+                            the safety ceiling. (default: 16.0)
   --MIL, --mil              Enable Monkey-in-the-Loop telemetry: emit operator
                             action events and targeted troubleshooting
                             context. (default: False)

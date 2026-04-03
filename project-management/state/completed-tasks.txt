@@ -6,6 +6,23 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Reworked buffered stdin handling so mdview behaves as a classical pipe
+  target, recorded at 2026-04-02T16:39:27-07:00 by Codex (GPT-5.4) from
+  direct operator instruction. Added
+  `docs/specifications/stdin_buffered_piped_input.txt`; updated README,
+  `docs/specifications/project_overview.txt`, the shared POSIX help text,
+  Linux/macOS man pages, and tracked package metadata; added
+  `src/mdview/input_formats.py`; updated `src/mdview/cli.py` to buffer
+  non-interactive stdin with a configurable 16 MB default safety ceiling,
+  2-second default idle timeout, startup status lines, and conservative
+  Markdown-versus-plain-text detection; updated `src/mdview/rendering.py` so
+  the interactive pager prefers the controlling TTY for input after stdin has
+  already been consumed; and added regression coverage in
+  `tests/test_cli.py`, `tests/test_input_formats.py`, and
+  `tests/test_rendering.py`. Validation: `black`, `ruff`, `compileall`,
+  `entropy_check`, `entropy_tripwire_verify`, full `pytest`, and `demo_check`
+  all passed (`381 passed`; `demo_check` validated=1 skipped=0 errors=0).
+
 * Added boxed Markdown table borders with gray border styling plus
   `--no-table-borders` and `--no-cell-borders`, recorded at
   2026-03-30T15:15:23-07:00 by Codex (GPT-5.4) from direct operator

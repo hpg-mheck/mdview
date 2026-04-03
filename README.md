@@ -10,10 +10,14 @@ so Markdown reads naturally in the terminal.
   formatting.
 - Uses an internal viewport with integrated vertical and horizontal
   navigation.
-- Supports `.md`, `.markdown`, and `.txt` input out of the box.
+- Supports `.md`, `.markdown`, and `.txt` input out of the box, plus
+  buffered non-interactive stdin when mdview is used as a pipe target.
 - Minimal runtime dependencies; packaged for Python 3.9+.
 - Graceful fallback to plain-text output if `rich` is unavailable in the
   environment.
+- Buffers up to 16 MB from piped stdin by default, waits up to 2 seconds for
+  additional input, and conservatively classifies buffered stdin as Markdown
+  or plain text before rendering.
 - Provides stateful mode-switching helpers intended for a `<META>+W` hotkey
   that toggles word wrap against horizontal scrolling while preserving search
   anchors.
@@ -59,12 +63,35 @@ shims from other Python environments cannot interfere:
 ./mdview path/to/file-a.md
 ```
 
+mdview also works as a classical pipe target when no paths are supplied:
+```bash
+realitycheck --format md | mdview
+```
+
+Buffered stdin is read to completion before the full-screen viewer starts. The
+startup line reports `Buffering stdin...`, then changes to either
+`Buffering stdin... complete.` when the stream closes cleanly or
+`Buffering stdin... giving up after timeout` when 2 seconds pass with no
+further input after bytes have started arriving. That line remains on the main
+screen after the alternate-screen viewer exits.
+
+When a producer needs a longer idle window or a larger buffer ceiling, raise
+the defaults explicitly:
+```bash
+producer | mdview --stdin-timeout-in-seconds 5 \
+  --max-stdin-buffer-megabytes 64
+```
+
 Optional flags:
 - `--reflow` to enable reflow processing using `--reflow-mode prose`
   unless another mode is specified.
 - `--reflow-mode prose|all|none` to select policy behavior.
 - `--noreflow` to disable reflow in all cases (`--reflow-mode none`).
 - `--verbose` to report operational events such as document switches.
+- `--stdin-timeout-in-seconds <seconds>` to stop waiting for more piped
+  stdin after an idle interval once bytes have started arriving.
+- `--max-stdin-buffer-megabytes <megabytes>` to raise or lower the buffered
+  stdin safety ceiling (default 16 MB).
 - `--MIL` to emit Monkey-in-the-Loop action telemetry for live
   troubleshooting.
 - `--readability-first-tables` to keep Markdown tables at readable column
@@ -131,9 +158,14 @@ Unicode box-drawing characters. Use `--no-table-borders` and/or
 When any rendered line exceeds viewport width, a horizontal scrollbar
 becomes active and left/right arrow keys pan the viewport.
 
-For plain-text (`.txt`) files without explicit reflow flags, mdview preserves
-source line breaks by default. Reflow for `.txt` content is opt-in via
-`--reflow` or explicit `--reflow-mode`.
+Buffered stdin follows the same rendering rules after format detection. When
+the buffered document has clear valid Markdown structure, mdview renders it as
+Markdown. Otherwise, mdview treats it as plain text so arbitrary process
+output does not get reflowed or reinterpreted accidentally.
+
+For plain-text (`.txt`) files or plain-text buffered stdin without explicit
+reflow flags, mdview preserves source line breaks by default. Reflow for that
+content is opt-in via `--reflow` or explicit `--reflow-mode`.
 
 Windows 11 workflow shortcuts:
 - Bootstrap environment:
