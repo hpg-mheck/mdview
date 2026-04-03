@@ -6,6 +6,13 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Normalized project-management state after the stdin pipe-target work,
+  recorded at 2026-04-02T16:53:05-07:00 by Codex (GPT-5.4) from direct
+  operator instruction. Removed the duplicated installer/bootstrap overhaul
+  entry from `project-management/state/tasks-in-progress.txt` so that active
+  work now aligns with the backlog and the separate pending operator
+  validation request in `project-management/state/ai-human-requests.txt`.
+
 * Reworked buffered stdin handling so mdview behaves as a classical pipe
   target, recorded at 2026-04-02T16:39:27-07:00 by Codex (GPT-5.4) from
   direct operator instruction. Added
