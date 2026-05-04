@@ -6,6 +6,20 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Refreshed Python support package pins and the repository packaging
+  toolchain, recorded at 2026-05-04T15:46:47-07:00 by Codex from direct
+  operator instruction. Added
+  `docs/specifications/support_package_currency.txt`; updated
+  `requirements-dev.txt` from `ruff==0.15.7` to `ruff==0.15.12` and
+  `pytest==9.0.2` to `pytest==9.0.3`; upgraded the active `.venv` packaging
+  toolchain to `pip==26.1.1`, `setuptools==82.0.1`, and `wheel==0.47.0`;
+  and confirmed `pip list --outdated` returned no outdated Python packages.
+  Codex npm packages were intentionally left unchanged for codex-wrangler.
+  Validation: `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, full `pytest` (`381 passed`), and `demo_check`
+  passed. Local Windows shim validation remains deferred per
+  `.local/windows-shim-validation-note.txt`.
+
 * Normalized project-management state after the stdin pipe-target work,
   recorded at 2026-04-02T16:53:05-07:00 by Codex (GPT-5.4) from direct
   operator instruction. Removed the duplicated installer/bootstrap overhaul
