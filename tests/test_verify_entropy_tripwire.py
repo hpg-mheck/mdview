@@ -4,7 +4,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "dev-utils" / "security" / "verify_entropy_tripwire.py"
 
@@ -51,6 +50,84 @@ def test_tripwire_verifier_passes_for_clean_repo_with_sentinel(tmp_path: Path) -
     tripwire.write_text(_sentinel_fixture(), encoding="utf-8")
     (tmp_path / "README.txt").write_text(
         "normal text line one\nnormal text line two\n", encoding="utf-8"
+    )
+
+    result = _run_tripwire(tmp_path)
+
+    assert result.returncode == 0
+    assert "PASS: tripwire verification complete." in result.stdout
+
+
+def test_tripwire_verifier_ignores_repo_local_codex_state_and_package_lock(
+    tmp_path: Path,
+) -> None:
+    tripwire = tmp_path / "tests" / "test_entropy_check.py"
+    tripwire.parent.mkdir(parents=True)
+    tripwire.write_text(_sentinel_fixture(), encoding="utf-8")
+    auth = tmp_path / ".codex-home" / ".codex" / "auth.json"
+    auth.parent.mkdir(parents=True)
+    auth.write_text(
+        "\n".join(
+            [
+                "{",
+                f'  "access_token": "{_token()}"',
+                "}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    package_lock = tmp_path / ".codex-local" / "package-lock.json"
+    package_lock.parent.mkdir(parents=True)
+    package_lock.write_text(
+        "\n".join(
+            [
+                "{",
+                f'  "integrity": "{_token()}"',
+                "}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    root_package_lock = tmp_path / "package-lock.json"
+    root_package_lock.write_text(
+        "\n".join(
+            [
+                "{",
+                '  "name": "mdview-web-shims",',
+                f'  "integrity": "{_token()}"',
+                "}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_tripwire(tmp_path)
+
+    assert result.returncode == 0
+    assert "PASS: tripwire verification complete." in result.stdout
+
+
+def test_tripwire_verifier_ignores_theknowledge_submodule_contents(
+    tmp_path: Path,
+) -> None:
+    tripwire = tmp_path / "tests" / "test_entropy_check.py"
+    tripwire.parent.mkdir(parents=True)
+    tripwire.write_text(_sentinel_fixture(), encoding="utf-8")
+    secret = tmp_path / "TheKnowledge" / "secret.txt"
+    secret.parent.mkdir(parents=True)
+    secret.write_text(
+        "\n".join(
+            [
+                "ordinary prose for baseline stabilization",
+                "another ordinary prose line for baseline",
+                _token(),
+                "",
+            ]
+        ),
+        encoding="utf-8",
     )
 
     result = _run_tripwire(tmp_path)

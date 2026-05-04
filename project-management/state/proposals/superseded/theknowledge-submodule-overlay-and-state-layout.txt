@@ -1,9 +1,11 @@
 Title: TheKnowledge Submodule Overlay and State Layout
 Author: Codex (GPT-5)
 Date: 2026-03-08T14:09:24-07:00
-Status: Proposed
+Status: Superseded
 Reviewers: Project owner (operator), AI maintainers
 Related Work: Operator direction on 2026-03-08; TheKnowledge export effort
+Superseded By: Operator-directed root-submodule consumer integration recorded
+  in `docs/specifications/theknowledge_consumer_repository_integration.txt`
 
 Problem Statement
 -----------------
@@ -155,3 +157,6 @@ enabling blocking checks.
 Decision Log
 ------------
 - 2026-03-08: Proposal drafted for review.
+- 2026-03-26: Superseded after the operator directed mdview to adopt the
+  root-level `TheKnowledge/` consumer-submodule pattern used by `dufocom`
+  instead of the proposed `project-management/SOP/` overlay layout.

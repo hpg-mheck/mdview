@@ -14,14 +14,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Sequence
 
-
 DEFAULT_EXCLUDES = {
     ".git",
     ".venv",
     ".pytest_cache",
     ".ruff_cache",
+    ".codex-home",
+    ".codex-local",
+    "TheKnowledge",
     "mdview.egg-info",
     "__pycache__",
+    "bin/codex-local",
+    "README-LOCAL-Start-Codex.md",
+    "package-lock.json",
 }
 
 CODE_EXTENSIONS = {
@@ -118,7 +123,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         default=[],
         help=(
             "Exclude path pattern (fnmatch). May be passed multiple times. "
-            "Defaults include .git, .venv, caches, and egg-info."
+            "Defaults include .git, .venv, local Codex state, caches, and "
+            "egg-info."
         ),
     )
     parser.add_argument(

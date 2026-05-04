@@ -6,27 +6,208 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Normalized project-management state after the stdin pipe-target work,
+  recorded at 2026-04-02T16:53:05-07:00 by Codex (GPT-5.4) from direct
+  operator instruction. Removed the duplicated installer/bootstrap overhaul
+  entry from `project-management/state/tasks-in-progress.txt` so that active
+  work now aligns with the backlog and the separate pending operator
+  validation request in `project-management/state/ai-human-requests.txt`.
+
+* Reworked buffered stdin handling so mdview behaves as a classical pipe
+  target, recorded at 2026-04-02T16:39:27-07:00 by Codex (GPT-5.4) from
+  direct operator instruction. Added
+  `docs/specifications/stdin_buffered_piped_input.txt`; updated README,
+  `docs/specifications/project_overview.txt`, the shared POSIX help text,
+  Linux/macOS man pages, and tracked package metadata; added
+  `src/mdview/input_formats.py`; updated `src/mdview/cli.py` to buffer
+  non-interactive stdin with a configurable 16 MB default safety ceiling,
+  2-second default idle timeout, startup status lines, and conservative
+  Markdown-versus-plain-text detection; updated `src/mdview/rendering.py` so
+  the interactive pager prefers the controlling TTY for input after stdin has
+  already been consumed; and added regression coverage in
+  `tests/test_cli.py`, `tests/test_input_formats.py`, and
+  `tests/test_rendering.py`. Validation: `black`, `ruff`, `compileall`,
+  `entropy_check`, `entropy_tripwire_verify`, full `pytest`, and `demo_check`
+  all passed (`381 passed`; `demo_check` validated=1 skipped=0 errors=0).
+
+* Added boxed Markdown table borders with gray border styling plus
+  `--no-table-borders` and `--no-cell-borders`, recorded at
+  2026-03-30T15:15:23-07:00 by Codex (GPT-5.4) from direct operator
+  instruction. Updated
+  `docs/specifications/markdown_table_rendering.txt`,
+  `docs/specifications/project_overview.txt`, README, and deployment
+  help/man text; extended `src/mdview/cli.py` with the new border flags; and
+  updated `src/mdview/rendering.py` so Markdown pipe tables always render
+  through mdview's custom boxed-table path, including gray border glyphs,
+  span-color preservation, and whitespace-gap fallbacks when border layers
+  are disabled. Added regression coverage in `tests/test_cli.py`,
+  `tests/test_markdown_tables.py`, and `tests/test_rendering.py` for boxed
+  output, border toggles, ANSI border styling, and consistent heading-to-
+  table spacing. Validation: approved out-of-sandbox wrapper-based `black`
+  passed after reformatting the touched files; wrapper-based `ruff`,
+  `compileall`, `entropy_check`, `entropy_tripwire_verify`, and full
+  `pytest` all passed (`350 passed`); and approved out-of-sandbox
+  `demo_check` passed with the expected cache hit (`validated=0 skipped=1
+  errors=0`).
+
+* Polished `demos/table-demo.md` so its Markdown source table is aligned
+  cleanly without sacrificing the nicer Rich-rendered table appearance,
+  recorded at 2026-03-30T15:03:38-07:00 by Codex (GPT-5.4) from direct
+  operator feedback. Tightened the source column spacing, kept the file
+  within the 78-column wrap rule, and preserved the span-color showcase by
+  using the Rich-friendly divider form that avoids mdview's literal-pipe
+  fallback for that demo. Validation: direct `render_to_ansi` inspection
+  confirmed the rendered table returned to aligned Rich table output, and the
+  approved out-of-sandbox `demo_check` run passed (`validated=1 skipped=0
+  errors=0`).
+
+* Added a cached demo-document workflow with a new Markdown showcase at
+  `demos/table-demo.md`, recorded at 2026-03-30T10:33:46-07:00 by Codex
+  (GPT-5.4) from direct operator instruction. Added
+  `docs/specifications/demo_documents.txt`; added
+  `scripts/validate_demos.py` plus timeout-wrapper and cached quality-gate
+  integration for `demo_check`; updated workflow guidance in `AGENTS.md`,
+  `docs/development-workflow.txt`, `docs/running-tests.txt`,
+  `project-management/git-flow.txt`, README, and
+  `docs/specifications/project_overview.txt`; and added regression coverage
+  in `tests/test_validate_demos.py`, `tests/test_run_quality_gate_cached.py`,
+  and `tests/test_repository_setup.py`. Validation: targeted `pytest` on
+  the new validator and workflow-doc tests passed; wrapper-based `black`,
+  approved out-of-sandbox `demo_check`, wrapper-based `ruff`, `compileall`,
+  `entropy_check`, `entropy_tripwire_verify`, and full `pytest` all passed
+  (`347 passed`). Note: the live Codex sandbox could not write the `.git`
+  demo-cache path, so the successful cache-writing `demo_check` runs used the
+  approved out-of-sandbox path for this session.
+
+* Restored Markdown `span` color attributes in rendered output and added
+  interactive `!` framebuffer capture support, recorded at
+  2026-03-27T10:49:02-07:00 by Codex (GPT-5.4) from direct operator
+  instruction. Added
+  `docs/specifications/manual_screen_capture_hotkey.txt`; updated
+  `docs/specifications/markdown_table_rendering.txt`,
+  `docs/specifications/project_overview.txt`, README, and deployment help/man
+  text; added `--screen-dump-dir` plumbing in `src/mdview/cli.py`; updated
+  `src/mdview/rendering.py` so supported HTML `span` color wrappers emit ANSI
+  foreground styling without disturbing table width calculations or
+  heading-adjacent table spacing; and added regression coverage in
+  `tests/test_cli.py`, `tests/test_markdown_tables.py`, and
+  `tests/test_rendering.py` for manual `!` capture artifacts plus JSON
+  foreground attributes on colored table cells. Validation: targeted
+  `pytest` on `tests/test_markdown_tables.py`, `tests/test_rendering.py`, and
+  `tests/test_cli.py` passed; approved out-of-sandbox wrapper-based `black`
+  passed after the in-sandbox formatter path remained unsuitable; and
+  wrapper-based `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and full `pytest` all passed (`338 passed`).
+
+* Fixed the heading-adjacent Markdown table spacing regression for table
+  cells wrapped in HTML `span` color tags, recorded at
+  2026-03-27T10:15:15-07:00 by Codex (GPT-5.4) from direct operator
+  instruction. Updated `docs/specifications/markdown_table_rendering.txt`
+  to require equal heading-to-table spacing for plain and span-wrapped
+  tables; added fixtures under `resources/tests/markdown/tables/`; extended
+  `tests/test_markdown_tables.py` with a formatter regression and a
+  framebuffer-based visual comparison; and updated `src/mdview/rendering.py`
+  so pipe-table cell parsing strips inline `span` wrappers while preserving
+  the visible cell text, preventing those tags from perturbing Rich's table
+  layout. Validation: targeted `pytest` on
+  `tests/test_markdown_tables.py` and `tests/test_markdown_headings.py`
+  passed, approved out-of-sandbox wrapper-based `black` passed after the
+  in-sandbox formatter path repeated the known hang pattern, and wrapper-
+  based `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and full `pytest` all passed (`333 passed`).
+
+* Integrated `TheKnowledge` as a root consumer submodule and wired mdview's
+  local bridge workflow, recorded at 2026-03-27T01:49:48-07:00 by Codex
+  (GPT-5.4) from direct operator instruction. Added `.gitmodules` and the
+  `TheKnowledge/` submodule via the configured `github-hpg` SSH alias; added
+  `docs/specifications/theknowledge_consumer_repository_integration.txt`;
+  moved the older overlay-layout proposal into
+  `project-management/state/proposals/superseded/`; wrapped `AGENTS.md`
+  with managed TheKnowledge header/footer sections plus mdview-specific
+  local overrides; added `scripts/_theknowledge_delegate.py`,
+  `scripts/report_managed_agents_drift.py`, and
+  `scripts/refresh_managed_agents.py`; updated workflow, entropy, and
+  timeout-wrapper configuration so default `pytest` discovery stays scoped to
+  mdview's `tests/` tree; excluded `TheKnowledge/` from entropy scanning,
+  tripwire verification, and cached repo-root entropy fingerprints; and
+  added regression coverage in `tests/test_repository_setup.py`,
+  `tests/test_entropy_harness.py`, `tests/test_run_quality_gate_cached.py`,
+  and `tests/test_verify_entropy_tripwire.py`. Follow-up: backlogged a
+  blocked review of upstream TheKnowledge `black` issues per operator
+  direction; no repo-side temporary `black` workaround was committed in
+  mdview. Validation: `black` passed outside the Codex sandbox via the
+  repo-local `.venv` because sandboxed `black` continued to hang; `ruff`,
+  `compileall`, `entropy_check`, `entropy_tripwire_verify`, and full
+  `pytest` all passed (`331 passed`).
+
+* Merged the accumulated `VERSIONS/0.5.0` work back into `trunk` and retired
+  the version-branch experiment, recorded at 2026-03-26T12:58:39-07:00 by
+  Codex (GPT-5.4) from direct operator instruction. Resolved trunk merge
+  conflicts across prerequisite/bootstrap docs and scripts, state-file
+  layout, and generated metadata; preserved the newer
+  `project-management/state/...` structure while carrying forward the
+  2026-03-13 trunk-only completed-task history and open BUG-2026-03-13-01;
+  updated `project-management/git-flow.txt`, `docs/development-workflow.txt`,
+  and `AGENTS.md` to restore trunk-first policy and prohibit routine
+  `VERSIONS/*` work unless operators explicitly reinstate it; moved
+  `version-management-multi-version-support.txt` into
+  `project-management/state/proposals/rejected/`; and taught the entropy
+  scanner, verifier, and cached quality gate to exclude repo-root
+  `package-lock.json` integrity hashes, with regression coverage in
+  `tests/test_entropy_harness.py`, `tests/test_verify_entropy_tripwire.py`,
+  and `tests/test_run_quality_gate_cached.py`. Validation: wrapper-based
+  `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, and full `pytest` all passed (`322 passed`);
+  `python scripts/run_quality_gate_cached.py` passed; and
+  `windows_shims_linux` returned `SKIP` because Podman was unavailable in the
+  current permission context and host `wine` was not installed, so Windows CI
+  remains the compatibility gate.
+
+* Aligned the branch with the project-local Codex takeover environment,
+  recorded at 2026-03-26T12:13:06-07:00 by Codex (GPT-5.4) from direct
+  operator instruction. Updated
+  `docs/specifications/quality_gate_black_scope_and_exclusions.txt` and
+  `scripts/tool_timeouts.json` so the required `black` command remains scoped
+  to repository-owned Python roots without relying on an unsupported flag in
+  the live formatter environment; extended
+  `docs/specifications/security_entropy_tripwire_git_workflow.txt` and
+  `docs/security/entropy-checks.txt` so repo-local Codex state is treated as
+  generated local environment data; updated
+  `dev-utils/security/entropy-check.py` and
+  `dev-utils/security/verify_entropy_tripwire.py` plus
+  `scripts/run_quality_gate_cached.py` to exclude `.codex-home`,
+  `.codex-local`, `bin/codex-local`, and
+  `README-LOCAL-Start-Codex.md`; added regression coverage in
+  `tests/test_entropy_harness.py`,
+  `tests/test_run_quality_gate_cached.py`, and
+  `tests/test_verify_entropy_tripwire.py`; fixed a segmented-render assertion
+  in `tests/test_rendering.py`; and recorded BUG-2026-03-26-01 in
+  `project-management/state/bugs/closed-bugs.txt` with a resolved report.
+  Validation: wrapper-based `black` (using the approved out-of-sandbox path
+  for this Codex session), `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, `scripts/run_quality_gate_cached.py --checks
+  entropy_tripwire_verify`, and full `pytest` all passed (`306 passed`).
+
 * Installed the resolved-bugs guidance and working copy derived from
   TheKnowledge. Recorded at 2026-03-13T09:08:05Z by Codex (GPT-5) from
-  direct operator instruction. Updated `AGENTS.md` and
-  `docs/human-orders-for-AI-agents.txt` so bug closures now target
-  `project-management/state/bugs/resolved-bugs.txt` with `Root cause:` and
-  `Resolution:` notes, migrated the historical resolved bug records out of
-  `project-management/state/bugs/closed-bugs.txt`, and returned
-  BUG-2026-03-13-01 from bugs-in-progress to known-bugs after the operator
-  redirected work before remediation completed. Validation: 78-column wrap
-  checks passed for the updated mdview text files.
+  direct operator instruction. Updated AGENTS.md and
+  `docs/human-orders-for-AI-agents.txt` so bug closures targeted the
+  resolved-bug log used at that time, migrated the historical resolved bug
+  records accordingly, and returned BUG-2026-03-13-01 from bugs-in-progress
+  to known-bugs after the operator redirected work before remediation
+  completed. Validation: 78-column wrap checks passed for the updated mdview
+  text files.
 
 * Added installer prompting for arbitrary-directory `mdview` resolution and
   PATH detection reporting. Recorded at 2026-03-13T08:04:46Z by Codex
   (GPT-5) from direct operator instruction. Updated the prerequisite
-  installation specification, installation and workflow docs, and `AGENTS`
+  installation specification, installation and workflow docs, and AGENTS
   guidance so interactive bootstrap runs report whether another `mdview`
   command appears on PATH before asking whether the checkout-local copy
   should win. Added `--mdview-command {prompt,local,system}` handling in
-  `scripts/install_prerequisites.py`, managed user-local shim creation and
-  removal at `~/.local/bin/mdview`, unmanaged-command protection, and
-  shell-wrapper support for forwarding legacy `--` arguments. Expanded
+  `scripts/install_prerequisites.py`, managed user-local shim
+  creation/removal at `~/.local/bin/mdview`, unmanaged-command protection,
+  and shell-wrapper support for forwarding `--` arguments. Expanded
   `tests/test_install_prerequisites.py` to cover PATH probing, prompt
   messaging, and shim lifecycle behavior. Validation:
   `.venv/bin/python scripts/run_tool_with_timeout.py ruff --`
@@ -36,22 +217,21 @@ summarize how the blocker was resolved.
   `tests/test_install_prerequisites.py tests/test_project_metadata.py`
   `tests/test_run_tool_with_timeout.py tests/test_prerequisites_module.py`
   passed, and `.venv/bin/python scripts/run_tool_with_timeout.py pytest`
-  still reported only the then-known failures tracked in
-  `project-management/state/bugs/known-bugs.txt`. Follow-up:
-  repository-wide `black` still hung through the timeout wrapper at that
-  point, consistent with BUG-2026-03-13-01.
+  still reports only the known 18 pre-existing failures tracked in the bug
+  list. Follow-up: repository-wide black still hangs through the timeout
+  wrapper, consistent with BUG-2026-03-13-01.
 
 * Added checkout-local bootstrap guidance and enforced mandatory local-check
   tool installation. Recorded at 2026-03-13T07:41:13Z by Codex (GPT-5) from
-  direct operator instruction. Updated `AGENTS.md` plus workflow,
+  direct operator instruction. Updated AGENTS.md plus workflow,
   installation, sandbox, and test-running docs to require
   `./scripts/install_prerequisites.sh` and `.venv/bin/python` (or an
   activated `.venv`) for local checks; fixed prerequisite warnings to
   reference the canonical installer; updated `pyproject.toml` so bootstrap
-  installs `prompt_toolkit` plus the mandatory `black`, `pytest`, and `ruff`
-  dev tools; taught `scripts/install_prerequisites.py` to skip
-  package-manager work when the required system tools already exist; and
-  made `scripts/run_tool_with_timeout.py` fail fast when mandatory tools are
+  installs `prompt_toolkit` plus the mandatory `black`, `pytest`, and
+  `ruff` dev tools; taught `scripts/install_prerequisites.py` to skip
+  package-manager work when the required system tools already exist; and made
+  `scripts/run_tool_with_timeout.py` fail fast when mandatory tools are
   missing from the active interpreter. Added regression coverage in
   `tests/test_install_prerequisites.py`, `tests/test_project_metadata.py`,
   and `tests/test_run_tool_with_timeout.py`. Validation:
@@ -63,10 +243,101 @@ summarize how the blocker was resolved.
   `tests/test_install_prerequisites.py tests/test_prerequisites_module.py`
   `tests/test_project_metadata.py tests/test_run_tool_with_timeout.py`
   `tests/test_cli.py` passed, and
-  `.venv/bin/python scripts/run_tool_with_timeout.py pytest` still reported
-  the then-known failures tracked in
-  `project-management/state/bugs/known-bugs.txt`. Follow-up: filed
-  BUG-2026-03-13-01 for the unresolved repository-wide `black` hang.
+  `.venv/bin/python scripts/run_tool_with_timeout.py pytest` still reports
+  the known 18 pre-existing failures tracked in the bug list. Follow-up:
+  filed BUG-2026-03-13-01 for the unresolved repository-wide `black` hang.
+
+* Strengthened documentation/comment standards and resolved the quality-gate
+  `black` timeout, recorded at 2026-03-10T08:13:30-07:00 by Codex (GPT-5.4)
+  from direct operator instruction. Updated
+  `docs/development-workflow.txt`, `project-management/git-flow.txt`, and
+  `docs/specifications/documentation_standard_profile.txt`; expanded
+  explanatory maintenance comments in `src/mdview/cli.py`,
+  `src/mdview/input_feedback.py`, and `src/mdview/rendering.py`; added
+  `docs/specifications/quality_gate_black_scope_and_exclusions.txt`; changed
+  `scripts/tool_timeouts.json` so `black` formats only repository-owned Python
+  roots (`src`, `tests`, `scripts`, `dev-utils`) instead of recursively
+  scanning from repository root with an unsafe exclude pattern; added
+  regression coverage in `tests/test_entropy_harness.py`; and created
+  `project-management/state/bugs/reports/` with a resolved issue report for
+  BUG-2026-03-10-01. Validation: wrapper-based `black`, `ruff`, `compileall`,
+  `entropy_check`, `entropy_tripwire_verify`, and full `pytest` all passed
+  (`304 passed`).
+
+* Stabilized Markdown wrapping after list-boundary forced breaks, recorded at
+  2026-03-10T02:26:54-07:00 by Codex (GPT-5.4) from direct operator
+  instruction. Added
+  `docs/specifications/markdown_forced_break_wrap_stability.txt`; updated
+  `src/mdview/rendering.py` to use separate Rich break markers for structural
+  list/heading transitions versus prose-after-list spacing so hidden break
+  markers no longer contribute visible wrap width to paragraphs; added the
+  fixture
+  `resources/tests/markdown/lists/bulleted_followed_by_bold_paragraph.md`;
+  and extended `tests/test_markdown_bulleted_lists.py` with a width-62
+  regression that keeps `This repository does not include` on one line
+  after a list block. Validation: wrapper-based black, ruff, compileall,
+  entropy_check, entropy_tripwire_verify, and full pytest all passed
+  (`303 passed`). Manual reproduction against `../TheKnowledge/README.md`
+  confirmed the previous failure band around widths 62-66 and verified
+  that the fixed renderer no longer inserts the bad break there.
+
+* Fixed live prompt_toolkit redraw-check-digit drift and non-scrolling
+  vertical navigation, recorded at 2026-03-10T01:21:05-07:00 by Codex
+  (GPT-5.4) from direct operator instruction. Updated
+  `docs/specifications/redraw_check_digit_overlay.txt` to require a
+  viewport-relative overlay layer and a live render-loop regression; updated
+  `src/mdview/rendering.py` to anchor the digit as a screen-relative
+  prompt_toolkit float while routing viewport movement through supported
+  scroll callbacks and a hidden cursor position so `up`/`down` navigation
+  actually scrolls in real terminals; kept `src/mdview/input_feedback.py`
+  compatible with the expanded prompt_toolkit component tuple; and added a
+  live prompt_toolkit regression plus prompt_toolkit-availability-robust test
+  assertions in `tests/test_rendering.py`. Validation: wrapper-based black,
+  ruff, compileall, entropy_check, entropy_tripwire_verify, and full pytest
+  all passed (`302 passed`), and a launcher-level PTY smoke run of
+  `./mdview README.md --redraw-check-digit ... --automation-json '[[0.0,
+  \"down\"]]'` showed the viewport advancing on the first `down` key while
+  the digit remained centered.
+
+* Strengthened redraw-check-digit regression coverage for repeated vertical
+  scrolling, recorded at 2026-03-09T15:56:03-07:00 by Codex (GPT-5.4) from
+  direct operator instruction. Updated
+  `docs/specifications/redraw_check_digit_overlay.txt` to require repeated
+  vertical-scroll stability coverage, and added a prompt_toolkit stress test
+  in `tests/test_rendering.py` that runs five cycles of ten `up` presses
+  followed by ten `down` presses, asserting that every redraw advances the
+  digit modulo 10 and keeps it at the same absolute viewport cell after
+  cropping. Validation: wrapper-based black, ruff, compileall,
+  entropy_check, entropy_tripwire_verify, and full pytest all passed
+  (`301 passed`).
+
+* Added an optional interactive redraw check-digit overlay for viewport
+  debugging, recorded at 2026-03-09T15:50:36-07:00 by Codex (GPT-5.4) from
+  direct operator instruction. Added specification
+  `docs/specifications/redraw_check_digit_overlay.txt`; added
+  `--redraw-check-digit` in `src/mdview/cli.py`; updated
+  `src/mdview/rendering.py` so prompt_toolkit redraws overlay a center-screen
+  digit that advances modulo 10 at the formatted-text redraw boundary; added
+  regression coverage in `tests/test_cli.py` and `tests/test_rendering.py`;
+  and updated README, shared POSIX help text, Linux and macOS man pages,
+  `docs/specifications/project_overview.txt`, and
+  `docs/specifications/fallback-behavior.txt`.
+  Validation: wrapper-based black, ruff, compileall, entropy_check,
+  entropy_tripwire_verify, and full pytest all passed (`300 passed`).
+
+* Added standalone `--test-input-feedback` diagnostics for arrow-key
+  troubleshooting, recorded at 2026-03-09T15:36:22-07:00 by Codex
+  (GPT-5.4) from direct operator instruction. Added specification
+  `docs/specifications/test_input_feedback_mode.txt`; implemented
+  `src/mdview/input_feedback.py` with a line-oriented direct-input stage and
+  a full-screen prompt_toolkit stage, both supporting Left/Right arrows plus
+  `,` and `.` alternates with timestamped debug logging of input and redraw
+  events; wired the standalone mode through `src/mdview/cli.py`; added
+  regression coverage in `tests/test_input_feedback.py` and
+  `tests/test_cli.py`; and updated README, shared POSIX help text, Linux and
+  macOS man pages, and `docs/specifications/project_overview.txt`.
+  Validation: wrapper-based black, ruff, compileall, entropy_check,
+  entropy_tripwire_verify, and full pytest all passed (`295 passed`).
 
 * Fixed viewport movement key handling after operator report that arrow keys
   were not reliably moving the document. Recorded at

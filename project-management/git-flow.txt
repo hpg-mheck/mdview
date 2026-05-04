@@ -18,6 +18,8 @@ Naming guidance:
 - Keep names short but specific.
 - Preserve bug IDs exactly for `bugfix/*` branches.
 - Avoid ad hoc prefixes unless explicitly approved by an operator.
+- Do not create `VERSIONS/*`, `MAINT/*`, or other release-line branches
+  unless an operator explicitly reinstates a multi-branch maintenance policy.
 
 Lifecycle
 ---------
@@ -46,6 +48,17 @@ Conflict Resolution
   duplicative; if duplicates exist, consolidate without losing context.
 - Do not discard user-authored changes unless explicitly directed.
 
+Documentation and Comment Expectations
+--------------------------------------
+- Treat insufficient documentation in complex runtime code as a merge blocker,
+  not as a polish item.
+- Before merge, ensure modified control-flow-heavy code explains its phases,
+  invariants, external library constraints, and likely debugging touchpoints.
+- Prefer section comments that explain why the code is arranged as it is over
+  line-by-line narration of obvious syntax.
+- Add explicit maintenance warnings when a future human or AI editor might
+  reasonably "simplify" a branch in a way that would reintroduce a known bug.
+
 Required Checks Before Merge Completion
 ---------------------------------------
 Run all required checks via timeout wrapper:
@@ -55,6 +68,7 @@ Run all required checks via timeout wrapper:
 - `python scripts/run_tool_with_timeout.py entropy_check`
 - `python scripts/run_tool_with_timeout.py entropy_tripwire_verify`
 - `python scripts/run_tool_with_timeout.py pytest`
+- `python scripts/run_tool_with_timeout.py demo_check`
 - Standardized push path:
   - `python scripts/git_standard_commit_push.py -m "<message>"`
   This command blocks push unless the cached quality gate passes, including
@@ -75,8 +89,8 @@ explicitly authorized independent execution:
   without opening individual pull requests.
 - The operator may still request pull requests for specific high-risk or
   high-impact changes at any time.
-- Pull requests are expected to be used primarily for version-level reviews or
-  work that proves to require human review.
+- Pull requests are expected to be used primarily for work that proves to
+  require human review, not for routine version-line coordination.
 
 This variance does not reduce testing or documentation requirements. All
 standard validation, traceability, and project-management updates remain
@@ -86,6 +100,15 @@ Operational Notes
 -----------------
 - Use the repository's configured SSH host alias for remote operations, as
   documented in local operator notes.
+- Initialize the root `TheKnowledge` submodule in fresh checkouts or worktrees
+  with `git submodule update --init --recursive TheKnowledge` before relying
+  on shared guidance files or managed-AGENTS utilities.
+- After updating `TheKnowledge`, run
+  `python scripts/report_managed_agents_drift.py`. If it reports drift, run
+  `python scripts/refresh_managed_agents.py`, review `git diff`, and stage
+  only the intended managed-section updates.
+- Prefer repo-local workflow scripts over direct `TheKnowledge/scripts`
+  commands when a local mdview wrapper exists.
 - Keep the managed git pre-commit hook installed; setup scripts maintain it
   through `scripts/install_git_hooks.py`.
 - Keep local working trees clean before broad integration work when practical.

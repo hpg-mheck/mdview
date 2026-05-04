@@ -10,11 +10,12 @@ from scripts.install_prerequisites import (
     apply_mdview_command_mode,
     build_install_commands,
     collect_missing_system_tools,
-    default_mdview_command_path,
     detect_noncheckout_mdview,
+    default_mdview_command_path,
     ensure_virtualenv,
-    install_git_hooks,
+    install_pinned_dev_tools,
     install_project,
+    install_git_hooks,
     parse_os_release,
     resolve_mdview_command_mode,
     resolve_project_root,
@@ -23,6 +24,8 @@ from scripts.install_prerequisites import (
     system_packages_for,
     venv_python_path,
 )
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 class RecordingRunner(CommandRunner):
@@ -81,7 +84,18 @@ def test_build_install_commands_adds_sudo_prefix():
 def test_system_packages_for_fedora_like_systems():
     packages = system_packages_for("dnf")
     assert "python3-virtualenv" in packages
-    assert "less" in packages
+    assert "git" in packages
+    assert "less" not in packages
+
+
+def test_install_prerequisites_shell_wrapper_delegates_to_install_sh():
+    shell_wrapper = (ROOT / "scripts" / "install_prerequisites.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Compatibility wrapper" in shell_wrapper
+    assert 'exec "$ROOT_DIR/install.sh" "${FORWARD_ARGS[@]}"' in shell_wrapper
+    assert "install_prerequisites.py" not in shell_wrapper
 
 
 def test_ensure_virtualenv_requests_creation_when_missing(tmp_path: Path):
@@ -111,7 +125,7 @@ def test_collect_missing_system_tools_reports_missing_items(monkeypatch):
         return module_name == "venv"
 
     def fake_which(command):
-        return None if command == "less" else f"/usr/bin/{command}"
+        return None if command == "git" else f"/usr/bin/{command}"
 
     monkeypatch.setattr(
         "scripts.install_prerequisites._python_module_available",
@@ -119,15 +133,7 @@ def test_collect_missing_system_tools_reports_missing_items(monkeypatch):
     )
     monkeypatch.setattr("scripts.install_prerequisites.shutil.which", fake_which)
 
-    assert collect_missing_system_tools(sys.executable) == ["pip", "less"]
-
-
-def test_venv_python_path_uses_windows_layout(monkeypatch, tmp_path: Path):
-    import scripts.install_prerequisites as installer
-
-    monkeypatch.setattr(installer.os, "name", "nt")
-    path = venv_python_path(tmp_path / ".venv")
-    assert path == tmp_path / ".venv" / "Scripts" / "python.exe"
+    assert collect_missing_system_tools(sys.executable) == ["pip", "git"]
 
 
 def test_detect_noncheckout_mdview_skips_local_target_and_managed_shim(tmp_path):
@@ -273,8 +279,41 @@ def test_apply_mdview_command_mode_local_rejects_unmanaged_shim(tmp_path):
         apply_mdview_command_mode("local", local_mdview, command_path=shim_path)
     except RuntimeError as error:
         assert "Refusing to overwrite unmanaged mdview command" in str(error)
+        assert str(error).splitlines()[-1] == (
+            "Use --force if you really want to overwrite your existing "
+            f"installed copy at {shim_path.parent}."
+        )
     else:
         raise AssertionError("Expected unmanaged shim overwrite to fail.")
+
+
+def test_apply_mdview_command_mode_local_force_overwrites_unmanaged_shim(tmp_path):
+    local_mdview = tmp_path / "repo" / ".venv" / "bin" / "mdview"
+    local_mdview.parent.mkdir(parents=True)
+    local_mdview.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+    local_mdview.chmod(0o755)
+    shim_path = tmp_path / "home" / ".local" / "bin" / "mdview"
+    shim_path.parent.mkdir(parents=True)
+    shim_path.write_text("#!/usr/bin/env bash\necho old\n", encoding="utf-8")
+
+    apply_mdview_command_mode(
+        "local",
+        local_mdview,
+        command_path=shim_path,
+        force=True,
+    )
+
+    contents = shim_path.read_text(encoding="utf-8")
+    assert MANAGED_MDVIEW_SHIM_MARKER in contents
+    assert str(local_mdview) in contents
+
+
+def test_venv_python_path_uses_windows_layout(monkeypatch, tmp_path: Path):
+    import scripts.install_prerequisites as installer
+
+    monkeypatch.setattr(installer.os, "name", "nt")
+    path = venv_python_path(tmp_path / ".venv")
+    assert path == tmp_path / ".venv" / "Scripts" / "python.exe"
 
 
 def test_install_git_hooks_runs_hook_installer_with_selected_python():
@@ -298,7 +337,7 @@ def test_install_project_runs_from_project_root(tmp_path: Path, monkeypatch):
     runner = RecordingRunner()
     install_project(sys.executable, dev=True, runner=runner, project_root=project_root)
 
-    assert runner.commands[0][-2:] == ["-e", ".[dev,interactive]"]
+    assert runner.commands[0][-2:] == ["-e", ".[interactive]"]
     assert runner.cwds[0] == project_root
 
 
@@ -336,4 +375,18 @@ def test_install_project_production_keeps_interactive_extra(
     install_project(sys.executable, dev=False, runner=runner, project_root=project_root)
 
     assert runner.commands[0][-2:] == ["-e", ".[interactive]"]
+    assert runner.cwds[0] == project_root
+
+
+def test_install_pinned_dev_tools_runs_dev_setup_from_project_root(tmp_path: Path):
+    project_root = tmp_path / "repo"
+    project_root.mkdir()
+
+    runner = RecordingRunner()
+    install_pinned_dev_tools(runner, project_root, project_root / ".venv")
+
+    command = runner.commands[0]
+    assert command[0] == sys.executable
+    assert command[1].endswith("scripts/dev_setup.py")
+    assert command[-2:] == ["--venv", str(project_root / ".venv")]
     assert runner.cwds[0] == project_root

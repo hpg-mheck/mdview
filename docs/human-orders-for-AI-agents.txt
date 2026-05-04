@@ -15,14 +15,12 @@ Use the following command phrases in prompts to direct AI agents that follow
   as needed while preserving the oldest entries at the bottom.
 - Start work on <item>: Move the named backlog or bug entry into the relevant
   in-progress file, adding the current ISO 8601 timestamp and owner details.
-- Resolve <item> or close <item>: Move the named task into the corresponding
-  completed file, or move the named bug into
-  `/project-management/state/bugs/resolved-bugs.txt` with a timestamp,
-  `Root cause:` analysis, and concise `Resolution:` notes.
+- Close <item>: Move the named task or bug into the corresponding completed or
+  closed file with a timestamp and a concise resolution summary.
 - Verify Windows shims from Linux: run
-  `.venv/bin/python scripts/run_tool_with_timeout.py windows_shims_linux`,
-  summarize whether local paths returned PASS or SKIP, and confirm Windows CI
-  still acts as the authoritative gate.
+  `python scripts/run_tool_with_timeout.py windows_shims_linux`, summarize
+  whether local paths returned PASS or SKIP, and confirm Windows CI still acts
+  as the authoritative gate.
 - Verify Linux workflow from Windows WSL2: run the WSL2 wrapper workflow only
   from a real Windows host, summarize PASS/SKIP/FAIL, and confirm Linux CI
   remains the authoritative compatibility gate.

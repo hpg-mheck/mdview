@@ -16,6 +16,23 @@ Core tools
   - `entropy_check`
   - `entropy_tripwire_verify`
 
+Default path exclusions
+-----------------------
+- Scanner defaults exclude generated local environment state that is not
+  repository content, including `.git`, `.venv`, caches, `mdview.egg-info`,
+  repo-local Codex directories (`.codex-home`, `.codex-local`), and the
+  managed local launcher/start-guide files `bin/codex-local` and
+  `README-LOCAL-Start-Codex.md`.
+- Scanner, harness, verifier, and cached repo-root entropy fingerprints also
+  exclude `TheKnowledge/`, whose checked-out shared submodule contents are
+  upstream guidance assets rather than mdview-owned source files.
+- Scanner, verifier, and cached repo-root entropy fingerprints also exclude
+  `package-lock.json`, whose npm integrity hashes are expected high-entropy
+  package metadata rather than secrets.
+- The cached quality-gate fingerprint step uses the same generated local
+  environment exclusions for repo-root checks so local Codex state does not
+  invalidate entropy-related cache keys.
+
 Detection model
 ---------------
 - Determine a major file type from extension/content hints (`code`, `docs`,
@@ -42,8 +59,6 @@ Current payload shape:
 Intentional test exclusions
 ---------------------------
 The harness excludes known intentional fixtures by default:
-- `node_modules/`
-- `package-lock.json`
 - `tests/test_entropy_check.py`
 
 Add more exclusions with:
@@ -94,8 +109,11 @@ Exit codes
 Pre-commit and pre-push hook integration
 ----------------------------------------
 - Installer script: `scripts/install_git_hooks.py`
-- Setup flow: `scripts/install_prerequisites.py` calls the hook installer, so
-  `scripts/install_prerequisites.sh` installs/updates managed hooks.
+- Setup flow: `scripts/install-stage-2.py` calls the hook installer for
+  repo-local development and venv-only modes, so `install.sh --mode dev`
+  installs/updates managed hooks, and the legacy `bootstrap.sh` plus
+  `scripts/install_prerequisites.sh` compatibility wrappers still reach that
+  same path.
 - Managed `pre-commit` executes:
   - `python scripts/run_tool_with_timeout.py entropy_check`
   with a `python3` fallback when `python` is unavailable.
@@ -109,6 +127,8 @@ Maintenance notes
 - Keep entropy thresholds conservative to avoid drowning in false positives.
 - Expand intentional exclusions only for explicit fixture files used to test
   the detector itself.
+- Keep scanner and tripwire-verifier default exclusions aligned when new
+  generated local-environment directories are introduced.
 - If a real leak is detected, rotate the secret first, then remove it from the
   repository and history as required by incident policy.
 - If tripwire verification starts failing unexpectedly:

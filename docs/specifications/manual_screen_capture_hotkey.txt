@@ -1,0 +1,58 @@
+Manual Screen Capture Hotkey Specification
+==========================================
+
+Scope
+-----
+Define the interactive pager behavior for manual framebuffer capture when the
+operator presses `!`.
+
+Goals
+-----
+- Reuse mdview's existing framebuffer artifact format so manual captures and
+  timeout captures can be compared directly.
+- Make the capability available in the prompt_toolkit pager without requiring
+  automation timeout.
+- Keep the feature safe in repeated interactive use.
+
+CLI Contract
+------------
+- Add `--screen-dump-dir <path>`:
+  - Optional directory used for manual `!` captures.
+  - Defaults to the current working directory.
+  - The path may be absent; mdview must create parent directories when it
+    writes the capture files.
+  - If the path exists and is not a directory, reject startup with a clear
+    error.
+
+Interactive Behavior
+--------------------
+- When the internal prompt_toolkit pager is active, pressing `!` captures the
+  current visible viewport immediately.
+- Manual capture writes the same paired artifacts used by timeout capture:
+  - `mdview-screen.txt`
+  - `mdview-screen.attrs.json`
+- Repeated `!` presses overwrite the prior manual-capture artifacts in the
+  selected directory.
+- Manual capture must prefer prompt_toolkit renderer framebuffer data when
+  available and otherwise fall back to the deterministic synthetic text-buffer
+  path already used for timeout capture.
+- Capture failures are non-fatal. The pager remains active after the attempt.
+- When Monkey-in-the-Loop logging is active, emit explicit success or failure
+  events that include the output directory and artifact paths or error text.
+
+Attribute Expectations
+----------------------
+- `mdview-screen.attrs.json` must continue to expose per-cell foreground and
+  background attributes plus supported text-style flags.
+- The manual capture path must preserve styled text colors well enough for
+  regression tests to inspect colorized Markdown span content.
+
+Testing Requirements
+--------------------
+- Add CLI tests that cover the new help text and propagation of
+  `--screen-dump-dir`.
+- Add prompt_toolkit pager tests that replay `!`, verify the manual-capture
+  artifacts, and confirm the corresponding MIL event payloads.
+- Add a regression that renders Markdown with `span`-based text colors, uses
+  framebuffer JSON capture, and asserts the expected foreground attributes are
+  present on the colored characters.

@@ -2,19 +2,20 @@
 # ----------
 #
 # Keep confirmed bugs awaiting work in this file. Use an asterisk followed by
-# a blank line for each entry, mirroring `/project-management/state/backlog.txt`.
+# a blank line for each entry, mirroring
+# `/project-management/state/backlog.txt`.
 # Include a concise summary, reproduction notes when available, the ISO 8601
 # timestamp for when the bug was logged, and any blockers or owners.
 
 * BUG-2026-03-13-01 Added 2026-03-13T07:41:13Z. Repository-local `black`
-  execution hangs beyond the configured bailout, blocking the required
-  formatting check.
+  execution hangs beyond the configured bailout even when scoped to `src`,
+  `tests`, and `scripts`, blocking the required formatting check.
   Reproduction: run `.venv/bin/python scripts/run_tool_with_timeout.py black`
   after bootstrap and observe repeated timeout expiry while `ruff`,
   `compileall`, and targeted pytest runs succeed. Partial isolation on
-  2026-03-13 showed direct black invocations hanging too, but remediation
-  paused when the operator redirected work to the resolved-bug guidance
-  update.
+  2026-03-13 showed direct directory-level `black` invocations hang too, but
+  remediation paused when the operator redirected work to the resolved-bug
+  guidance update.
   Owner: unassigned. Blockers: none. Related work: prerequisite/bootstrap
-  guidance tasks recorded in `project-management/state/completed-tasks.txt`
+  guidance task recorded in `project-management/state/completed-tasks.txt`
   on 2026-03-13.

@@ -12,14 +12,19 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterable, Sequence
 
-
 DEFAULT_EXCLUDES = {
     ".git",
     ".venv",
     ".pytest_cache",
     ".ruff_cache",
+    ".codex-home",
+    ".codex-local",
+    "TheKnowledge",
     "mdview.egg-info",
     "__pycache__",
+    "bin/codex-local",
+    "README-LOCAL-Start-Codex.md",
+    "package-lock.json",
 }
 
 SCANNER_SCHEMA_VERSION = "1.0.0"

@@ -1,25 +1,32 @@
-usage: mdview [-h] [--verify-resize-detection] [--reflow]
-              [--reflow-mode {prose,all,none}] [--noreflow] [--verbose]
-              [--MIL] [--readability-first-tables]
-              [--automation-timeout SECONDS]
+usage: mdview [-h] [--verify-resize-detection] [--test-input-feedback]
+              [--reflow] [--reflow-mode {prose,all,none}] [--noreflow]
+              [--verbose] [--stdin-timeout-in-seconds SECONDS]
+              [--max-stdin-buffer-megabytes MEGABYTES] [--MIL]
+              [--readability-first-tables] [--no-table-borders]
+              [--no-cell-borders] [--automation-timeout SECONDS]
               [--automation-timeout-screenshot BASENAME]
-              [--viewport-columns COLUMNS] [--viewport-rows ROWS]
-              [--automation-json SOURCE] [-V]
+              [--screen-dump-dir DIRECTORY] [--viewport-columns COLUMNS]
+              [--viewport-rows ROWS] [--automation-json SOURCE]
+              [--redraw-check-digit] [-V]
               [paths ...]
 
-Render Markdown in the terminal with integrated navigation.
+Render Markdown or plain text in the terminal with integrated navigation.
 
 positional arguments:
   paths                     Path(s) to Markdown or text files to view.
-                            Required unless --verify-resize-detection is used.
-                            (default: None)
+                            Required unless --verify-resize-detection or
+                            --test-input-feedback is used, or stdin provides a
+                            buffered document. (default: None)
 
-optional arguments:
+options:
   -h, --help                show this help message and exit
   --verify-resize-detection
                             Guide a manual resize sequence, acknowledging
                             detected events and reporting pass/fail results.
                             (default: False)
+  --test-input-feedback     Run a two-stage terminal input diagnostic that
+                            compares plain stdin handling against the
+                            prompt_toolkit viewer stack. (default: False)
   --reflow                  Enable reflow processing. If no explicit mode is
                             supplied, defaults to --reflow-mode prose.
                             (default: False)
@@ -31,12 +38,26 @@ optional arguments:
   --verbose                 Report key operational events, including document
                             switches in multi-document sessions. (default:
                             False)
+  --stdin-timeout-in-seconds SECONDS
+                            Stop waiting for additional stdin bytes after
+                            SECONDS have elapsed with no further input.
+                            (default: 2.0)
+  --max-stdin-buffer-megabytes MEGABYTES
+                            Refuse buffered stdin documents larger than
+                            MEGABYTES unless the operator explicitly raises
+                            the safety ceiling. (default: 16.0)
   --MIL, --mil              Enable Monkey-in-the-Loop telemetry: emit operator
                             action events and targeted troubleshooting
                             context. (default: False)
   --readability-first-tables
                             Always use readability-first table layout, even
                             when fit-first could fit the viewport. (default:
+                            False)
+  --no-table-borders        Suppress outer Markdown table borders and leave
+                            whitespace gaps at the table edges. (default:
+                            False)
+  --no-cell-borders         Suppress internal Markdown table cell borders and
+                            leave whitespace gaps between cells. (default:
                             False)
   --automation-timeout SECONDS
                             Inject synthetic quit after the given viewer
@@ -47,6 +68,10 @@ optional arguments:
                             BASENAME.attrs.json. Defaults to ./mdview-
                             automation-timeout-framebuffer when --automation-
                             timeout is set. (default: None)
+  --screen-dump-dir DIRECTORY
+                            Directory for manual ! framebuffer captures in the
+                            interactive pager. Defaults to the current working
+                            directory. (default: .)
   --viewport-columns COLUMNS
                             Override detected viewport width with a synthetic
                             value. (default: None)
@@ -55,4 +80,7 @@ optional arguments:
   --automation-json SOURCE  Replay key events from JSON SOURCE (file path or
                             literal JSON string) as [[delay_seconds,
                             key_spec], ...]. (default: None)
+  --redraw-check-digit      Overlay a center-screen digit that advances from 0
+                            to 9 on each interactive pager redraw. (default:
+                            False)
   -V, --version             Show the mdview version and exit.

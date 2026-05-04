@@ -9,10 +9,8 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-
 DEFAULT_EXCLUDES = [
-    "node_modules",
-    "package-lock.json",
+    "TheKnowledge",
     "tests/test_entropy_check.py",
 ]
 

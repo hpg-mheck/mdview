@@ -1,0 +1,43 @@
+Title: TheKnowledge submodule updater omits new install entrypoints
+Date: 2026-04-01
+Reporter: Codex (GPT-5.4)
+Status: Draft
+
+Summary
+-------
+`TheKnowledge/scripts/update_theknowledge_submodule.py` adopted upstream
+commit `9c75ca9`, detected starter drift correctly, and refreshed managed
+files in the consuming project. However, the refresh command omitted the new
+managed starter files `install.sh` and `scripts/install-stage-2.py`.
+
+Observed behavior
+-----------------
+During the mdview update/adopt pass on 2026-04-01, the helper reported
+starter drift for both files but then ran `scripts/initial-setup.py` without
+`--template install.sh` or `--template scripts/install-stage-2.py`.
+
+That left the consuming project in a half-adopted state:
+- AGENTS and docs already pointed at `install.sh`;
+- drift output listed `install.sh` as missing; but
+- the automatic refresh step did not install the file.
+
+Impact
+------
+- Consuming projects can believe they completed a managed starter refresh
+  when the canonical install entrypoint is still missing.
+- Follow-up adoption work becomes noisier because operators have to detect and
+  patch the omission manually.
+
+Requested upstream fix
+----------------------
+Update `TheKnowledge/scripts/update_theknowledge_submodule.py` so its managed
+refresh call includes the same starter file set described in the current
+installation docs and drift guidance, including:
+- `install.sh`
+- `scripts/install-stage-2.py`
+
+Notes
+-----
+mdview worked around the omission locally by running
+`TheKnowledge/scripts/initial_setup.py --template install.sh --template`
+`scripts/install-stage-2.py` after the helper completed.

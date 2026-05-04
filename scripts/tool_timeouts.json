@@ -2,19 +2,19 @@
   "default_timeout_seconds": 60,
   "tools": {
     "black": {
-      "timeout_seconds": 180,
+      "timeout_seconds": 120,
       "timeout_retries": 1,
       "cleanup_patterns": [
-        "^python -m black( |$)"
+        "python -m black( |$)"
       ],
       "command": [
         "python",
         "-m",
         "black",
-        ".",
-        "--no-cache",
-        "--exclude",
-        "/(\\.venv|mdview\\.egg-info)/"
+        "src",
+        "tests",
+        "scripts",
+        "dev-utils"
       ]
     },
     "ruff": {
@@ -24,7 +24,9 @@
         "-m",
         "ruff",
         "check",
-        "."
+        "src",
+        "tests",
+        "scripts"
       ]
     },
     "compileall": {
@@ -43,7 +45,15 @@
       "command": [
         "python",
         "-m",
-        "pytest"
+        "pytest",
+        "tests"
+      ]
+    },
+    "demo_check": {
+      "timeout_seconds": 60,
+      "command": [
+        "python",
+        "scripts/validate_demos.py"
       ]
     },
     "entropy_check": {

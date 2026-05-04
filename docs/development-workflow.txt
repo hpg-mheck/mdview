@@ -54,24 +54,46 @@ specification or proposal so reviewers can verify scope. While executing, keep
 notes concise and dated.
 
 Implement the specification, keeping code and tests aligned with Chicago style
-documentation standards and the required checks. After running
-`./scripts/install_prerequisites.sh`, use `.venv/bin/python` (or activate
-`.venv`) and run `.venv/bin/python scripts/run_tool_with_timeout.py black`,
-`.venv/bin/python scripts/run_tool_with_timeout.py ruff`,
-`.venv/bin/python scripts/run_tool_with_timeout.py compileall`,
-`.venv/bin/python scripts/run_tool_with_timeout.py entropy_check`,
-`.venv/bin/python scripts/run_tool_with_timeout.py
-entropy_tripwire_verify`, and `.venv/bin/python
-scripts/run_tool_with_timeout.py pytest` before declaring the work ready. If
-black, ruff, or pytest is missing, treat that as an environment failure and
-fix the bootstrap before proceeding. Interactive POSIX bootstrap runs report
-whether another `mdview` command appears on PATH before prompting whether
-arbitrary-directory `mdview` invocations should prefer the checkout-local
-copy. In non-interactive sessions, pass
-`./scripts/install_prerequisites.sh --mdview-command local` or
-`./scripts/install_prerequisites.sh --mdview-command system` when command
-resolution matters. If progress stalls, move the entry back to the backlog
-with an explanation and timestamp.
+documentation standards and the required checks. In a fresh checkout, run
+`./install.sh --mode dev` first, then use an activated `.venv` or
+`.venv/bin/python` so `python` resolves to the repository-local toolchain.
+The legacy `./bootstrap.sh` and `./scripts/install_prerequisites.sh` entry
+points remain as compatibility wrappers to `./install.sh`.
+Run `python scripts/run_tool_with_timeout.py black`,
+`python scripts/run_tool_with_timeout.py ruff`,
+`python scripts/run_tool_with_timeout.py compileall`,
+`python scripts/run_tool_with_timeout.py entropy_check`,
+`python scripts/run_tool_with_timeout.py entropy_tripwire_verify`,
+`python scripts/run_tool_with_timeout.py pytest`, and
+`python scripts/run_tool_with_timeout.py demo_check` before declaring the
+work ready. Interactive development installs report whether another `mdview`
+command appears on PATH before prompting whether arbitrary-directory
+invocations should prefer the checkout-local copy. Non-interactive
+development installs leave PATH resolution unchanged by default; set
+`MDVIEW_DEV_LAUNCHER_MODE=local` or `MDVIEW_DEV_LAUNCHER_MODE=system`
+when automation must force that choice. On Unix-like hosts, the managed
+development path provisions user-scoped pyenv selections and expects
+`direnv` during development mode. Work from `trunk` unless an operator
+explicitly directs a different integration branch. If progress stalls, move
+the entry back to the backlog with an explanation and timestamp.
+
+Initialize the root `TheKnowledge` submodule in fresh checkouts or worktrees
+with `git submodule update --init --recursive TheKnowledge` before relying on
+shared guidance files or the managed-AGENTS maintenance helpers.
+
+Treat documentation and comments as part of the deliverable, not as optional
+cleanup. Public-facing docs, module docstrings, and complex runtime code paths
+must explain intent, invariants, library constraints, failure modes, and
+debugging cues clearly enough that a new maintainer can follow the behavior
+without reverse-engineering it from tests alone.
+
+When code coordinates terminal I/O, rendering, timers, fallback behavior,
+automation, or other multi-step state transitions, add section-level comments
+that map the control flow and explain why the sequence is arranged that way.
+Use comments to warn future maintainers away from tempting but unsafe
+"simplifications" when prior bugs or library quirks make those shortcuts
+dangerous. AI-assisted edits should have the same guidance available as human
+reviewers.
 
 For broad exploratory smoke runs, avoid ad hoc shell snippets. Implement
 repeatable checks as formal tests or reusable scripts under `dev-utils/`, and
@@ -82,11 +104,14 @@ The managed pre-commit hook installed by setup scripts runs
 and CI-adjacent sandboxes where commits are authored.
 
 For standardized git operations, use:
-- `.venv/bin/python scripts/git_standard_commit_push.py -m "<message>"`
-  for commits and pushes with mandatory cached quality gate checks
-  (including entropy tripwire verification).
-- `.venv/bin/python scripts/git_veteran_pull.py` for guarded fast-forward
-  pull updates.
+- `python scripts/git_standard_commit_push.py -m "<message>"` for commits and
+  pushes with mandatory cached quality gate checks (including entropy
+  tripwire verification).
+- `python scripts/git_veteran_pull.py` for guarded fast-forward pull updates.
+- After updating the `TheKnowledge` submodule, run
+  `python scripts/report_managed_agents_drift.py`. If it reports drift, run
+  `python scripts/refresh_managed_agents.py`, review `git diff`, and stage
+  only the intended managed-section updates.
 See `docs/security/git-tripwire-operations.txt` for failure diagnostics and
 maintenance guidance.
 
@@ -110,6 +135,10 @@ Before clearing, confirm the corresponding specification is complete, the
 required checks have passed, and reviewers can trace the change back to the
 proposal and backlog entries. If a follow-on task is needed, open a fresh
 backlog entry rather than rewriting the completed record.
+
+Also confirm that modified complex code remains adequately documented. If a
+reviewer cannot trace state transitions, fallback boundaries, or debugging
+hooks from the code and its comments, the work is not ready to clear.
 
 Deferrals
 ---------

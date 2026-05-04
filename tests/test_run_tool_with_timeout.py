@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-
 MODULE_PATH = (
     Path(__file__).resolve().parent.parent / "scripts" / "run_tool_with_timeout.py"
 )

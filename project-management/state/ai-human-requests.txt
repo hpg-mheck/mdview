@@ -15,14 +15,19 @@ Pending Requests
 
 *
 
-  Summary: Review and resolve open decisions in
-  `project-management/state/proposals/pending/version-management-multi-version-support.txt`.
-  Why it matters: proposal status is `Draft` and still has operator-owned open
-  questions about concurrent maintenance lines and patch-line merge policy.
-  Requested operator action: answer open questions, then mark status as
-  accepted/rejected/superseded with a decision-log entry.
-  Requested by: Codex (GPT-5).
-  Added: 2026-03-07T23:54:17-08:00.
+  Summary: Run or confirm one real-host validation pass for the new
+  `install.sh --mode dev` / stage-two / direnv flow after the installer
+  overhaul.
+  Why it matters: this session updated mdview's canonical setup path to the
+  managed staged-install model and added compatibility wrappers plus the
+  mdview-specific install hook, but did not execute live pyenv/direnv/dev-
+  launcher validation while the operator was away.
+  Requested operator action: run the updated development install flow on a
+  host with pyenv available and confirm a later validation session will cover
+  the launcher and direnv behavior before merge.
+  Requested by: Codex (GPT-5.4).
+  Added: 2026-03-31T18:54:35-07:00.
+  Updated: 2026-04-01T10:19:04-07:00.
 
 *
 
@@ -53,6 +58,19 @@ Active Requests
 
 Completed Requests
 ------------------
+
+*
+
+  Summary: Review and resolve the multi-version maintenance workflow
+  proposal.
+  Completion note: operator rejected
+  `project-management/state/proposals/rejected/`
+  `version-management-multi-version-support.txt` after concluding the
+  version-branch experiment had failed in practice, and project policy now
+  returns to trunk-first development.
+  Requested by: Codex (GPT-5).
+  Added: 2026-03-07T23:54:17-08:00.
+  Completed: 2026-03-26T12:52:14-07:00.
 
 *
 

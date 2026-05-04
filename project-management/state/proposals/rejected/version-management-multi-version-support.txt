@@ -1,7 +1,7 @@
 Title: Multi-Version Release and Maintenance Workflow Extension
 Author: Codex (GPT-5)
 Date: 2026-03-06T23:05:00-08:00
-Status: Draft
+Status: Rejected
 Reviewers: Matt "Breakpoint" Heck (Operator), Release engineering lead
 Related Work: project-management/git-flow.txt;
 project-management/state/backlog.txt
@@ -96,4 +96,6 @@ Adoption and Rollout
 
 Decision Log
 ------------
-- None yet.
+- 2026-03-26T12:52:14-07:00: Rejected by operator after the version-branch
+  experiment failed in practice. Project policy returns to trunk-first
+  development and direct integration into `trunk` after validation.

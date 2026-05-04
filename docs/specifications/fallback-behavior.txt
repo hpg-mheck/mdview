@@ -24,15 +24,18 @@ Supported Fallbacks:
   Console shims to render output without styling. Advise users to install the
   "rich" package to enable ANSI-styled Markdown output.
 - Hyperlink navigation: When prompt_toolkit is unavailable or the session
-  lacks a TTY, fall back to basic paging without hyperlink focus and emit a
-  user-facing notice explaining the reduced navigation features. If the
-  interactive pager raises an unexpected runtime error, fall back to
-  non-interactive standard output and report that downgrade in the notice
-  stream.
+  lacks a TTY, fall back to non-interactive standard output and disable
+  hyperlink highlighting with a user-facing notice explaining the reduced
+  navigation features.
+- Redraw check digit: When `--redraw-check-digit` is requested without an
+  interactive pager, emit a user-facing notice that the overlay was skipped
+  instead of silently pretending redraw diagnostics are active.
 - Pre-flight prerequisite checks: When Rich or prompt_toolkit is missing,
   print immediate warnings before argument parsing, recommending
-  `./scripts/install_prerequisites.sh` or the appropriate package install.
-  These warnings must appear even when execution exits early via `--help`.
+  `./install.sh --mode dev` (or the `./bootstrap.sh` /
+  `scripts/install_prerequisites.sh` compatibility wrappers) or the
+  appropriate package install. These warnings must appear even when
+  execution exits early via --help.
 
 Testing Guidance (post-spec):
 - Add regression tests that force dependency detection to fail and confirm

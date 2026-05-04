@@ -1,0 +1,74 @@
+Buffered Pipe-Target Stdin Input
+================================
+
+Purpose
+-------
+mdview should behave like a classical pipe target when no document paths are
+supplied and stdin is a non-interactive stream. The pager must not enter
+full-screen mode until the stdin buffer policy finishes, and it must not hang
+waiting for input when stdin is an interactive terminal or otherwise not being
+used as a pipe target.
+
+Requirements
+------------
+- Pipe-target detection
+  - When at least one path is supplied, mdview ignores stdin as a document
+    source.
+  - When no paths are supplied, mdview checks whether stdin is a non-TTY
+    stream that can provide buffered document content.
+  - If stdin is interactive or otherwise unsuitable as a buffered document
+    source, mdview must preserve the normal missing-input error path instead
+    of blocking.
+- Buffering
+  - mdview must buffer stdin fully before the first render attempt.
+  - The default safety ceiling is 16 MB.
+  - If the buffered size would exceed that ceiling, mdview must fail with an
+    error that directs the operator to rerun with
+    ``--max-stdin-buffer-megabytes=<override-value-in-megabytes>``.
+  - The ceiling is operator-overridable through
+    ``--max-stdin-buffer-megabytes``.
+  - If bytes have started arriving and then no further bytes arrive for
+    2 seconds, mdview should stop waiting, close stdin, and continue with the
+    partial buffer.
+  - The idle timeout is operator-overridable through
+    ``--stdin-timeout-in-seconds``.
+  - If no bytes arrive before the timeout window expires, mdview should treat
+    stdin as absent and preserve the normal no-input CLI error.
+- Startup status
+  - While buffering, mdview should write ``Buffering stdin...`` to stdout.
+  - When buffering completes because stdin closes, mdview should replace that
+    line with ``Buffering stdin... complete.``.
+  - When buffering stops because the idle timeout expires after partial data
+    has arrived, mdview should replace that line with
+    ``Buffering stdin... giving up after timeout``.
+  - The status line must remain visible again after the alternate-screen pager
+    exits normally or abnormally.
+- Format detection
+  - After buffering completes, mdview must classify the buffered document
+    through an ordered format-detector pipeline.
+  - The initial detectors are Markdown and plain text.
+  - Markdown should be selected only when the full document shows explicit,
+    valid Markdown structure.
+  - When Markdown detection does not succeed, mdview must render the buffered
+    content as plain text.
+  - The detector implementation should make future format additions easy.
+- Rendering behavior
+  - Buffered stdin rendered as Markdown should follow Markdown defaults,
+    including Markdown's default prose reflow mode.
+  - Buffered stdin rendered as plain text should follow plain-text defaults,
+    including no reflow unless the operator overrides reflow behavior.
+  - After stdin has been consumed for buffering, the full-screen pager must
+    prefer the controlling TTY for live input so keyboard interaction still
+    works in pipe-target workflows.
+
+Testing
+-------
+- CLI tests should cover:
+  - missing-input behavior when stdin is not a buffered pipe target,
+  - successful Markdown stdin ingestion with no paths,
+  - successful plain-text stdin ingestion with no paths,
+  - timeout and size-limit failures.
+- Rendering tests should cover the prompt_toolkit TTY-input override path and
+  the non-interactive fallback path when a controlling TTY cannot be reopened.
+- Format-detector tests should cover explicit Markdown recognition and
+  conservative plain-text fallback cases.

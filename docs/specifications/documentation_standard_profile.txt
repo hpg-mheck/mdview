@@ -4,7 +4,8 @@ Documentation Standard Profile
 Scope
 -----
 Define the repository documentation standard for module docstrings, function
-docstrings, inline rationale comments, and project-facing technical records.
+docstrings, inline rationale comments, maintenance-map comments, and
+project-facing technical records.
 
 Selected Standards
 ------------------
@@ -25,9 +26,23 @@ Repository Mapping
     intent, key parameters, return values, and error behavior when
     non-obvious.
 - Inline comments:
-  - Add comments only for rationale, invariants, or behavior that is not
-    clear from code structure alone.
-  - Avoid comments that restate syntax.
+  - Add comments for rationale, invariants, non-obvious behavior, library
+    constraints, failure symptoms, and debugging hooks that are not obvious
+    from code structure alone.
+  - Complex control-flow regions should include short "map" comments that
+    explain the phases of the logic before readers enter the details.
+  - When a branch exists to preserve behavior against a library quirk or a
+    previously observed regression, document that fact directly in the code.
+  - Comments may explicitly guide future human or AI maintainers away from
+    refactors that would collapse distinct behaviors and reintroduce defects.
+  - Avoid comments that merely restate syntax or repeat a clear variable name.
+- Complex runtime paths:
+  - Rendering, viewport, terminal-input, fallback, timer, and automation
+    code should favor denser explanatory comments than straightforward data
+    transformation code.
+  - A maintainer reading an unfamiliar complex function should be able to
+    identify the state owners, redraw/refresh triggers, and major failure
+    boundaries without consulting tests first.
 - Project-management traceability:
   - Proposal status, backlog transitions, bug lifecycle updates, and completed
     task notes must preserve decision history with ISO 8601 timestamps.
@@ -37,11 +52,15 @@ Review Checklist
 - Documentation matches behavior in tests and implementation.
 - Public APIs and behavioral boundaries are documented where needed.
 - Rationale comments exist for non-obvious branches and invariants.
+- Complex functions include section comments that map major phases and
+  identify stateful or failure-prone integration points.
+- Comments explain the reason for keeping distinct code paths separate when a
+  refactor might otherwise merge them incorrectly.
 - Proposal and backlog history remains append-only and timestamped.
 - Text files outside fixture directories are wrapped to 78 columns.
 
 Non-Goals
 ---------
 - Mandating proprietary tooling for standards enforcement.
-- Requiring exhaustive line-by-line comments.
+- Requiring exhaustive line-by-line comments in straightforward code.
 - Rewriting historical documents solely for stylistic normalization.

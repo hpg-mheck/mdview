@@ -1,10 +1,45 @@
 import importlib
+import io
 import os
 from pathlib import Path
+import threading
 
 import pytest
 
 from mdview import cli as cli_module
+
+
+class _BlockingTextStream:
+    def __init__(self, chunks: list[str] | None = None) -> None:
+        self._chunks = list(chunks or [])
+        self._condition = threading.Condition()
+        self._closed = False
+        self.encoding = "utf-8"
+        self.errors = "strict"
+
+    def isatty(self) -> bool:
+        return False
+
+    def fileno(self) -> int:
+        raise io.UnsupportedOperation("blocking test stream has no fileno")
+
+    def read(self, _size: int = -1) -> str:
+        with self._condition:
+            while not self._chunks and not self._closed:
+                self._condition.wait()
+            if self._chunks:
+                return self._chunks.pop(0)
+            return ""
+
+    def close(self) -> None:
+        with self._condition:
+            self._closed = True
+            self._condition.notify_all()
+
+
+class _TtyOutput(io.StringIO):
+    def isatty(self) -> bool:
+        return True
 
 
 def test_main_reports_rendering_fallback_notice(monkeypatch, tmp_path, capsys):
@@ -47,12 +82,15 @@ def test_main_warns_about_missing_prerequisites(monkeypatch, capsys):
     assert "environment checks" in captured.err
 
 
-def test_main_requires_path_without_verification_flag(capsys):
+def test_main_requires_path_without_verification_flag(monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli_module, "_stdin_supports_buffered_document", lambda input_stream=None: False
+    )
     exit_code = cli_module.main([])
 
     captured = capsys.readouterr()
     assert exit_code == 2
-    assert "at least one path is required" in captured.err
+    assert "at least one path or buffered stdin input is required" in captured.err
 
 
 def test_build_parser_rejects_abbreviations(capsys):
@@ -85,6 +123,21 @@ def test_main_runs_resize_verifier(monkeypatch):
     assert exit_code == 0
 
 
+def test_main_runs_test_input_feedback_mode(monkeypatch):
+    captured = {"called": False}
+
+    def fake_runner() -> int:
+        captured["called"] = True
+        return 1
+
+    monkeypatch.setattr(cli_module, "run_test_input_feedback", fake_runner)
+
+    exit_code = cli_module.main(["--test-input-feedback"])
+
+    assert exit_code == 1
+    assert captured["called"] is True
+
+
 def test_format_help_matches_expected_shape():
     help_text = cli_module.format_help()
 
@@ -93,14 +146,23 @@ def test_format_help_matches_expected_shape():
     assert "--reflow-mode {prose,all,none}" in help_text
     assert "--noreflow" in help_text
     assert "--verbose" in help_text
+    assert "--stdin-timeout-in-seconds" in help_text
+    assert "--max-stdin-buffer-megabytes" in help_text
     assert "--MIL" in help_text
     assert "--readability-first-tables" in help_text
+    assert "--no-table-borders" in help_text
+    assert "--no-cell-borders" in help_text
     assert "--automation-timeout" in help_text
     assert "--automation-timeout-screenshot" in help_text
+    assert "--screen-dump-dir" in help_text
     assert "--automation-json" in help_text
     assert "--viewport-columns" in help_text
     assert "--viewport-rows" in help_text
-    assert "Render Markdown in the terminal" in help_text
+    assert "--redraw-check-digit" in help_text
+    assert "--test-input-feedback" in help_text
+    assert "Render Markdown or plain text in the terminal" in help_text
+    assert "stdin" in help_text
+    assert "buffered document" in help_text
     assert "--verify-resize-detection" in help_text
 
 
@@ -241,6 +303,29 @@ def test_main_passes_automation_timeout_to_page_text(monkeypatch, tmp_path):
     )
 
 
+def test_main_passes_screen_dump_dir_to_page_text(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    capture_dir = tmp_path / "captures"
+    captured = {}
+
+    def fake_page_text(text: str, **kwargs):
+        captured["screen_dump_dir"] = kwargs.get("screen_dump_dir")
+
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main(
+        [
+            "--screen-dump-dir",
+            str(capture_dir),
+            str(document),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["screen_dump_dir"] == capture_dir
+
+
 def test_parse_automation_json_source_accepts_literal_json() -> None:
     events = cli_module._parse_automation_json_source(
         '[[0.0, "down"], [0.25, "m-c-x"]]'
@@ -313,6 +398,44 @@ def test_main_rejects_timeout_screenshot_without_timeout(tmp_path, capsys):
     )
 
 
+def test_main_rejects_screen_dump_dir_when_path_is_not_directory(tmp_path, capsys):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    output_file = tmp_path / "capture.txt"
+    output_file.write_text("not a directory", encoding="utf-8")
+
+    exit_code = cli_module.main(
+        [
+            "--screen-dump-dir",
+            str(output_file),
+            str(document),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "--screen-dump-dir must name a directory" in captured.err
+
+
+def test_main_rejects_test_input_feedback_with_paths(tmp_path, capsys):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+
+    exit_code = cli_module.main(["--test-input-feedback", str(document)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "--test-input-feedback does not accept document paths" in captured.err
+
+
+def test_main_rejects_special_mode_combination(capsys):
+    exit_code = cli_module.main(["--verify-resize-detection", "--test-input-feedback"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "cannot be used together" in captured.err
+
+
 def test_main_passes_viewport_overrides_to_page_text(monkeypatch, tmp_path):
     document = tmp_path / "sample.md"
     document.write_text("# Title\n\nbody")
@@ -337,6 +460,22 @@ def test_main_passes_viewport_overrides_to_page_text(monkeypatch, tmp_path):
     assert exit_code == 0
     assert captured["columns"] == 120
     assert captured["rows"] == 33
+
+
+def test_main_passes_redraw_check_digit_to_page_text(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = {}
+
+    def fake_page_text(text: str, **kwargs):
+        captured["redraw_check_digit"] = kwargs.get("redraw_check_digit")
+
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main(["--redraw-check-digit", str(document)])
+
+    assert exit_code == 0
+    assert captured["redraw_check_digit"] is True
 
 
 def test_main_uses_terminal_width_for_initial_render(monkeypatch, tmp_path):
@@ -393,6 +532,40 @@ def test_main_uses_viewport_columns_for_initial_render(monkeypatch, tmp_path):
     assert captured["widths"] == [120]
 
 
+def test_main_passes_table_border_flags_to_render_calls(monkeypatch, tmp_path):
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = []
+
+    def fake_render_to_ansi(content: str, markdown: bool, **kwargs):
+        captured.append(
+            (
+                kwargs.get("table_borders"),
+                kwargs.get("cell_borders"),
+            )
+        )
+        return "rendered"
+
+    def fake_page_text(text: str, **kwargs):
+        render_on_resize = kwargs["render_on_resize"]
+        assert render_on_resize is not None
+        _ = render_on_resize(88)
+
+    monkeypatch.setattr(cli_module, "render_to_ansi", fake_render_to_ansi)
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+
+    exit_code = cli_module.main(
+        [
+            "--no-table-borders",
+            "--no-cell-borders",
+            str(document),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured == [(False, False), (False, False)]
+
+
 def test_parser_rejects_non_positive_viewport_columns(capsys):
     parser = cli_module.build_parser()
 
@@ -413,3 +586,165 @@ def test_parser_rejects_non_positive_viewport_rows(capsys):
     assert excinfo.value.code == 2
     captured = capsys.readouterr()
     assert "value must be a positive integer" in captured.err
+
+
+def test_main_accepts_buffered_markdown_stdin_without_paths(monkeypatch):
+    captured = {}
+
+    def fake_render_to_ansi(content: str, markdown: bool, **kwargs):
+        captured["content"] = content
+        captured["markdown"] = markdown
+        captured["reflow_mode"] = kwargs["reflow_mode"]
+        return "rendered"
+
+    def fake_page_text(text: str, **kwargs):
+        captured["paged_text"] = text
+        captured["prefer_tty_input"] = kwargs["prefer_tty_input"]
+
+    monkeypatch.setattr(cli_module, "render_to_ansi", fake_render_to_ansi)
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+    monkeypatch.setattr(
+        cli_module, "_stdin_supports_buffered_document", lambda input_stream=None: True
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_buffer_stdin_document",
+        lambda **kwargs: cli_module._BufferedStdinResult(
+            content="# Title\n\nBody\n",
+            detected_format=cli_module.DetectedInputFormat(
+                name="markdown",
+                markdown=True,
+            ),
+            timed_out=False,
+            final_status_line=cli_module._STDIN_BUFFERING_COMPLETE_STATUS,
+        ),
+    )
+
+    assert cli_module.main([]) == 0
+    assert captured["content"] == "# Title\n\nBody\n"
+    assert captured["markdown"] is True
+    assert captured["reflow_mode"] == "prose"
+    assert captured["paged_text"] == "rendered"
+    assert captured["prefer_tty_input"] is True
+
+
+def test_main_accepts_buffered_plain_text_stdin_without_paths(monkeypatch):
+    captured = {}
+
+    def fake_render_to_ansi(content: str, markdown: bool, **kwargs):
+        captured["content"] = content
+        captured["markdown"] = markdown
+        captured["reflow_mode"] = kwargs["reflow_mode"]
+        return "rendered"
+
+    def fake_page_text(text: str, **kwargs):
+        captured["paged_text"] = text
+        captured["prefer_tty_input"] = kwargs["prefer_tty_input"]
+
+    monkeypatch.setattr(cli_module, "render_to_ansi", fake_render_to_ansi)
+    monkeypatch.setattr(cli_module, "page_text", fake_page_text)
+    monkeypatch.setattr(
+        cli_module, "_stdin_supports_buffered_document", lambda input_stream=None: True
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_buffer_stdin_document",
+        lambda **kwargs: cli_module._BufferedStdinResult(
+            content="plain line one\nplain line two\n",
+            detected_format=cli_module.DetectedInputFormat(
+                name="plain_text",
+                markdown=False,
+            ),
+            timed_out=False,
+            final_status_line=cli_module._STDIN_BUFFERING_COMPLETE_STATUS,
+        ),
+    )
+
+    assert cli_module.main([]) == 0
+    assert captured["content"] == "plain line one\nplain line two\n"
+    assert captured["markdown"] is False
+    assert captured["reflow_mode"] == "none"
+    assert captured["paged_text"] == "rendered"
+    assert captured["prefer_tty_input"] is True
+
+
+def test_buffer_stdin_document_reports_complete_status():
+    output = _TtyOutput()
+    result = cli_module._buffer_stdin_document(
+        input_stream=io.StringIO("# Heading\n"),
+        output_stream=output,
+        idle_timeout_seconds=0.01,
+    )
+
+    assert result is not None
+    assert result.content == "# Heading\n"
+    assert result.detected_format.markdown is True
+    assert result.final_status_line == cli_module._STDIN_BUFFERING_COMPLETE_STATUS
+    assert output.getvalue() == (
+        "Buffering stdin...\n" "\x1b[1F\x1b[2KBuffering stdin... complete.\n"
+    )
+
+
+def test_buffer_stdin_document_reports_timeout_status():
+    stream = _BlockingTextStream(["partial"])
+    output = _TtyOutput()
+    result = cli_module._buffer_stdin_document(
+        input_stream=stream,
+        output_stream=output,
+        idle_timeout_seconds=0.01,
+    )
+
+    assert result is not None
+    assert result.content == "partial"
+    assert result.timed_out is True
+    assert result.final_status_line == cli_module._STDIN_BUFFERING_TIMEOUT_STATUS
+    assert output.getvalue() == (
+        "Buffering stdin...\n"
+        "\x1b[1F\x1b[2KBuffering stdin... giving up after timeout\n"
+    )
+
+
+def test_buffer_stdin_document_returns_none_when_no_bytes_arrive():
+    stream = _BlockingTextStream()
+    output = _TtyOutput()
+    result = cli_module._buffer_stdin_document(
+        input_stream=stream,
+        output_stream=output,
+        idle_timeout_seconds=0.01,
+    )
+
+    assert result is None
+    assert output.getvalue() == ""
+
+
+def test_read_buffered_stdin_content_reads_until_eof():
+    result = cli_module._read_buffered_stdin_content(
+        input_stream=_BlockingTextStream(["hello ", "world", ""]),
+        idle_timeout_seconds=0.01,
+    )
+
+    assert result.content == "hello world"
+    assert result.received_data is True
+    assert result.timed_out is False
+
+
+def test_read_buffered_stdin_content_stops_after_idle_timeout():
+    stream = _BlockingTextStream(["partial"])
+    result = cli_module._read_buffered_stdin_content(
+        input_stream=stream,
+        idle_timeout_seconds=0.01,
+    )
+    stream.close()
+
+    assert result.content == "partial"
+    assert result.received_data is True
+    assert result.timed_out is True
+
+
+def test_read_buffered_stdin_content_rejects_oversize_input():
+    with pytest.raises(cli_module._StdinBufferLimitExceeded):
+        cli_module._read_buffered_stdin_content(
+            input_stream=io.StringIO("abcdef"),
+            idle_timeout_seconds=0.01,
+            max_buffer_bytes=3,
+        )

@@ -19,14 +19,17 @@ def detect_prerequisite_issues() -> List[str]:
     issues: List[str] = []
     if _missing_dependency("prompt_toolkit"):
         issues.append(
-            "prompt_toolkit is not installed; run "
-            "./scripts/install_prerequisites.sh or install the package to "
+            "prompt_toolkit is not installed; run ./install.sh --mode dev "
+            "(or the compatibility wrappers ./bootstrap.sh or "
+            "scripts/install_prerequisites.sh) or install the package to "
             "enable interactive paging."
         )
     if _missing_dependency("rich"):
         issues.append(
-            "rich is not installed; run ./scripts/install_prerequisites.sh or "
-            "install the package to enable styled Markdown output."
+            "rich is not installed; run ./install.sh --mode dev (or the "
+            "compatibility wrappers ./bootstrap.sh or "
+            "scripts/install_prerequisites.sh) or install the package to "
+            "enable styled Markdown output."
         )
     return issues
 

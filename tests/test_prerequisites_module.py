@@ -17,7 +17,8 @@ def test_detect_prerequisite_issues_reports_missing(monkeypatch):
 
     assert any("prompt_toolkit" in issue for issue in issues)
     assert any("rich" in issue for issue in issues)
-    assert any("./scripts/install_prerequisites.sh" in issue for issue in issues)
+    assert any("./install.sh --mode dev" in issue for issue in issues)
+    assert any("scripts/install_prerequisites.sh" in issue for issue in issues)
 
 
 def test_detect_prerequisite_issues_when_present(monkeypatch):
