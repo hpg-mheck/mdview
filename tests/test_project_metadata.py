@@ -21,8 +21,9 @@ def test_pyproject_declares_runtime_and_dev_tool_dependencies() -> None:
         encoding="utf-8"
     )
 
-    assert "prompt_toolkit>=3.0" in pyproject
-    assert "rich>=13.7.0" in pyproject
-    assert "black>=24.0" in pyproject
-    assert "pytest>=7.4" in pyproject
-    assert "ruff>=0.6.0" in pyproject
+    assert "prompt_toolkit==3.0.52" in pyproject
+    assert "rich==15.0.0" in pyproject
+    assert "black==26.3.1" in pyproject
+    assert "pytest==9.0.3" in pyproject
+    assert "pytest-timeout==2.4.0" in pyproject
+    assert "ruff==0.15.12" in pyproject

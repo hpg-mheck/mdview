@@ -15,8 +15,9 @@ Requirements
 - The configured `black` command must target the repository-owned Python
   source roots directly: `src`, `tests`, `scripts`, and `dev-utils`.
 - The configured `black` command must remain compatible with the supported
-  local Black release instead of relying on optional flags that may not exist
-  across installations.
+  local Black release. In constrained Codex sandboxes, the timeout wrapper
+  must run eligible Black paths one file at a time so the current pinned
+  Black version exits deterministically.
 - The quality-gate `black` configuration must not attempt to format Python
   files from `.venv/`, `.git/`, or other local caches and third-party package
   trees.

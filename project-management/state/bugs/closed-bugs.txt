@@ -6,6 +6,21 @@
 # the fix was recorded, the resolution summary, and links to commits or tests
 # when available.
 
+* 2026-05-04T17:23:04-07:00 Closed BUG-2026-03-13-01, the
+  repository-local Black timeout in constrained Codex sandboxes. Root cause:
+  multi-file `python -m black` invocations can finish per-file work but fail
+  to return cleanly before the timeout wrapper's bailout, even when scoped to
+  repository-owned roots. Resolution: teach
+  `scripts/run_tool_with_timeout.py` to discover configured Black paths and,
+  when the managed Codex sandbox is detected, run them one file at a time
+  through the existing timeout harness while preserving the normal formatter
+  command. Added targeted coverage in `tests/test_run_tool_with_timeout.py`
+  and documented the constrained-environment behavior in
+  `docs/specifications/quality_gate_black_scope_and_exclusions.txt`.
+  Validation: wrapper-based `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, full `pytest` (`384 passed`), and approved
+  out-of-sandbox `demo_check` passed. Owner: Codex.
+
 * 2026-03-26T12:13:06-07:00 Closed BUG-2026-03-26-01, the project-local
   Codex quality-gate regressions exposed during takeover. Root cause:
   `scripts/tool_timeouts.json` used an unsupported `black` flag in the live

@@ -12,8 +12,34 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+try:
+    from tool_validation_profiles import discover_black_paths
+except ImportError:  # pragma: no cover - import path varies by entry point.
+    from scripts.tool_validation_profiles import discover_black_paths
+
 CONFIG_FILE = Path(__file__).resolve().with_name("tool_timeouts.json")
 MANDATORY_TOOL_MODULES = {"black", "pytest", "ruff"}
+BLACK_LONG_OPTIONS_WITH_VALUE = {
+    "--code",
+    "--config",
+    "--exclude",
+    "--extend-exclude",
+    "--force-exclude",
+    "--ipynb",
+    "--line-length",
+    "--line-ranges",
+    "--python-cell-magics",
+    "--required-version",
+    "--stdin-filename",
+    "--target-version",
+    "--workers",
+}
+BLACK_SHORT_OPTIONS_WITH_VALUE = {
+    "-c",
+    "-l",
+    "-t",
+    "-W",
+}
 
 
 def _load_config() -> Dict[str, object]:
@@ -135,22 +161,58 @@ def _cleanup_processes(patterns: List[str]) -> None:
             return
 
 
-def main() -> int:
-    args = _parse_args()
-    config = _load_config()
-    command, timeout, retries, cleanup_patterns = _resolve_tool_run(
-        config=config,
-        tool=args.tool,
-        override_timeout=args.timeout_seconds,
-        tool_args=args.tool_args,
+def _codex_serial_black_required(path_count: int) -> bool:
+    if path_count < 2:
+        return False
+    return (
+        os.environ.get("CODEX_CI") == "1"
+        and os.environ.get("CODEX_MANAGED_BY_NPM") == "1"
+        and os.environ.get("CODEX_SANDBOX_NETWORK_DISABLED") == "1"
     )
-    command = _bind_python_command(command)
-    try:
-        _require_installed_tool(args.tool, command)
-    except RuntimeError as error:
-        print(f"[timeout-wrapper] prerequisite failure: {error}", file=sys.stderr)
-        return 127
 
+
+def _split_black_command(command: List[str]) -> Tuple[List[str], List[str]]:
+    try:
+        module_index = command.index("-m")
+    except ValueError:
+        return command, []
+    if module_index + 1 >= len(command) or command[module_index + 1] != "black":
+        return command, []
+
+    base = command[: module_index + 2]
+    path_args: List[str] = []
+    expecting_value = False
+
+    for arg in command[module_index + 2 :]:
+        if expecting_value:
+            base.append(arg)
+            expecting_value = False
+            continue
+        if arg == "--":
+            continue
+        if arg.startswith("--") and arg != "--":
+            base.append(arg)
+            if "=" not in arg and arg in BLACK_LONG_OPTIONS_WITH_VALUE:
+                expecting_value = True
+            continue
+        if arg.startswith("-") and arg != "-":
+            base.append(arg)
+            short_flag = arg[:2]
+            if len(arg) == 2 and short_flag in BLACK_SHORT_OPTIONS_WITH_VALUE:
+                expecting_value = True
+            continue
+        path_args.append(arg)
+
+    return base, path_args
+
+
+def _run_command_with_timeout(
+    command: List[str],
+    *,
+    timeout: int,
+    retries: int,
+    cleanup_patterns: List[str],
+) -> int:
     pretty = " ".join(shlex.quote(part) for part in command)
     print(f"[timeout-wrapper] running: {pretty}")
     print(f"[timeout-wrapper] timeout: {timeout}s")
@@ -177,6 +239,80 @@ def main() -> int:
             _cleanup_processes(cleanup_patterns)
 
     return 124
+
+
+def _maybe_run_black_serial(
+    command: List[str],
+    *,
+    timeout: int,
+    retries: int,
+    cleanup_patterns: List[str],
+) -> int | None:
+    base_command, path_args = _split_black_command(command)
+    if not path_args:
+        return None
+
+    discovered_paths = discover_black_paths(Path.cwd(), path_args)
+    if discovered_paths is None or not _codex_serial_black_required(
+        len(discovered_paths)
+    ):
+        return None
+
+    print(
+        "[timeout-wrapper] SERIAL black: constrained Codex sandbox detected; "
+        f"running {len(discovered_paths)} files one at a time."
+    )
+    for index, path_arg in enumerate(discovered_paths, start=1):
+        print(
+            f"[timeout-wrapper] SERIAL black: {index}/{len(discovered_paths)} {path_arg}"
+        )
+        result = _run_command_with_timeout(
+            [*base_command, path_arg],
+            timeout=timeout,
+            retries=retries,
+            cleanup_patterns=cleanup_patterns,
+        )
+        if result != 0:
+            print(
+                f"[timeout-wrapper] SERIAL black: {path_arg} exited {result}.",
+                file=sys.stderr,
+            )
+            return result
+    return 0
+
+
+def main() -> int:
+    args = _parse_args()
+    config = _load_config()
+    command, timeout, retries, cleanup_patterns = _resolve_tool_run(
+        config=config,
+        tool=args.tool,
+        override_timeout=args.timeout_seconds,
+        tool_args=args.tool_args,
+    )
+    command = _bind_python_command(command)
+    try:
+        _require_installed_tool(args.tool, command)
+    except RuntimeError as error:
+        print(f"[timeout-wrapper] prerequisite failure: {error}", file=sys.stderr)
+        return 127
+
+    if args.tool == "black":
+        serial_result = _maybe_run_black_serial(
+            command,
+            timeout=timeout,
+            retries=retries,
+            cleanup_patterns=cleanup_patterns,
+        )
+        if serial_result is not None:
+            return serial_result
+
+    return _run_command_with_timeout(
+        command,
+        timeout=timeout,
+        retries=retries,
+        cleanup_patterns=cleanup_patterns,
+    )
 
 
 if __name__ == "__main__":

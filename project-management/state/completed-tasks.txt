@@ -6,6 +6,21 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Pinned mdview runtime, interactive, and development support dependencies in
+  tracked package metadata, recorded at 2026-05-04T17:23:04-07:00 by Codex
+  from direct operator instruction. Updated
+  `docs/specifications/support_package_currency.txt`, pinned
+  `prompt_toolkit==3.0.52`, `rich==15.0.0`, `black==26.3.1`,
+  `pytest==9.0.3`, `pytest-timeout==2.4.0`, and `ruff==0.15.12` in
+  `pyproject.toml`, and refreshed tracked egg-info metadata. Added a
+  `py39` Black target and a Codex-sandbox serial Black fallback so the
+  current pinned formatter remains usable by the standard timeout wrapper.
+  Validation: `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, full `pytest` (`384 passed`), and approved
+  out-of-sandbox `demo_check` passed (`validated=0 skipped=1 errors=0`).
+  Local Windows shim validation remains deferred per
+  `.local/windows-shim-validation-note.txt`.
+
 * Refreshed Python support package pins and the repository packaging
   toolchain, recorded at 2026-05-04T15:46:47-07:00 by Codex from direct
   operator instruction. Added

@@ -10,6 +10,9 @@ Requirements
 ------------
 - Update pinned development support packages in `requirements-dev.txt` to the
   latest compatible releases available from the package index.
+- Pin mdview runtime, interactive, and development support dependencies in
+  `pyproject.toml` to the same validated versions used by the active
+  repository `.venv`.
 - Upgrade `pip`, `setuptools`, and `wheel` inside the repository `.venv` so
   the active development environment uses current packaging tools.
 - Preserve Python 3.9+ compatibility in bootstrap and installer code, and
