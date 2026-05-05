@@ -6,6 +6,17 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Fixed managed install packaging-tool feedback, recorded at
+  2026-05-04T17:39:21-07:00 by Codex from direct operator question. Updated
+  `scripts/install-stage-2.py` so standard install virtual environments
+  upgrade `pip` along with `setuptools` and `wheel`, and print the exact
+  managed-venv Python command operators can rerun manually. Updated
+  `docs/specifications/prerequisite_installation.txt` and added regression
+  coverage in `tests/test_install_stage_2.py`. Validation: `black`, `ruff`,
+  `compileall`, `entropy_check`, `entropy_tripwire_verify`, full `pytest`
+  (`385 passed`), and approved out-of-sandbox `demo_check` passed
+  (`validated=0 skipped=1 errors=0`).
+
 * Pinned mdview runtime, interactive, and development support dependencies in
   tracked package metadata, recorded at 2026-05-04T17:23:04-07:00 by Codex
   from direct operator instruction. Updated

@@ -56,6 +56,9 @@ macOS versions, and Windows 11.
   from repository root.
 - Upgrade `pip`, `setuptools`, and `wheel` inside managed virtual
   environments before project or tool installs.
+- When refreshing managed virtual environment packaging tools, print the
+  exact Python executable used for that environment so operators can rerun
+  the same update command manually when needed.
 - Install the project in editable mode with `interactive` extras for
   development and non-editable mode for standard installs.
 - Refresh the pinned Black/Ruff/pytest toolchain through

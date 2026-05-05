@@ -8,6 +8,7 @@ from pathlib import Path
 import os
 import platform
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -236,17 +237,23 @@ def ensure_virtualenv(base_python: Path, venv_path: Path) -> Path:
 def install_build_bootstrap(venv_python: Path) -> None:
     """Install the minimal build requirements for local package installs."""
 
-    run(
-        [
-            str(venv_python),
-            "-m",
-            "pip",
-            "install",
-            "setuptools>=69",
-            "wheel",
-        ],
-        cwd=REPO_ROOT,
+    command = [
+        str(venv_python),
+        "-m",
+        "pip",
+        "install",
+        "--upgrade",
+        "pip",
+        "setuptools>=69",
+        "wheel",
+    ]
+    venv_path = venv_python.parent.parent
+    print(f"[install-stage-2] Refreshing pip, setuptools, and wheel in {venv_path}.")
+    print(
+        "[install-stage-2] Manual update command: "
+        + " ".join(shlex.quote(part) for part in command)
     )
+    run(command, cwd=REPO_ROOT)
 
 
 def project_slug() -> str:
