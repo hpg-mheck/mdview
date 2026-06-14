@@ -1,0 +1,37 @@
+Development Roadmap
+===================
+
+Use this roadmap as the source of truth for Ubersight phase and slice lists.
+Keep it current enough that `.local/ubersight/status.json` and
+`project-management/state/phase-slice-stack.txt` can show the two most recent
+completed entries, the current entry, and up to five future entries without
+inventing scope.
+
+Do not record prompts, transcripts, credentials, operator-location details,
+WiFi names, Tailnet names, or other sensitive runtime state here.
+
+Phases
+------
+* Phase 1: Core Markdown rendering and viewer behavior, done.
+
+* Phase 2: Installer, prerequisite, and managed-tooling reliability, active.
+
+* Phase 3: Cross-platform validation coverage, planned.
+
+Slices
+------
+* Slice 1: Establish internal renderer and CLI foundations, done.
+
+* Slice 2: Add boxed table rendering and stdin workflow polish, done.
+
+* Slice 3: Refresh support package pins and installer feedback, done.
+
+* Slice 4: Add Ubersight long-duration work tracking, done.
+
+* Slice 5: Continue installer and setup-path documentation hardening,
+  pending.
+
+* Slice 6: Validate WSL2 Linux workflow from a real Windows host, blocked.
+
+* Slice 7: Revisit mdview-side Black accommodations after upstream fixes,
+  blocked.

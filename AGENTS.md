@@ -38,6 +38,24 @@ the managed TheKnowledge footer.
   `python scripts/refresh_managed_agents.py`, review `git diff`, and stage
   only the intended managed-section changes.
 
+## Ubersight Status
+- For substantive multi-step work, keep `.local/ubersight/status.json`
+  current with `ubersight --write-status` or compatible JSON so operators can
+  monitor long-running autonomous development.
+- Update Ubersight status when work begins, at phase boundaries, at slice
+  transitions, before long validation or ACP waits, when blocked, and during
+  final closeout.
+- Source Ubersight phase and slice rows from
+  `project-management/development-roadmap.txt`. Create or restore that file
+  before relying on Ubersight status if it is missing.
+- Keep the visible planning window bounded to the two most recent completed
+  entries, the current entry, and up to five future entries. Use
+  `project-management/state/phase-slice-stack.txt` as the tracked recovery
+  record for that window.
+- Do not store prompts, transcripts, credentials, operator-location details,
+  WiFi names, Tailnet names, or other sensitive runtime state in Ubersight
+  status files or tracked phase and slice records.
+
 # Engineering Guidance
 
 This project follows pragmatic Python best practices with an emphasis on

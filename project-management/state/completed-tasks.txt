@@ -6,6 +6,16 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Added Ubersight long-duration work tracking, recorded at
+  2026-06-13T22:09:12-07:00 by Codex from direct operator request. Added
+  `docs/specifications/ubersight_integration.txt`, mdview-specific
+  Ubersight standing orders in `AGENTS.md`,
+  `project-management/development-roadmap.txt`, and
+  `project-management/state/phase-slice-stack.txt`. Wrote live dashboard
+  state to `.local/ubersight/status.json` without committing local status.
+  Validation: 78-column wrap check, `entropy_check`, and
+  `entropy_tripwire_verify` passed.
+
 * Fixed managed install packaging-tool feedback, recorded at
   2026-05-04T17:39:21-07:00 by Codex from direct operator question. Updated
   `scripts/install-stage-2.py` so standard install virtual environments

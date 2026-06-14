@@ -1,0 +1,33 @@
+Ubersight Phase/Slice Stack
+===========================
+
+Use this tracked file as the recovery anchor for mdview's current Ubersight
+window. Keep it aligned with `project-management/development-roadmap.txt` and
+with `.local/ubersight/status.json` during long-running autonomous work.
+
+Do not record prompts, transcripts, credentials, operator-location details,
+WiFi names, Tailnet names, or other sensitive runtime state here.
+
+Current Stack
+-------------
+Recent phases:
+* Phase 1: Core Markdown rendering and viewer behavior, done.
+
+* Phase 2: Installer, prerequisite, and managed-tooling reliability, active.
+
+Recent slices:
+* Slice 3: Refresh support package pins and installer feedback, done.
+
+* Slice 4: Add Ubersight long-duration work tracking, done.
+
+Upcoming phases:
+* Phase 3: Cross-platform validation coverage, planned.
+
+Upcoming slices:
+* Slice 5: Continue installer and setup-path documentation hardening,
+  pending.
+
+* Slice 6: Validate WSL2 Linux workflow from a real Windows host, blocked.
+
+* Slice 7: Revisit mdview-side Black accommodations after upstream fixes,
+  blocked.

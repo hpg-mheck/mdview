@@ -1,0 +1,49 @@
+Ubersight Integration
+=====================
+
+Purpose
+-------
+mdview should integrate with Ubersight so operators can monitor long-running
+autonomous development without reading transcripts or interrupting active
+work. The integration is a project-neutral status contract: mdview records a
+small live JSON file for the dashboard and keeps tracked planning records that
+can restore that view after context loss.
+
+Requirements
+------------
+* Agents performing substantive multi-step work must keep
+  `.local/ubersight/status.json` current while the work is active.
+
+* Agents should write the status file with `ubersight --write-status` when the
+  command is available. Compatible JSON may be written directly only when the
+  command is unavailable.
+
+* The tracked source of Ubersight phase and slice names is
+  `project-management/development-roadmap.txt`.
+
+* The tracked recovery view for current and near-future work is
+  `project-management/state/phase-slice-stack.txt`.
+
+* The live status view should show a bounded planning window: the two most
+  recent completed entries, the current entry, and up to five future entries.
+
+* Agents must update Ubersight status when work begins, at phase boundaries,
+  at slice transitions, before long validation or ACP waits, when blocked, and
+  during final closeout.
+
+* Ubersight records must not include prompts, transcripts, credentials,
+  operator-location details, WiFi names, Tailnet names, or other sensitive
+  runtime state.
+
+Acceptance Criteria
+-------------------
+* `AGENTS.md` gives agents mdview-specific Ubersight standing orders.
+
+* `project-management/development-roadmap.txt` exists and gives names and
+  states for Ubersight phases and slices.
+
+* `project-management/state/phase-slice-stack.txt` exists and can be used to
+  recover the active Ubersight planning window.
+
+* `.local/ubersight/status.json` can be written from the roadmap values
+  without committing local dashboard state.
