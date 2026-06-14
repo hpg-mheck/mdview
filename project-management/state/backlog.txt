@@ -48,3 +48,13 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
   or upstream maintainer confirmation that the active TheKnowledge `black`
   fixes are complete. Requested by operator. Added:
   2026-03-27T01:49:48-07:00.
+
+*
+
+  [LOW] Modernize the mdview-local workflow helpers so they track current
+  TheKnowledge ergonomics where appropriate. Start with the gap observed in
+  `scripts/git_standard_commit_push.py`: mdview-local currently lacks the
+  newer review-approval flag behavior used by current TheKnowledge guidance.
+  Preserve mdview's local staging, branch, and push safety policies while
+  reducing friction for approved ACP flows. Requested by operator. Added:
+  2026-06-13T22:20:37-07:00.
