@@ -28,10 +28,12 @@ Slices
 
 * Slice 4: Add Ubersight long-duration work tracking, done.
 
-* Slice 5: Continue installer and setup-path documentation hardening,
+* Slice 5: Repair memory and geometry guardrails, done.
+
+* Slice 6: Continue installer and setup-path documentation hardening,
   pending.
 
-* Slice 6: Validate WSL2 Linux workflow from a real Windows host, blocked.
+* Slice 7: Validate WSL2 Linux workflow from a real Windows host, blocked.
 
-* Slice 7: Revisit mdview-side Black accommodations after upstream fixes,
+* Slice 8: Revisit mdview-side Black accommodations after upstream fixes,
   blocked.

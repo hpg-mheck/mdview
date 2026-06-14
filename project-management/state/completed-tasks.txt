@@ -6,6 +6,19 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Repaired memory and geometry guardrails, recorded at
+  2026-06-13T23:12:05-07:00 by Codex from direct operator authorization
+  after security review. Added shared resource limits, bounded file inputs
+  and automation JSON sources to 16 MiB by default, added the
+  `--allow-huge` and `--allow-huge-automation-scripts` 4 GiB escape hatches,
+  capped default render geometry to 512 cells per axis while accepting
+  dimensions up to 16,384, and added `--allow-insane-geometry` for explicit
+  rendering up to 65,535 cells per axis. Updated README, specifications,
+  help/man output, package metadata, and regression tests. Validation:
+  `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, full `pytest` (`395 passed`), and `demo_check`
+  passed (`validated=0 skipped=1 errors=0`).
+
 * Added Ubersight long-duration work tracking, recorded at
   2026-06-13T22:09:12-07:00 by Codex from direct operator request. Added
   `docs/specifications/ubersight_integration.txt`, mdview-specific

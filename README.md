@@ -18,6 +18,8 @@ so Markdown reads naturally in the terminal.
 - Buffers up to 16 MB from piped stdin by default, waits up to 2 seconds for
   additional input, and conservatively classifies buffered stdin as Markdown
   or plain text before rendering.
+- Refuses file inputs and automation JSON sources larger than 16 MiB by
+  default, with explicit huge-input flags for trusted large workflows.
 - Provides stateful mode-switching helpers intended for a `<META>+W` hotkey
   that toggles word wrap against horizontal scrolling while preserving search
   anchors.
@@ -92,6 +94,8 @@ Optional flags:
   stdin after an idle interval once bytes have started arriving.
 - `--max-stdin-buffer-megabytes <megabytes>` to raise or lower the buffered
   stdin safety ceiling (default 16 MB).
+- `--allow-huge` to allow trusted file inputs up to 4 GiB instead of the
+  default 16 MiB ceiling.
 - `--MIL` to emit Monkey-in-the-Loop action telemetry for live
   troubleshooting.
 - `--readability-first-tables` to keep Markdown tables at readable column
@@ -111,10 +115,16 @@ Optional flags:
 - `--automation-json <source>` to replay timed key input as
   `[[delay_seconds, key_spec], ...]` from a JSON file path or literal JSON
   string.
+- `--allow-huge-automation-scripts` to allow trusted automation JSON sources
+  up to 4 GiB instead of the default 16 MiB ceiling.
 - `--redraw-check-digit` to overlay a center-screen digit that advances
   modulo 10 on each interactive pager redraw.
 - `--viewport-columns <int>` and `--viewport-rows <int>` to enforce synthetic
-  viewport dimensions for deterministic automation captures.
+  viewport dimensions for deterministic automation captures. Values above
+  512 cells per axis are accepted up to 16,384 by default, but rendering and
+  captures stay capped to 512 cells per axis.
+- `--allow-insane-geometry` to render and capture trusted geometry up to
+  65,535 cells per axis.
 - `--verify-resize-detection` to run an interactive resize checklist that
   acknowledges detected events and reports PASS/FAIL per step.
 - `--test-input-feedback` to run a two-stage terminal input diagnostic that

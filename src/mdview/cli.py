@@ -23,6 +23,21 @@ from typing import Callable, Optional, Sequence, TextIO
 from mdview import __version__
 from mdview.input_formats import DetectedInputFormat, detect_input_format
 from mdview.input_feedback import run_test_input_feedback
+from mdview.limits import (
+    BYTES_PER_MEGABYTE,
+    DEFAULT_BOUNDED_INPUT_MEGABYTES,
+    DEFAULT_BOUNDED_INPUT_LIMIT_BYTES,
+    GEOMETRY_DEFAULT_ABSOLUTE_LIMIT,
+    GEOMETRY_DEFAULT_RENDER_LIMIT,
+    GEOMETRY_INSANE_ABSOLUTE_LIMIT,
+    HUGE_BOUNDED_INPUT_LIMIT_BYTES,
+    STDIN_READ_CHUNK_BYTES,
+    TEXT_READ_CHUNK_BYTES,
+    bounded_input_limit_bytes,
+    clamp_geometry_for_render,
+    format_byte_limit,
+    geometry_absolute_limit,
+)
 from mdview.prerequisites import (
     detect_prerequisite_issues,
     report_prerequisite_issues,
@@ -31,7 +46,6 @@ from mdview.rendering import (
     get_fallback_notices,
     is_markdown_file,
     page_text,
-    read_text,
     render_to_ansi,
 )
 from mdview.resize_verifier import ResizeDetectionVerifier
@@ -49,9 +63,7 @@ class _LoadedDocument:
 
 AutomationReplayEvent = tuple[float, str]
 _STDIN_IDLE_TIMEOUT_SECONDS = 2.0
-_STDIN_MAX_BUFFER_MEGABYTES = 16.0
-_BYTES_PER_MEGABYTE = 1024 * 1024
-_STDIN_READ_CHUNK_SIZE = 4096
+_STDIN_MAX_BUFFER_MEGABYTES = float(DEFAULT_BOUNDED_INPUT_MEGABYTES)
 _STDIN_SOURCE_LABEL = Path("<stdin>")
 _STDIN_BUFFERING_INITIAL_STATUS = "Buffering stdin..."
 _STDIN_BUFFERING_COMPLETE_STATUS = "Buffering stdin... complete."
@@ -61,6 +73,10 @@ _STDIN_BUFFERING_LIMIT_STATUS = "Buffering stdin... failed: exceeds max size lim
 
 class _StdinBufferLimitExceeded(RuntimeError):
     """Raised when buffered stdin would exceed the configured safety ceiling."""
+
+
+class _BoundedReadLimitExceeded(RuntimeError):
+    """Raised when a bounded text input would exceed the active byte ceiling."""
 
 
 @dataclass(frozen=True)
@@ -163,18 +179,135 @@ def _stdin_supports_buffered_document(input_stream: TextIO = sys.stdin) -> bool:
 def _stdin_buffer_limit_bytes(max_buffer_megabytes: float) -> int:
     """Return the configured stdin ceiling in bytes."""
 
-    return max(1, math.ceil(max_buffer_megabytes * _BYTES_PER_MEGABYTE))
+    return max(1, math.ceil(max_buffer_megabytes * BYTES_PER_MEGABYTE))
 
 
 def _stdin_buffer_limit_error(max_buffer_bytes: int) -> _StdinBufferLimitExceeded:
     """Return the standardized oversize-stdin error message."""
 
-    configured_limit = max_buffer_bytes / _BYTES_PER_MEGABYTE
+    configured_limit = max_buffer_bytes / BYTES_PER_MEGABYTE
     return _StdinBufferLimitExceeded(
         "buffered stdin exceeded the configured "
         f"{configured_limit:g} megabyte safety limit. Re-run with "
         "--max-stdin-buffer-megabytes=<override-value-in-megabytes> to allow "
         "a larger stdin document."
+    )
+
+
+def _limit_exceeded_message(
+    source_label: str,
+    *,
+    actual_bytes: Optional[int],
+    limit_bytes: int,
+    escalation_flag: Optional[str],
+) -> str:
+    """Return a user-facing bounded-input failure message."""
+
+    actual_detail = ""
+    if actual_bytes is not None:
+        actual_detail = f" ({format_byte_limit(actual_bytes)})"
+
+    if escalation_flag is not None:
+        return (
+            f"{source_label}{actual_detail} exceeds the default "
+            f"{format_byte_limit(limit_bytes)} safety limit. Re-run with "
+            f"{escalation_flag} to allow inputs up to "
+            f"{format_byte_limit(HUGE_BOUNDED_INPUT_LIMIT_BYTES)}."
+        )
+    return (
+        f"{source_label}{actual_detail} exceeds the absolute "
+        f"{format_byte_limit(limit_bytes)} safety limit."
+    )
+
+
+def _read_text_with_byte_limit(
+    path: Path,
+    *,
+    max_bytes: int,
+    escalation_flag: Optional[str],
+) -> str:
+    """Read UTF-8 text from ``path`` without crossing ``max_bytes``."""
+
+    label = f"input file '{path}'"
+    try:
+        size = path.stat().st_size
+    except OSError:
+        size = None
+    if size is not None and size > max_bytes:
+        raise _BoundedReadLimitExceeded(
+            _limit_exceeded_message(
+                label,
+                actual_bytes=size,
+                limit_bytes=max_bytes,
+                escalation_flag=escalation_flag,
+            )
+        )
+
+    chunks: list[bytes] = []
+    total_bytes = 0
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(TEXT_READ_CHUNK_BYTES)
+            if not chunk:
+                break
+            total_bytes += len(chunk)
+            if total_bytes > max_bytes:
+                raise _BoundedReadLimitExceeded(
+                    _limit_exceeded_message(
+                        label,
+                        actual_bytes=total_bytes,
+                        limit_bytes=max_bytes,
+                        escalation_flag=escalation_flag,
+                    )
+                )
+            chunks.append(chunk)
+
+    return b"".join(chunks).decode("utf-8")
+
+
+def _validate_viewport_geometry(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+) -> None:
+    """Reject viewport dimensions beyond the active absolute ceiling."""
+
+    absolute_limit = geometry_absolute_limit(
+        allow_insane_geometry=args.allow_insane_geometry
+    )
+    for attribute, option_name in (
+        ("viewport_columns", "--viewport-columns"),
+        ("viewport_rows", "--viewport-rows"),
+    ):
+        value = getattr(args, attribute)
+        if value is None or value <= absolute_limit:
+            continue
+        if args.allow_insane_geometry:
+            parser.error(f"{option_name} must be <= {absolute_limit}")
+        parser.error(
+            f"{option_name} must be <= {absolute_limit} unless "
+            "--allow-insane-geometry is used; the absolute limit is "
+            f"{GEOMETRY_INSANE_ABSOLUTE_LIMIT}"
+        )
+
+
+def _emit_geometry_cap_notice(args: argparse.Namespace) -> None:
+    """Warn when explicit viewport geometry is accepted but render-capped."""
+
+    if args.allow_insane_geometry:
+        return
+    requested = [
+        value
+        for value in (args.viewport_columns, args.viewport_rows)
+        if value is not None and value > GEOMETRY_DEFAULT_RENDER_LIMIT
+    ]
+    if not requested:
+        return
+    print(
+        "mdview: requested viewport geometry exceeds the default "
+        f"{GEOMETRY_DEFAULT_RENDER_LIMIT}-cell render limit; rendering and "
+        "framebuffer captures are capped to that limit per axis. Use "
+        "--allow-insane-geometry to render larger geometry explicitly.",
+        file=sys.stderr,
     )
 
 
@@ -228,7 +361,7 @@ def _read_stdin_with_thread(
     def _reader() -> None:
         try:
             while True:
-                chunk = input_stream.read(_STDIN_READ_CHUNK_SIZE)
+                chunk = input_stream.read(STDIN_READ_CHUNK_BYTES)
                 item_queue.put(("chunk", chunk))
                 if chunk == "":
                     return
@@ -313,7 +446,7 @@ def _read_buffered_stdin_content(
                     timed_out=True,
                 )
 
-            raw_chunk = os.read(fileno, _STDIN_READ_CHUNK_SIZE)
+            raw_chunk = os.read(fileno, STDIN_READ_CHUNK_BYTES)
             if not raw_chunk:
                 return _BufferedStdinReadResult(
                     content="".join(chunks) + decoder.decode(b"", final=True),
@@ -395,20 +528,47 @@ def _buffer_stdin_document(
     )
 
 
-def _parse_automation_json_source(source: str) -> list[AutomationReplayEvent]:
+def _parse_automation_json_source(
+    source: str,
+    *,
+    max_source_bytes: int = DEFAULT_BOUNDED_INPUT_LIMIT_BYTES,
+    escalation_flag: Optional[str] = "--allow-huge-automation-scripts",
+) -> list[AutomationReplayEvent]:
     """Return validated automation replay events from file or literal JSON."""
 
     payload = source
-    candidate = Path(source).expanduser()
+    source_bytes = len(source.encode("utf-8"))
+    if source_bytes > max_source_bytes:
+        raise ValueError(
+            _limit_exceeded_message(
+                "automation JSON literal",
+                actual_bytes=source_bytes,
+                limit_bytes=max_source_bytes,
+                escalation_flag=escalation_flag,
+            )
+        )
+
+    try:
+        candidate: Optional[Path] = Path(source).expanduser()
+        candidate_exists = candidate.exists()
+    except (OSError, ValueError):
+        candidate = None
+        candidate_exists = False
     # The CLI accepts either a literal JSON string or a path. Prefer the file
     # interpretation when the path exists so automation scripts can pass a
     # filename without additional flag syntax.
-    if candidate.exists():
+    if candidate_exists and candidate is not None:
         if not candidate.is_file():
             raise ValueError(f"automation JSON path is not a file: {candidate}")
         try:
-            payload = candidate.read_text(encoding="utf-8")
-        except OSError as error:
+            payload = _read_text_with_byte_limit(
+                candidate,
+                max_bytes=max_source_bytes,
+                escalation_flag=escalation_flag,
+            )
+        except _BoundedReadLimitExceeded as error:
+            raise ValueError(str(error)) from error
+        except (OSError, UnicodeDecodeError) as error:
             raise ValueError(
                 f"failed to read automation JSON file '{candidate}': {error}"
             ) from error
@@ -537,6 +697,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--allow-huge",
+        action="store_true",
+        help=(
+            "Allow file inputs up to "
+            f"{format_byte_limit(HUGE_BOUNDED_INPUT_LIMIT_BYTES)} instead of "
+            f"the default {DEFAULT_BOUNDED_INPUT_MEGABYTES} MiB ceiling."
+        ),
+    )
+    parser.add_argument(
         "--MIL",
         "--mil",
         dest="mil",
@@ -613,11 +782,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override detected viewport height with a synthetic value.",
     )
     parser.add_argument(
+        "--allow-insane-geometry",
+        action="store_true",
+        help=(
+            "Render viewport geometry above "
+            f"{GEOMETRY_DEFAULT_RENDER_LIMIT} cells per axis. Without this "
+            f"flag, values up to {GEOMETRY_DEFAULT_ABSOLUTE_LIMIT} are "
+            f"accepted but only the first {GEOMETRY_DEFAULT_RENDER_LIMIT} "
+            "cells per axis are rendered. With this flag, the absolute limit "
+            f"is {GEOMETRY_INSANE_ABSOLUTE_LIMIT} cells per axis."
+        ),
+    )
+    parser.add_argument(
         "--automation-json",
         metavar="SOURCE",
         help=(
             "Replay key events from JSON SOURCE (file path or literal JSON "
             "string) as [[delay_seconds, key_spec], ...]."
+        ),
+    )
+    parser.add_argument(
+        "--allow-huge-automation-scripts",
+        action="store_true",
+        help=(
+            "Allow automation JSON sources up to "
+            f"{format_byte_limit(HUGE_BOUNDED_INPUT_LIMIT_BYTES)} instead of "
+            f"the default {DEFAULT_BOUNDED_INPUT_MEGABYTES} MiB ceiling."
         ),
     )
     parser.add_argument(
@@ -655,7 +845,9 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     """
 
     parser = build_parser()
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    _validate_viewport_geometry(parser, args)
+    return args
 
 
 def _emit_fallback_notices() -> None:
@@ -676,18 +868,30 @@ def _emit_log(message: str) -> None:
     print(message, file=sys.stderr)
 
 
-def _initial_viewport_width(*, viewport_columns: Optional[int]) -> Optional[int]:
+def _initial_viewport_width(
+    *,
+    viewport_columns: Optional[int],
+    allow_insane_geometry: bool,
+) -> Optional[int]:
     """Return the startup render width for interactive terminal sessions."""
 
     if viewport_columns is not None:
-        return viewport_columns
+        return clamp_geometry_for_render(
+            viewport_columns,
+            allow_insane_geometry=allow_insane_geometry,
+        )
     if not sys.stdout.isatty():
         return None
     try:
         columns = shutil.get_terminal_size().columns
     except (OSError, ValueError):
         return None
-    return columns if columns > 0 else None
+    if columns <= 0:
+        return None
+    return clamp_geometry_for_render(
+        columns,
+        allow_insane_geometry=allow_insane_geometry,
+    )
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -696,6 +900,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     report_prerequisite_issues(detect_prerequisite_issues())
     args = parse_args(argv)
     exit_code = 0
+    _emit_geometry_cap_notice(args)
 
     if args.verify_resize_detection and args.test_input_feedback:
         print(
@@ -763,8 +968,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     automation_replay: Optional[list[AutomationReplayEvent]] = None
     if args.automation_json is not None:
+        automation_limit = bounded_input_limit_bytes(
+            allow_huge=args.allow_huge_automation_scripts
+        )
+        automation_escalation_flag = (
+            None
+            if args.allow_huge_automation_scripts
+            else "--allow-huge-automation-scripts"
+        )
         try:
-            automation_replay = _parse_automation_json_source(args.automation_json)
+            automation_replay = _parse_automation_json_source(
+                args.automation_json,
+                max_source_bytes=automation_limit,
+                escalation_flag=automation_escalation_flag,
+            )
         except ValueError as error:
             print(f"mdview: {error}", file=sys.stderr)
             _emit_fallback_notices()
@@ -772,6 +989,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     loaded_documents: list[_LoadedDocument] = []
     prefer_tty_input = buffered_stdin is not None
+    file_input_limit = bounded_input_limit_bytes(allow_huge=args.allow_huge)
+    file_escalation_flag = None if args.allow_huge else "--allow-huge"
     if buffered_stdin is not None:
         stdin_reflow_mode = resolve_reflow_mode(
             markdown=buffered_stdin.detected_format.markdown,
@@ -802,8 +1021,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return exit_code
 
         try:
-            content = read_text(path)
-        except (OSError, UnicodeDecodeError) as error:
+            content = _read_text_with_byte_limit(
+                path,
+                max_bytes=file_input_limit,
+                escalation_flag=file_escalation_flag,
+            )
+        except (_BoundedReadLimitExceeded, OSError, UnicodeDecodeError) as error:
             print(f"mdview: failed to read '{path}': {error}", file=sys.stderr)
             exit_code = 3
             _emit_fallback_notices()
@@ -841,7 +1064,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             cell_borders=not args.no_cell_borders,
         )
 
-    initial_width = _initial_viewport_width(viewport_columns=args.viewport_columns)
+    initial_width = _initial_viewport_width(
+        viewport_columns=args.viewport_columns,
+        allow_insane_geometry=args.allow_insane_geometry,
+    )
     ansi_text = _render_document(current_index, width=initial_width)
 
     def _render_on_resize(width: int) -> str:
@@ -898,6 +1124,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             screen_dump_dir=args.screen_dump_dir,
             viewport_columns=args.viewport_columns,
             viewport_rows=args.viewport_rows,
+            allow_insane_geometry=args.allow_insane_geometry,
             automation_replay=automation_replay,
             redraw_check_digit=args.redraw_check_digit,
         )

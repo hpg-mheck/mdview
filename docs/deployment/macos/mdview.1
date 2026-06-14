@@ -19,6 +19,7 @@ mdview \- render Markdown or plain text with an internal viewer
 .RI [ \-\-max\-stdin\-buffer\-megabytes
 .I MEGABYTES
 .RI ]
+.RI [ \-\-allow\-huge ]
 .RI [ \-\-MIL ]
 .RI [ \-\-readability\-first\-tables ]
 .RI [ \-\-no\-table\-borders ]
@@ -38,9 +39,11 @@ mdview \- render Markdown or plain text with an internal viewer
 .RI [ \-\-viewport\-rows
 .I ROWS
 .RI ]
+.RI [ \-\-allow\-insane\-geometry ]
 .RI [ \-\-automation\-json
 .I SOURCE
 .RI ]
+.RI [ \-\-allow\-huge\-automation\-scripts ]
 .RI [ \-\-redraw\-check\-digit ]
 .RI [ \-V ]
 .RI [ path " ..." ]
@@ -65,6 +68,7 @@ may buffer a non-interactive stdin document instead. Buffered stdin uses a
 16 MB safety ceiling by default and stops waiting after 2 seconds of idle time
 once bytes have started arriving. If no bytes arrive before that timeout,
 stdin is treated as absent and mdview reports the normal missing-input error.
+File path inputs use a 16 MiB safety ceiling by default.
 .TP
 .BR \-h , " \-\-help"
 Show the help message and exit.
@@ -107,6 +111,10 @@ further input.
 Refuse buffered stdin documents larger than MEGABYTES unless the operator
 explicitly raises the safety ceiling.
 .TP
+.BR \-\-allow\-huge
+Allow trusted file path inputs up to 4 GiB instead of the default 16 MiB
+ceiling. Inputs above 4 GiB are always rejected.
+.TP
 .BR \-\-MIL , " \-\-mil"
 Enable Monkey-in-the-Loop telemetry: emit operator action events and targeted
 troubleshooting context.
@@ -145,16 +153,31 @@ and
 The default is the current working directory.
 .TP
 .BR \-\-viewport\-columns " " COLUMNS
-Override detected viewport width with a synthetic value.
+Override detected viewport width with a synthetic value. Without
+.BR \-\-allow\-insane\-geometry ,
+values above 512 are accepted up to 16,384 but only the first 512 columns are
+rendered and captured.
 .TP
 .BR \-\-viewport\-rows " " ROWS
-Override detected viewport height with a synthetic value.
+Override detected viewport height with a synthetic value. Without
+.BR \-\-allow\-insane\-geometry ,
+values above 512 are accepted up to 16,384 but only the first 512 rows are
+rendered and captured.
+.TP
+.BR \-\-allow\-insane\-geometry
+Render and capture trusted geometry above 512 cells per axis, up to an
+absolute limit of 65,535 cells per axis.
 .TP
 .BR \-\-automation\-json " " SOURCE
 Replay key events from JSON SOURCE. SOURCE may be a file path or literal JSON
 string encoded as:
 .B [[delay_seconds, key_spec], ...]
 where delays are non-negative and key specs describe replayed key input.
+Automation JSON sources use a 16 MiB safety ceiling by default.
+.TP
+.BR \-\-allow\-huge\-automation\-scripts
+Allow trusted automation JSON sources up to 4 GiB instead of the default
+16 MiB ceiling. Sources above 4 GiB are always rejected.
 .TP
 .BR \-\-redraw\-check\-digit
 Overlay a center-screen digit that advances from 0 to 9 on each interactive

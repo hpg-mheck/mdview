@@ -1,0 +1,53 @@
+Resource Limits
+===============
+
+Purpose
+-------
+mdview should fail predictably before user-controlled inputs or automation
+geometry can consume unreasonable memory, disk, or timer resources. The
+limits in this specification are safety guardrails, not rendering quality
+targets.
+
+Requirements
+------------
+* File path inputs are bounded to 16 MiB by default.
+
+* When a file path input exceeds the default limit, mdview must stop before
+  reading the full file and tell the user that `--allow-huge` is available.
+
+* `--allow-huge` raises the file path input ceiling to 4 GiB. Inputs above
+  4 GiB must be rejected even when `--allow-huge` is present.
+
+* Buffered stdin keeps its existing configurable default ceiling of 16 MiB.
+
+* Automation JSON sources are bounded to 16 MiB by default, whether supplied
+  as a file path or as a literal JSON string.
+
+* `--allow-huge-automation-scripts` raises the automation JSON source ceiling
+  to 4 GiB. Automation JSON above 4 GiB must be rejected even when the flag is
+  present.
+
+* Synthetic viewport dimensions must be positive integers. Without
+  `--allow-insane-geometry`, mdview accepts requested dimensions up to 16,384
+  cells per axis but renders and captures only the first 512 cells per axis.
+
+* `--allow-insane-geometry` raises both the accepted and rendered geometry
+  ceiling to 65,535 cells per axis.
+
+* All shared size and geometry policy values must live in one common module
+  so tests, CLI behavior, and rendering code do not drift.
+
+Acceptance Criteria
+-------------------
+* Large file path inputs fail with a message that names `--allow-huge`.
+
+* Large automation JSON sources fail with a message that names
+  `--allow-huge-automation-scripts`.
+
+* Default geometry above 512 cells per axis is accepted up to 16,384 but is
+  render-capped to 512 cells per axis.
+
+* Geometry above 16,384 cells per axis is rejected unless
+  `--allow-insane-geometry` is present.
+
+* Geometry above 65,535 cells per axis is always rejected.

@@ -9,6 +9,7 @@ src/mdview/input_feedback.py
 src/mdview/input_formats.py
 src/mdview/intake.py
 src/mdview/iteration_exit.py
+src/mdview/limits.py
 src/mdview/mode_switching.py
 src/mdview/preferences.py
 src/mdview/prerequisites.py

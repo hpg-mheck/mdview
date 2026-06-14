@@ -1,12 +1,13 @@
 usage: mdview [-h] [--verify-resize-detection] [--test-input-feedback]
               [--reflow] [--reflow-mode {prose,all,none}] [--noreflow]
               [--verbose] [--stdin-timeout-in-seconds SECONDS]
-              [--max-stdin-buffer-megabytes MEGABYTES] [--MIL]
+              [--max-stdin-buffer-megabytes MEGABYTES] [--allow-huge] [--MIL]
               [--readability-first-tables] [--no-table-borders]
               [--no-cell-borders] [--automation-timeout SECONDS]
               [--automation-timeout-screenshot BASENAME]
               [--screen-dump-dir DIRECTORY] [--viewport-columns COLUMNS]
-              [--viewport-rows ROWS] [--automation-json SOURCE]
+              [--viewport-rows ROWS] [--allow-insane-geometry]
+              [--automation-json SOURCE] [--allow-huge-automation-scripts]
               [--redraw-check-digit] [-V]
               [paths ...]
 
@@ -46,6 +47,8 @@ options:
                             Refuse buffered stdin documents larger than
                             MEGABYTES unless the operator explicitly raises
                             the safety ceiling. (default: 16.0)
+  --allow-huge              Allow file inputs up to 4 GiB instead of the
+                            default 16 MiB ceiling. (default: False)
   --MIL, --mil              Enable Monkey-in-the-Loop telemetry: emit operator
                             action events and targeted troubleshooting
                             context. (default: False)
@@ -77,9 +80,17 @@ options:
                             value. (default: None)
   --viewport-rows ROWS      Override detected viewport height with a synthetic
                             value. (default: None)
+  --allow-insane-geometry   Render viewport geometry above 512 cells per axis.
+                            Without this flag, values up to 16384 are accepted
+                            but only the first 512 cells per axis are
+                            rendered. With this flag, the absolute limit is
+                            65535 cells per axis. (default: False)
   --automation-json SOURCE  Replay key events from JSON SOURCE (file path or
                             literal JSON string) as [[delay_seconds,
                             key_spec], ...]. (default: None)
+  --allow-huge-automation-scripts
+                            Allow automation JSON sources up to 4 GiB instead
+                            of the default 16 MiB ceiling. (default: False)
   --redraw-check-digit      Overlay a center-screen digit that advances from 0
                             to 9 on each interactive pager redraw. (default:
                             False)

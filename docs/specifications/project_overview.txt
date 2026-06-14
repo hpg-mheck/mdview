@@ -119,11 +119,16 @@ Functional Requirements
     ``mdview-screen.txt`` and ``mdview-screen.attrs.json``.
     ``--stdin-timeout-in-seconds <seconds>`` overrides the buffered-stdin
     idle timeout, and ``--max-stdin-buffer-megabytes <megabytes>`` overrides
-    the buffered-stdin safety ceiling.
+    the buffered-stdin safety ceiling. ``--allow-huge`` raises trusted file
+    input limits from 16 MiB to 4 GiB.
     ``--viewport-columns``/``--viewport-rows`` provide synthetic viewport
-    size overrides for deterministic automation. ``--automation-json`` replays
-    scripted key input as JSON ``[[delay_seconds, key_spec], ...]`` from a
-    file path or literal JSON string.
+    size overrides for deterministic automation; without
+    ``--allow-insane-geometry``, rendering and captures are capped to 512
+    cells per axis even when larger dimensions are accepted.
+    ``--automation-json`` replays scripted key input as JSON
+    ``[[delay_seconds, key_spec], ...]`` from a file path or literal JSON
+    string, and ``--allow-huge-automation-scripts`` raises trusted automation
+    JSON source limits from 16 MiB to 4 GiB.
     ``--verbose`` reports document switches, and ``--MIL`` enables
     Monkey-in-the-Loop per-action troubleshooting telemetry.
 

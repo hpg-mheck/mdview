@@ -330,6 +330,83 @@ def test_page_text_records_redraw_check_digit_fallback(monkeypatch, capsys) -> N
         importlib.reload(rendering)
 
 
+def test_prompt_toolkit_pager_clamps_detected_geometry(monkeypatch) -> None:
+    class DummySize:
+        columns = 100
+        rows = 100
+
+    class DummyOutput:
+        def get_size(self) -> DummySize:
+            return DummySize()
+
+    controls: List["DummyFormattedTextControl"] = []
+    app_registry: List["DummyApplication"] = []
+
+    class DummyFormattedTextControl:
+        def __init__(self, text, **_: object) -> None:
+            self.text_func = text
+            self.rendered = []
+            controls.append(self)
+
+    class DummyWindow:
+        def __init__(self, content, **_: object) -> None:
+            self.content = content
+            self.render_info = None
+            self.vertical_scroll = 0
+            self.horizontal_scroll = 0
+
+    class DummyKeyBindings:
+        def add(self, *keys, **kwargs):
+            def decorator(func):
+                return func
+
+            return decorator
+
+    class DummyLayout:
+        def __init__(self, container) -> None:
+            self.container = container
+
+    class DummyStyle:
+        @classmethod
+        def from_dict(cls, mapping):
+            return mapping
+
+    class DummyApplication:
+        def __init__(self, layout, key_bindings, full_screen, style) -> None:
+            self.layout = layout
+            self.output = DummyOutput()
+            app_registry.append(self)
+
+        def run(self) -> None:
+            controls[0].rendered = self.layout.container.content.text_func()
+
+    def get_dummy_app() -> DummyApplication:
+        return app_registry[-1]
+
+    def fake_components():
+        return (
+            DummyApplication,
+            DummyKeyBindings,
+            DummyLayout,
+            DummyWindow,
+            DummyFormattedTextControl,
+            DummyStyle,
+            get_dummy_app,
+        )
+
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(rendering, "_prompt_toolkit_components", fake_components)
+    monkeypatch.setattr(
+        rendering,
+        "clamp_geometry_for_render",
+        lambda value, *, allow_insane_geometry: min(int(value), 3),
+    )
+
+    assert rendering._attempt_prompt_toolkit_pager("x")
+    rendered = "".join(text for _, text in controls[0].rendered)
+    assert rendered.splitlines()[0] == "x  "
+
+
 def test_render_to_ansi_does_not_write_directly_to_stdout(capsys) -> None:
     render_to_ansi("# Heading\n\nBody\n", markdown=True)
     captured = capsys.readouterr()

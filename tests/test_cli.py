@@ -7,6 +7,7 @@ import threading
 import pytest
 
 from mdview import cli as cli_module
+from mdview import limits as limits_module
 
 
 class _BlockingTextStream:
@@ -148,6 +149,7 @@ def test_format_help_matches_expected_shape():
     assert "--verbose" in help_text
     assert "--stdin-timeout-in-seconds" in help_text
     assert "--max-stdin-buffer-megabytes" in help_text
+    assert "--allow-huge" in help_text
     assert "--MIL" in help_text
     assert "--readability-first-tables" in help_text
     assert "--no-table-borders" in help_text
@@ -156,8 +158,10 @@ def test_format_help_matches_expected_shape():
     assert "--automation-timeout-screenshot" in help_text
     assert "--screen-dump-dir" in help_text
     assert "--automation-json" in help_text
+    assert "--allow-huge-automation-scripts" in help_text
     assert "--viewport-columns" in help_text
     assert "--viewport-rows" in help_text
+    assert "--allow-insane-geometry" in help_text
     assert "--redraw-check-digit" in help_text
     assert "--test-input-feedback" in help_text
     assert "Render Markdown or plain text in the terminal" in help_text
@@ -532,6 +536,68 @@ def test_main_uses_viewport_columns_for_initial_render(monkeypatch, tmp_path):
     assert captured["widths"] == [120]
 
 
+def test_main_caps_large_viewport_columns_for_initial_render(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    large_columns = limits_module.GEOMETRY_DEFAULT_RENDER_LIMIT + 1
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = {"widths": []}
+
+    def fake_render_to_ansi(content: str, markdown: bool, **kwargs):
+        captured["widths"].append(kwargs.get("width"))
+        return "rendered"
+
+    monkeypatch.setattr(cli_module.sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(cli_module, "render_to_ansi", fake_render_to_ansi)
+    monkeypatch.setattr(cli_module, "page_text", lambda text, **kwargs: None)
+
+    exit_code = cli_module.main(
+        [
+            "--viewport-columns",
+            str(large_columns),
+            str(document),
+        ]
+    )
+
+    captured_output = capsys.readouterr()
+    assert exit_code == 0
+    assert captured["widths"] == [limits_module.GEOMETRY_DEFAULT_RENDER_LIMIT]
+    assert "--allow-insane-geometry" in captured_output.err
+
+
+def test_main_uses_insane_viewport_columns_for_initial_render(
+    monkeypatch,
+    tmp_path,
+):
+    large_columns = limits_module.GEOMETRY_DEFAULT_RENDER_LIMIT + 1
+    document = tmp_path / "sample.md"
+    document.write_text("# Title\n\nbody")
+    captured = {"widths": []}
+
+    def fake_render_to_ansi(content: str, markdown: bool, **kwargs):
+        captured["widths"].append(kwargs.get("width"))
+        return "rendered"
+
+    monkeypatch.setattr(cli_module.sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(cli_module, "render_to_ansi", fake_render_to_ansi)
+    monkeypatch.setattr(cli_module, "page_text", lambda text, **kwargs: None)
+
+    exit_code = cli_module.main(
+        [
+            "--allow-insane-geometry",
+            "--viewport-columns",
+            str(large_columns),
+            str(document),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["widths"] == [large_columns]
+
+
 def test_main_passes_table_border_flags_to_render_calls(monkeypatch, tmp_path):
     document = tmp_path / "sample.md"
     document.write_text("# Title\n\nbody")
@@ -586,6 +652,55 @@ def test_parser_rejects_non_positive_viewport_rows(capsys):
     assert excinfo.value.code == 2
     captured = capsys.readouterr()
     assert "value must be a positive integer" in captured.err
+
+
+def test_parse_args_rejects_default_geometry_above_absolute_limit(capsys):
+    with pytest.raises(SystemExit) as excinfo:
+        cli_module.parse_args(
+            [
+                "--viewport-columns",
+                str(limits_module.GEOMETRY_DEFAULT_ABSOLUTE_LIMIT + 1),
+                "sample.md",
+            ]
+        )
+
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert "--allow-insane-geometry" in captured.err
+
+
+def test_parse_args_rejects_insane_geometry_above_absolute_limit(capsys):
+    with pytest.raises(SystemExit) as excinfo:
+        cli_module.parse_args(
+            [
+                "--allow-insane-geometry",
+                "--viewport-rows",
+                str(limits_module.GEOMETRY_INSANE_ABSOLUTE_LIMIT + 1),
+                "sample.md",
+            ]
+        )
+
+    assert excinfo.value.code == 2
+    captured = capsys.readouterr()
+    assert str(limits_module.GEOMETRY_INSANE_ABSOLUTE_LIMIT) in captured.err
+
+
+def test_parse_args_allows_maximum_insane_geometry():
+    maximum_geometry = limits_module.GEOMETRY_INSANE_ABSOLUTE_LIMIT
+    parsed = cli_module.parse_args(
+        [
+            "--allow-insane-geometry",
+            "--viewport-columns",
+            str(maximum_geometry),
+            "--viewport-rows",
+            str(maximum_geometry),
+            "sample.md",
+        ]
+    )
+
+    assert parsed.viewport_columns == maximum_geometry
+    assert parsed.viewport_rows == maximum_geometry
+    assert parsed.allow_insane_geometry is True
 
 
 def test_main_accepts_buffered_markdown_stdin_without_paths(monkeypatch):
@@ -748,3 +863,76 @@ def test_read_buffered_stdin_content_rejects_oversize_input():
             idle_timeout_seconds=0.01,
             max_buffer_bytes=3,
         )
+
+
+def test_main_rejects_large_file_without_allow_huge(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    tiny_limit_bytes = 3
+    safe_limit_bytes = 64
+    document = tmp_path / "large.md"
+    document.write_text("# Title\n\nabcdef")
+
+    monkeypatch.setattr(
+        cli_module,
+        "bounded_input_limit_bytes",
+        lambda *, allow_huge: safe_limit_bytes if allow_huge else tiny_limit_bytes,
+    )
+
+    exit_code = cli_module.main([str(document)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 3
+    assert "--allow-huge" in captured.err
+
+
+def test_main_accepts_large_file_with_allow_huge(monkeypatch, tmp_path):
+    tiny_limit_bytes = 3
+    safe_limit_bytes = 64
+    document = tmp_path / "large.md"
+    document.write_text("# Title\n\nabcdef")
+    captured = {}
+
+    monkeypatch.setattr(
+        cli_module,
+        "bounded_input_limit_bytes",
+        lambda *, allow_huge: safe_limit_bytes if allow_huge else tiny_limit_bytes,
+    )
+    monkeypatch.setattr(
+        cli_module, "render_to_ansi", lambda *args, **kwargs: "rendered"
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "page_text",
+        lambda text, **kwargs: captured.setdefault("text", text),
+    )
+
+    exit_code = cli_module.main(["--allow-huge", str(document)])
+
+    assert exit_code == 0
+    assert captured["text"] == "rendered"
+
+
+def test_parse_automation_json_rejects_large_literal():
+    tiny_limit_bytes = 3
+    with pytest.raises(ValueError) as excinfo:
+        cli_module._parse_automation_json_source(
+            '[[0, "q"]]',
+            max_source_bytes=tiny_limit_bytes,
+            escalation_flag="--allow-huge-automation-scripts",
+        )
+
+    assert "--allow-huge-automation-scripts" in str(excinfo.value)
+
+
+def test_parse_automation_json_allows_huge_limit():
+    safe_limit_bytes = 64
+    events = cli_module._parse_automation_json_source(
+        '[[0, "q"]]',
+        max_source_bytes=safe_limit_bytes,
+        escalation_flag=None,
+    )
+
+    assert events == [(0.0, "q")]

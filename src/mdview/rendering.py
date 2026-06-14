@@ -37,6 +37,7 @@ from mdview.hyperlinks import (
     HyperlinkNavigator,
     normalize_hyperlinks,
 )
+from mdview.limits import clamp_geometry_for_render
 
 if TYPE_CHECKING:  # pragma: no cover - imported for static analysis only
     from prompt_toolkit.layout.containers import Window
@@ -1882,6 +1883,7 @@ def _attempt_prompt_toolkit_pager(
     screen_dump_dir: Optional[Path] = None,
     viewport_columns: Optional[int] = None,
     viewport_rows: Optional[int] = None,
+    allow_insane_geometry: bool = False,
     redraw_check_digit: bool = False,
 ) -> bool:
     """Return True if text was paged interactively with prompt_toolkit."""
@@ -1936,10 +1938,19 @@ def _attempt_prompt_toolkit_pager(
     # snap back to the hidden cursor position in live terminals.
     viewport_vertical_scroll = 0
     viewport_horizontal_scroll = 0
+
+    def _render_dimension(value: int) -> int:
+        return clamp_geometry_for_render(
+            value,
+            allow_insane_geometry=allow_insane_geometry,
+        )
+
     forced_columns = (
-        max(int(viewport_columns), 1) if viewport_columns is not None else None
+        _render_dimension(viewport_columns) if viewport_columns is not None else None
     )
-    forced_rows = max(int(viewport_rows), 1) if viewport_rows is not None else None
+    forced_rows = (
+        _render_dimension(viewport_rows) if viewport_rows is not None else None
+    )
     redraw_check_digit_counter = 0
     # A FloatContainer overlay keeps the check digit pinned to the screen
     # center instead of letting it drift with the scrolled document content.
@@ -2199,12 +2210,14 @@ def _attempt_prompt_toolkit_pager(
             app = get_app()
             size = app.output.get_size()
             if size and getattr(size, "rows", 0) > 0:
-                return size.rows
+                return _render_dimension(size.rows)
         except (AttributeError, RuntimeError):
             pass
 
         render_info = window.render_info
-        return render_info.window_height if render_info else 0
+        if render_info and render_info.window_height > 0:
+            return _render_dimension(render_info.window_height)
+        return 0
 
     def _window_width() -> Optional[int]:
         if forced_columns is not None:
@@ -2213,12 +2226,14 @@ def _attempt_prompt_toolkit_pager(
             app = get_app()
             size = app.output.get_size()
             if size and getattr(size, "columns", 0) > 0:
-                return size.columns
+                return _render_dimension(size.columns)
         except (AttributeError, RuntimeError):
             pass
 
         render_info = window.render_info
-        return render_info.window_width if render_info else None
+        if render_info and render_info.window_width > 0:
+            return _render_dimension(render_info.window_width)
+        return None
 
     @bindings.add("tab")
     def _(event) -> None:  # type: ignore[override]
@@ -2610,6 +2625,7 @@ def page_text(
     screen_dump_dir: Optional[Path] = None,
     viewport_columns: Optional[int] = None,
     viewport_rows: Optional[int] = None,
+    allow_insane_geometry: bool = False,
     redraw_check_digit: bool = False,
 ) -> None:
     """Display rendered text using the internal viewing stack.
@@ -2635,6 +2651,8 @@ def page_text(
         screen_dump_dir: Optional directory for manual `!` capture artifacts.
         viewport_columns: Optional viewport width override for automation.
         viewport_rows: Optional viewport height override for automation.
+        allow_insane_geometry: Allow rendering beyond the default safe geometry
+            ceiling.
         redraw_check_digit: When ``True``, overlay a center-screen check digit
             that advances on each interactive redraw.
     """
@@ -2657,6 +2675,7 @@ def page_text(
         screen_dump_dir=screen_dump_dir,
         viewport_columns=viewport_columns,
         viewport_rows=viewport_rows,
+        allow_insane_geometry=allow_insane_geometry,
         redraw_check_digit=redraw_check_digit,
     ):
         return
