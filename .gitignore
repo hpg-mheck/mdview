@@ -213,6 +213,7 @@ __marimo__/
 node_modules/
 
 # BEGIN managed by codex-wrangler
+# Local Codex package, home, wrapper, and sentinel artifacts.
 .codex-local/
 .codex-home/
 .codex
@@ -220,3 +221,11 @@ node_modules/
 bin/codex-local
 README-LOCAL-Start-Codex.md
 # END managed by codex-wrangler
+
+# BEGIN managed by claude-wrangler
+# Local Claude Code package, session state, wrapper, and sentinel
+# artifacts.
+.local/
+bin/claude-local
+README-LOCAL-Start-Claude.md
+# END managed by claude-wrangler
