@@ -72,7 +72,9 @@ Run all required checks via timeout wrapper:
 - Standardized push path:
   - `python scripts/git_standard_commit_push.py -m "<message>"`
   This command blocks push unless the cached quality gate passes, including
-  entropy tripwire verification.
+  entropy tripwire verification. It also requires explicit Git identity,
+  runs working-tree and staged diff review, and consumes commit-body notes
+  from `project-management/state/pending-commit-changes.txt`.
 - Standardized pull path:
   - `python scripts/git_veteran_pull.py`
   This command enforces a guarded fast-forward pull workflow.
@@ -109,6 +111,8 @@ Operational Notes
   only the intended managed-section updates.
 - Prefer repo-local workflow scripts over direct `TheKnowledge/scripts`
   commands when a local mdview wrapper exists.
+- Use `--assume-reviewed` only after an explicit staging-review decision.
+  Use `--resume-review-prompts` to restore prompts for the shell session.
 - Keep the managed git pre-commit hook installed; setup scripts maintain it
   through `scripts/install_git_hooks.py`.
 - Keep local working trees clean before broad integration work when practical.

@@ -43,11 +43,11 @@ from python_environment_bootstrap import (  # noqa: E402
     write_python_version_file,
 )
 
-LOCAL_BIN_DIR = Path.home() / ".local" / "bin"
 STAGE1_MARKER = "THEKNOWLEDGE_MANAGED_INSTALL_STAGE1"
 REPO_SCOPE = "repo"
 USER_SCOPE = "user"
 SYSTEM_SCOPE = "system"
+ISOLATED_ASSISTANT_HOME_NAMES = frozenset((".claude-home", ".codex-home"))
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
@@ -73,6 +73,14 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         help=(
             "Install standard mode into system locations. Requires root and "
             "cannot be combined with development or venv-only mode."
+        ),
+    )
+    parser.add_argument(
+        "--user-home",
+        type=Path,
+        help=(
+            "Absolute existing home directory for user-scoped installation. "
+            "Required when HOME is an isolated assistant environment."
         ),
     )
     parser.add_argument(
@@ -150,6 +158,36 @@ def install_scope(args: argparse.Namespace) -> str:
     return USER_SCOPE
 
 
+def is_isolated_assistant_home(path: Path) -> bool:
+    """Return True for recognized private homes used by coding assistants."""
+
+    return path.name in ISOLATED_ASSISTANT_HOME_NAMES
+
+
+def resolve_user_home(requested_home: Optional[Path]) -> Path:
+    """Resolve one safe home for all user-scoped installer state."""
+
+    if requested_home is not None:
+        if not requested_home.is_absolute():
+            raise RuntimeError("--user-home must be an absolute path.")
+        resolved = requested_home.resolve()
+        if not resolved.is_dir():
+            raise RuntimeError(
+                "--user-home must name an existing directory: {}".format(resolved)
+            )
+        return resolved
+
+    resolved = Path.home().resolve()
+    if is_isolated_assistant_home(resolved):
+        raise RuntimeError(
+            "HOME is an isolated assistant environment: {}. Rerun with "
+            "--user-home /absolute/path to select the intended user scope.".format(
+                resolved
+            )
+        )
+    return resolved
+
+
 def run(
     command: Sequence[str],
     cwd: Optional[Path] = None,
@@ -178,8 +216,8 @@ def ensure_submodules(skip: bool) -> None:
     run(["git", "submodule", "update", "--init", "--recursive"], cwd=REPO_ROOT)
 
 
-def ensure_runtime_contexts() -> Tuple[Path, str, Path]:
-    """Install the configured bootstrap and runtime pyenv contexts."""
+def ensure_runtime_contexts(user_home: Path) -> Tuple[Path, str, Path]:
+    """Validate the bootstrap floor and install the selected pyenv runtime."""
 
     config = load_python_environment_config(REPO_ROOT)
     ensure_minimum_python(
@@ -187,9 +225,10 @@ def ensure_runtime_contexts() -> Tuple[Path, str, Path]:
         config.bootstrap.required_version,
         "install-stage-2.py",
     )
-    pyenv_root_path = default_pyenv_root()
+    pyenv_root_path = default_pyenv_root(user_home)
     ensure_pyenv_installed(pyenv_root_path, run)
-    ensure_pyenv_context(pyenv_root_path, config.bootstrap, run)
+    # Stage 1 already proved the bootstrap floor. Installing that minimum as a
+    # second interpreter would confuse source compatibility with runtime policy.
     runtime_selection = ensure_pyenv_context(pyenv_root_path, config.runtime, run)
     runtime_python = pyenv_python_executable(pyenv_root_path, runtime_selection)
     if not runtime_python.is_file():
@@ -262,17 +301,17 @@ def project_slug() -> str:
     return slugify_project_name(REPO_ROOT.name)
 
 
-def standard_install_venv_path(scope: str) -> Path:
+def standard_install_venv_path(scope: str, user_home: Path) -> Path:
     """Return the managed venv path for one non-development install scope."""
 
     if scope == SYSTEM_SCOPE:
         return Path("/usr/local/share") / project_slug() / "venv"
     if scope == USER_SCOPE:
-        return Path.home() / ".local" / "share" / project_slug() / "venv"
+        return user_home / ".local" / "share" / project_slug() / "venv"
     raise ValueError("Unsupported standard install scope: {}".format(scope))
 
 
-def preferred_standard_base_python(scope: str) -> Path:
+def preferred_standard_base_python(scope: str, user_home: Path) -> Path:
     """Choose the base interpreter for one standard non-development install."""
 
     if scope == SYSTEM_SCOPE:
@@ -284,7 +323,7 @@ def preferred_standard_base_python(scope: str) -> Path:
         return Path(sys.executable).resolve()
 
     candidate = pyenv_python_executable(
-        default_pyenv_root(),
+        default_pyenv_root(user_home),
         config.runtime.environment_name,
     )
     if candidate.is_file():
@@ -292,11 +331,13 @@ def preferred_standard_base_python(scope: str) -> Path:
     return Path(sys.executable).resolve()
 
 
-def ensure_standard_install_venv(scope: str) -> Tuple[Path, Path, Path]:
+def ensure_standard_install_venv(
+    scope: str, user_home: Path
+) -> Tuple[Path, Path, Path]:
     """Create or refresh the user or system venv used for standard installs."""
 
-    venv_path = standard_install_venv_path(scope)
-    base_python = preferred_standard_base_python(scope)
+    venv_path = standard_install_venv_path(scope, user_home)
+    base_python = preferred_standard_base_python(scope, user_home)
     venv_python = ensure_virtualenv(base_python, venv_path)
     install_build_bootstrap(venv_python)
     return venv_path, venv_python, base_python
@@ -318,12 +359,12 @@ def has_dev_extra(repo_root: Path) -> bool:
     return bool(re.search(r"(?m)^dev\s*=\s*\[", text))
 
 
-def launcher_dir_for_scope(scope: str) -> Path:
+def launcher_dir_for_scope(scope: str, user_home: Path) -> Path:
     """Return the managed launcher directory for one install scope."""
 
     if scope == SYSTEM_SCOPE:
         return Path("/usr/local/bin")
-    return LOCAL_BIN_DIR
+    return user_home / ".local" / "bin"
 
 
 def run_project_install_hook(
@@ -331,6 +372,7 @@ def run_project_install_hook(
     mode: str,
     scope: str,
     venv_path: Path,
+    user_home: Path,
     *,
     force: bool,
 ) -> bool:
@@ -351,7 +393,7 @@ def run_project_install_hook(
         "--venv",
         str(venv_path),
         "--bin-dir",
-        str(launcher_dir_for_scope(scope)),
+        str(launcher_dir_for_scope(scope, user_home)),
     ]
     if force:
         command.append("--force")
@@ -378,15 +420,30 @@ def install_project(
     venv_path: Path,
     mode: str,
     scope: str,
+    user_home: Path,
     *,
     force: bool,
 ) -> None:
     """Install the repository according to the selected mode and scope."""
 
     if mode == "venv-only":
-        run_project_install_hook(venv_python, mode, scope, venv_path, force=force)
+        run_project_install_hook(
+            venv_python,
+            mode,
+            scope,
+            venv_path,
+            user_home,
+            force=force,
+        )
         return
-    if run_project_install_hook(venv_python, mode, scope, venv_path, force=force):
+    if run_project_install_hook(
+        venv_python,
+        mode,
+        scope,
+        venv_path,
+        user_home,
+        force=force,
+    ):
         return
     run(default_install_command(venv_python, mode), cwd=REPO_ROOT)
 
@@ -404,21 +461,22 @@ def install_git_hooks(venv_python: Path) -> None:
             return
 
 
-def ensure_direnv(auto_install: bool) -> Path:
+def ensure_direnv(auto_install: bool, user_home: Path) -> Path:
     """Locate or install a user-scoped `direnv` binary."""
 
     existing = shutil.which("direnv")
     if existing:
         return Path(existing)
 
-    local_direnv = LOCAL_BIN_DIR / "direnv"
+    local_bin_dir = user_home / ".local" / "bin"
+    local_direnv = local_bin_dir / "direnv"
     if local_direnv.exists():
         return local_direnv
 
     if not auto_install:
         raise RuntimeError("direnv is required for development installs")
 
-    LOCAL_BIN_DIR.mkdir(parents=True, exist_ok=True)
+    local_bin_dir.mkdir(parents=True, exist_ok=True)
     artifact_name = direnv_download_name(platform.system().lower(), platform.machine())
     url = "https://github.com/direnv/direnv/releases/latest/download/{}".format(
         artifact_name
@@ -431,11 +489,11 @@ def ensure_direnv(auto_install: bool) -> Path:
     return local_direnv
 
 
-def ensure_shell_init(mode: str) -> Optional[Path]:
+def ensure_shell_init(mode: str, user_home: Path) -> Optional[Path]:
     """Install managed pyenv and optional direnv shell-hook blocks."""
 
     shell_name = detect_shell_name(os.environ.get("SHELL", ""))
-    rc_path = shell_rc_path(Path.home(), shell_name)
+    rc_path = shell_rc_path(user_home, shell_name)
     if rc_path is None:
         return None
 
@@ -490,13 +548,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     install_venv = None
     direnv_path = None
     envrc_path = None
+    user_home = None
     try:
         ensure_started_by_stage_1(args.force_direct_run)
         scope = install_scope(args)
+        if scope == SYSTEM_SCOPE:
+            if args.user_home is not None:
+                raise RuntimeError("--user-home cannot be combined with --system.")
+            user_home = Path.home().resolve()
+        else:
+            user_home = resolve_user_home(args.user_home)
         ensure_submodules(args.skip_submodule_init)
         if scope == REPO_SCOPE:
             pyenv_root_path, runtime_selection, runtime_python = (
-                ensure_runtime_contexts()
+                ensure_runtime_contexts(user_home)
             )
             venv_python = ensure_repo_venv(runtime_python)
             install_venv = REPO_ROOT / ".venv"
@@ -505,24 +570,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 install_venv,
                 args.mode,
                 scope,
+                user_home,
                 force=args.force,
             )
             install_git_hooks(venv_python)
             if not args.skip_shell_init_update:
-                ensure_shell_init(args.mode)
+                ensure_shell_init(args.mode, user_home)
             if args.mode == "dev":
-                direnv_path = ensure_direnv(auto_install=not args.skip_direnv_install)
+                direnv_path = ensure_direnv(
+                    auto_install=not args.skip_direnv_install,
+                    user_home=user_home,
+                )
                 envrc_path = write_envrc()
                 allow_direnv(direnv_path, envrc_path)
         else:
             install_venv, venv_python, selected_base_python = (
-                ensure_standard_install_venv(scope)
+                ensure_standard_install_venv(scope, user_home)
             )
             install_project(
                 venv_python,
                 install_venv,
                 args.mode,
                 scope,
+                user_home,
                 force=args.force,
             )
         verify_install(venv_python)
@@ -538,6 +608,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print("[install-stage-2] PASS")
     print("Mode: {}".format(args.mode))
     print("Install scope: {}".format(scope))
+    if scope != SYSTEM_SCOPE:
+        print("User home: {}".format(user_home))
     if pyenv_root_path is not None:
         print("Pyenv root: {}".format(pyenv_root_path))
     if runtime_selection is not None:

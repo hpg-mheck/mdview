@@ -104,9 +104,13 @@ The managed pre-commit hook installed by setup scripts runs
 and CI-adjacent sandboxes where commits are authored.
 
 For standardized git operations, use:
+- Before staging, append brief commit-body-ready summaries to
+  `project-management/state/pending-commit-changes.txt`.
 - `python scripts/git_standard_commit_push.py -m "<message>"` for commits and
-  pushes with mandatory cached quality gate checks (including entropy
-  tripwire verification).
+  pushes with mandatory cached quality gate checks, explicit Git identity,
+  pre-staging review, staged-diff inspection, and pending-summary consumption.
+  Use `--assume-reviewed` only after an explicit review decision and
+  `--resume-review-prompts` to re-enable prompts for the shell session.
 - `python scripts/git_veteran_pull.py` for guarded fast-forward pull updates.
 - After updating the `TheKnowledge` submodule, run
   `python scripts/report_managed_agents_drift.py`. If it reports drift, run

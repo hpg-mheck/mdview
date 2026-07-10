@@ -6,6 +6,27 @@ blank line. When closing out work, include brief context such as dates,
 responsible contributors, and any follow-up notes. If a task was blocked,
 summarize how the blocker was resolved.
 
+* Modernized mdview-local Git workflow helpers, recorded at
+  2026-07-10T04:31:00-07:00 by Codex from direct operator instruction.
+  Synchronized `scripts/git_standard_commit_push.py` with current
+  TheKnowledge review prompts, explicit identity validation, working-tree and
+  staged diff inspection, and commit-summary queue handling. Added
+  `project-management/state/pending-commit-changes.txt`, updated workflow
+  documentation, and expanded regression coverage. Validation: `black`,
+  `ruff`, and full `pytest` passed (`417 passed`).
+
+* Completed Rocky Linux 10.2 bootstrap and setup-path modernization, recorded
+  at 2026-07-10T04:31:00-07:00 by Codex from direct operator instruction.
+  Selected pyenv CPython 3.14.6 while retaining Python 3.9 bootstrap source
+  compatibility; pinned missing pyenv checkouts to reviewed releases without
+  changing existing operator-owned detached checkouts; and added explicit
+  user-home selection with fail-closed isolated-assistant handling. Verified
+  isolated, explicit, ordinary, standard, development, and venv-only install
+  scenarios; the standard launcher remained stable after development setup.
+  Validation: `black`, `ruff`, `compileall`, `entropy_check`,
+  `entropy_tripwire_verify`, full `pytest` (`417 passed`), and `demo_check`
+  passed (`validated=0 skipped=1 errors=0`).
+
 * Repaired memory and geometry guardrails, recorded at
   2026-06-13T23:12:05-07:00 by Codex from direct operator authorization
   after security review. Added shared resource limits, bounded file inputs

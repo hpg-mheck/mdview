@@ -2,6 +2,9 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly pyenv_repo="https://github.com/pyenv/pyenv.git"
+readonly pyenv_release="v2.7.3"
+readonly managed_python_version="3.14.6"
 
 usage() {
   cat <<'EOF'
@@ -20,6 +23,9 @@ Options:
               usable Python interpreter is already available.
   --system    Pass through to stage 2 for a system-level standard install.
               Requires root or sudo and is invalid with development mode.
+  --user-home PATH
+              Use an explicit absolute home for user-scoped paths. Required
+              when HOME is an isolated Codex or Claude environment.
 
 All remaining options are passed through to scripts/install-stage-2.py.
 EOF
@@ -35,7 +41,7 @@ PY
 
 find_python() {
   local candidate
-  for candidate in python3 python3.13 python3.12 python3.11 python3.10 python3.9 python; do
+  for candidate in python3 python3.14 python3.13 python3.12 python3.11 python3.10 python3.9 python; do
     if command -v "$candidate" >/dev/null 2>&1 && python_is_supported "$candidate"; then
       command -v "$candidate"
       return 0
@@ -116,19 +122,71 @@ install_root_dependencies() {
 }
 
 ensure_user_pyenv_python() {
-  local pyenv_root="${HOME}/.pyenv"
+  local user_home="$1"
+  local pyenv_root="${PYENV_ROOT:-${user_home}/.pyenv}"
   local pyenv_bin="${pyenv_root}/bin/pyenv"
   if ! command -v git >/dev/null 2>&1; then
     echo "install.sh: git is required for the non-root bootstrap path." >&2
     return 1
   fi
+  # An existing checkout belongs to the operator and may intentionally be on
+  # a detached reviewed tag. Project bootstrap must not update or switch it.
   if [[ ! -x "$pyenv_bin" ]]; then
-    git clone https://github.com/pyenv/pyenv.git "$pyenv_root"
-  else
-    git -C "$pyenv_root" pull --ff-only
+    git clone --branch "$pyenv_release" --depth 1 "$pyenv_repo" "$pyenv_root"
   fi
-  "$pyenv_bin" install -s 3.12.12
-  printf '%s\n' "${pyenv_root}/versions/3.12.12/bin/python"
+  "$pyenv_bin" install -s "$managed_python_version"
+  printf '%s\n' "${pyenv_root}/versions/${managed_python_version}/bin/python"
+}
+
+select_user_home() {
+  local selected="${HOME}"
+  local explicit="0"
+  local expect_path="0"
+  local arg
+
+  for arg in "$@"; do
+    if [[ "$expect_path" == "1" ]]; then
+      selected="$arg"
+      explicit="1"
+      expect_path="0"
+      continue
+    fi
+    case "$arg" in
+      --user-home)
+        expect_path="1"
+        ;;
+      --user-home=*)
+        selected="${arg#--user-home=}"
+        explicit="1"
+        ;;
+    esac
+  done
+
+  if [[ "$expect_path" == "1" ]]; then
+    echo "install.sh: --user-home requires a path." >&2
+    return 1
+  fi
+  if [[ "$explicit" == "1" ]]; then
+    if [[ "$selected" != /* ]]; then
+      echo "install.sh: --user-home must be an absolute path." >&2
+      return 1
+    fi
+    if [[ ! -d "$selected" ]]; then
+      echo "install.sh: --user-home must name an existing directory: $selected" >&2
+      return 1
+    fi
+    (cd -- "$selected" && pwd -P)
+    return 0
+  fi
+
+  case "${selected##*/}" in
+    .claude-home|.codex-home)
+      echo "install.sh: HOME is an isolated assistant environment: $selected" >&2
+      echo "install.sh: rerun with --user-home /absolute/path." >&2
+      return 1
+      ;;
+  esac
+  (cd -- "$selected" && pwd -P)
 }
 
 confirm_root_user_install() {
@@ -177,6 +235,10 @@ main() {
   if has_flag "--system" "$@"; then
     system_requested="1"
   fi
+  local selected_user_home="${HOME}"
+  if [[ "$system_requested" != "1" ]]; then
+    selected_user_home="$(select_user_home "$@")" || return 1
+  fi
 
   if [[ "$system_requested" == "1" && "$is_root" != "1" ]]; then
     echo "install.sh: --system requires root privileges." >&2
@@ -212,7 +274,7 @@ main() {
         return 1
       }
     else
-      python_path="$(ensure_user_pyenv_python)" || {
+      python_path="$(ensure_user_pyenv_python "$selected_user_home")" || {
         echo "install.sh: no Python 3.9+ interpreter is available, and the" >&2
         echo "install.sh: user-local pyenv fallback did not succeed." >&2
         echo "install.sh: install Python 3.9+ first or rerun with sudo" >&2

@@ -8,12 +8,16 @@ management during automated runs.
 Sandbox checklist
 -----------------
 
-- Start in the repository root and run `./install.sh --mode dev`. The older
+- Start in the repository root. When the sandbox preserves the operator's
+  normal `HOME`, run `./install.sh --mode dev`. When it supplies an isolated
+  Codex or Claude home, run
+  `./install.sh --mode dev --user-home /absolute/operator/home`. The older
   `./bootstrap.sh` and `./scripts/install_prerequisites.sh` paths remain
   available as compatibility wrappers when existing automation still calls
   them.
 - Allow the managed flow to create `.venv`; it provisions the configured
-  bootstrap/runtime contexts, upgrades packaging tools, installs mdview
+  bootstrap floor and selected 3.14.6 runtime, upgrades packaging tools,
+  installs mdview
   through `scripts/install_project.py`, and installs repo-local workflow
   helpers.
 - On Unix-like hosts, development mode provisions user-scoped pyenv
@@ -27,6 +31,9 @@ Sandbox checklist
   `.venv` before using `python`.
 - Keep the working directory clean: the installer avoids global changes and
   prefers the project-local virtual environment.
+- Treat an isolated assistant home as private runtime state. The installer
+  fails closed unless `--user-home` explicitly identifies the intended
+  user-scoped target and reports that target after installation.
 - Use `--force-direct-run` with `scripts/install-stage-2.py` only for
   explicit debugging. Example:
   `python scripts/install-stage-2.py --force-direct-run --mode venv-only`.

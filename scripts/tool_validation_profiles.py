@@ -18,6 +18,8 @@ DEFAULT_TOOL_VALIDATION_PROFILES: Dict[str, object] = {
             "minimum_version": "3.9",
             "environment_variables": ["THEKNOWLEDGE_BOOTSTRAP_PYTHON"],
             "preferred_executables": [
+                "python3.14",
+                "python3.13",
                 "python3.12",
                 "python3.11",
                 "python3.10",
@@ -28,7 +30,7 @@ DEFAULT_TOOL_VALIDATION_PROFILES: Dict[str, object] = {
             "required_modules": [],
         },
         "steady_state_python_tools": {
-            "minimum_version": "3.12",
+            "minimum_version": "3.14",
             "environment_variables": [
                 "THEKNOWLEDGE_BLACK_PYTHON",
                 "THEKNOWLEDGE_PYTHON_TOOLS",
@@ -36,7 +38,7 @@ DEFAULT_TOOL_VALIDATION_PROFILES: Dict[str, object] = {
             "preferred_executables": [
                 ".venv/bin/python",
                 ".venv/Scripts/python.exe",
-                "python3.12",
+                "python3.14",
                 "python",
                 "python3",
             ],

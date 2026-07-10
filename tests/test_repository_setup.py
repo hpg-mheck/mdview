@@ -159,11 +159,13 @@ def test_python_environment_config_has_bootstrap_and_runtime_contexts() -> None:
     config = json.loads((ROOT / "python-environments.json").read_text())
 
     assert config["bootstrap"]["required_version"] == "3.9"
-    assert config["runtime"]["required_version"] == "3.12"
+    assert config["runtime"]["required_version"] == "3.14"
     assert (
         config["bootstrap"]["environment_name"] == config["bootstrap"]["base_version"]
     )
     assert config["runtime"]["environment_name"] == config["runtime"]["base_version"]
+    assert config["runtime"]["base_version"] == "3.14.6"
+    assert config["bootstrap"]["base_version"] == config["runtime"]["base_version"]
     assert (ROOT / ".python-version").read_text(encoding="utf-8").strip() == config[
         "runtime"
     ]["environment_name"]
@@ -182,6 +184,7 @@ def test_tool_validation_profiles_match_mdview_paths() -> None:
         "THEKNOWLEDGE_PYTHON_TOOLS"
         in policies["steady_state_python_tools"]["environment_variables"]
     )
+    assert policies["steady_state_python_tools"]["minimum_version"] == "3.14"
     assert black_tool["default_roots"] == [
         "src",
         "tests",
@@ -189,6 +192,18 @@ def test_tool_validation_profiles_match_mdview_paths() -> None:
         "standards-and-practices/dev-utils",
         "templates/scripts",
     ]
+
+
+def test_bootstrap_does_not_pull_user_owned_pyenv() -> None:
+    install_script = (ROOT / "install.sh").read_text(encoding="utf-8")
+    helper = (ROOT / "scripts" / "python_environment_bootstrap.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "pull --ff-only" not in install_script
+    assert '"pull", "--ff-only"' not in helper
+    assert 'pyenv_release="v2.7.3"' in install_script
+    assert 'managed_python_version="3.14.6"' in install_script
 
 
 def test_timeout_wrapper_pytest_command_stays_scoped_to_mdview_tests() -> None:

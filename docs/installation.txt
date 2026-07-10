@@ -38,10 +38,22 @@ When you only want the managed repo-local toolchain refreshed, use:
 ./install.sh --mode venv-only
 ```
 
+Automation with an isolated Codex or Claude `HOME` must select the intended
+user scope explicitly:
+
+```
+./install.sh --mode dev --user-home /home/username
+```
+
+`--user-home` must name an absolute, existing directory. The installer fails
+closed instead of writing into a recognized assistant home when the option is
+omitted, and reports the selected user home after a successful user-scoped
+install.
+
 Supported platforms
 -------------------
 
-- Rocky Linux 9.6 (dnf/yum)
+- Rocky Linux 9.6 and 10.2 (dnf/yum)
 - Fedora 43 (dnf)
 - Ubuntu 24.x (apt)
 - Linux Mint (apt)
@@ -54,9 +66,16 @@ What the installer does
 - Detects the platform and chooses an available package manager for the
   bootstrap interpreter when needed.
 - Uses standard mode as the default install mode.
-- Provisions the configured pyenv bootstrap/runtime selections, writes
-  `.python-version`, refreshes `.venv`, and installs repo-local workflow
-  helpers for development and venv-only modes.
+- Validates the Python 3.9 bootstrap floor, provisions pyenv CPython 3.14.6
+  as the selected development runtime, writes `.python-version`, refreshes
+  `.venv`, and installs repo-local workflow helpers for development and
+  venv-only modes.
+- Reuses an existing user-owned pyenv checkout without pulling or switching
+  it. When pyenv is absent, clones the official repository at a reviewed
+  pinned release.
+- Resolves standard-install virtualenv, launcher, downloaded direnv, and shell
+  hook paths from one selected user home. An explicitly configured
+  `PYENV_ROOT` remains authoritative for the pyenv checkout itself.
 - Delegates mdview-specific install behavior to `scripts/install_project.py`,
   which installs mdview in editable mode for development, non-editable mode
   for standard installs, and manages the user-facing `mdview` launcher.
@@ -85,8 +104,12 @@ Notes and expectations
   `sudo` only for explicit system installs.
 - `./install.sh --system` without root privileges must fail with an
   explanation.
+- `--user-home` cannot be combined with `--system`, because system scope does
+  not use user-local install paths.
 - Source `./set-context-bootstrap.sh` or `./set-context.sh` when you need to
-  force the bootstrap or runtime pyenv context explicitly. The checked-in
+  force the compatibility bootstrap alias or runtime pyenv context
+  explicitly. Both select 3.14.6; Python 3.9 remains the source/bootstrap
+  floor rather than a separately provisioned interpreter. The checked-in
   `.python-version` file makes the runtime context the default local choice.
 - On Unix-like hosts, development mode provisions user-scoped pyenv
   selections and expects `direnv`. Supported Linux flows can install a

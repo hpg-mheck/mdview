@@ -58,6 +58,7 @@ tests/test_posix_cli_shim.py
 tests/test_preferences.py
 tests/test_prerequisites_module.py
 tests/test_project_metadata.py
+tests/test_python_environment_bootstrap.py
 tests/test_rendering.py
 tests/test_repository_setup.py
 tests/test_resize_verifier.py

@@ -15,8 +15,8 @@ Requirements
   repository `.venv`.
 - Upgrade `pip`, `setuptools`, and `wheel` inside the repository `.venv` so
   the active development environment uses current packaging tools.
-- Preserve Python 3.9+ compatibility in bootstrap and installer code, and
-  preserve Python 3.12 as the steady-state local tool runtime.
+- Preserve Python 3.9+ compatibility in bootstrap and installer code, and use
+  pyenv CPython 3.14.6 as the steady-state local tool runtime.
 - Do not update Codex packages in `package.json`, `package-lock.json`,
   ignored `.codex-local/` state, or other `.local/` operator state. Codex
   package currency is owned by codex-wrangler, not this repository task.

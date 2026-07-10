@@ -1,0 +1,33 @@
+mdview-Local Git Workflow
+=========================
+
+Scope
+-----
+Define the repository-local commit-and-push wrapper behavior that mdview
+retains while tracking current TheKnowledge workflow safeguards.
+
+Requirements
+------------
+- `scripts/git_standard_commit_push.py` must remain the preferred mdview-local
+  commit-and-push entry point and must run mdview's cached quality gate.
+- Before staging, the helper must list pending paths, run `git diff`, and
+  offer the current TheKnowledge review choices unless review was explicitly
+  approved or disabled for the shell session.
+- The helper must support `--assume-reviewed` and
+  `--resume-review-prompts`.
+- Before committing, the helper must run `git diff --cached` and reject an
+  absent or partially configured author/committer identity.
+- Deliberate `GIT_COMMITTER_*` values may supply both committer and default
+  author identity. Separate deliberate `GIT_AUTHOR_*` values may override the
+  author. The helper must never infer identity from repository or host data.
+- Keep brief commit-body summaries in
+  `project-management/state/pending-commit-changes.txt`.
+- A successful local commit must consume and clear a nonblank summary queue.
+  A failed commit must restore the queue and stage the restored contents.
+- Preserve mdview's local quality-gate cache and direct `trunk` push policy.
+
+Testing
+-------
+- Cover dry-run diff ordering, identity validation, review-state controls,
+  queue discovery, queue body use, and queue restoration helpers without
+  creating real commits or pushes.

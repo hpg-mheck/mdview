@@ -2,9 +2,9 @@
 
 This specification defines the bootstrap and prerequisite installation flow
 for mdview development environments. The goal is to supply a predictable way
-to set up system packages and Python dependencies across Rocky Linux 9.6,
-Fedora 43, Ubuntu 24.x, Linux Mint, Debian (current stable/testing), recent
-macOS versions, and Windows 11.
+to set up system packages and Python dependencies across Rocky Linux 9.6 and
+10.2, Fedora 43, Ubuntu 24.x, Linux Mint, Debian (current stable/testing),
+recent macOS versions, and Windows 11.
 
 ## Objectives
 - Provide a canonical shell entry point (`install.sh`) that can run on
@@ -13,13 +13,14 @@ macOS versions, and Windows 11.
 - Keep `bootstrap.sh` and `scripts/install_prerequisites.sh` as compatibility
   wrappers to `install.sh`.
 - Implement `scripts/install-stage-2.py` as the managed stage-two installer
-  that detects install mode/scope, provisions bootstrap/runtime pyenv
-  contexts for repo-local development, refreshes `.venv`, and installs
-  managed hooks.
+  that detects install mode/scope, validates the bootstrap floor, provisions
+  the selected runtime pyenv context for repo-local development, refreshes
+  `.venv`, and installs managed hooks.
 - Keep mdview-specific install behavior in `scripts/install_project.py`,
   including project package installation and launcher management.
-- Track bootstrap/runtime pyenv contexts through `python-environments.json`,
-  `.python-version`, `set-context.sh`, and `set-context-bootstrap.sh`.
+- Track the bootstrap floor and selected runtime through
+  `python-environments.json`, `.python-version`, `set-context.sh`, and
+  `set-context-bootstrap.sh`.
 - Ensure repo-local development refreshes the pinned local-check tools through
   `scripts/dev_setup.py`.
 - For interactive developer installs, prompt whether typing `mdview` outside
@@ -28,6 +29,15 @@ macOS versions, and Windows 11.
   the current PATH before asking.
 - Keep logic compatible with Python 3.9+ in bootstrap/setup paths and avoid
   non-portable shell features.
+- Use pyenv CPython 3.14.6 for the managed development runtime while keeping
+  Rocky's system Python under DNF ownership.
+- Never pull or switch an existing user-owned pyenv checkout from project
+  bootstrap. Detached reviewed release tags are valid.
+- Resolve default user-scoped install paths from one selected home directory.
+  Accept an absolute, existing `--user-home` path when an automation process
+  has an isolated home, and report the selected path after installation.
+  Preserve an explicitly configured `PYENV_ROOT` for operator-owned pyenv
+  checkouts outside that home.
 - Ensure repository launchers invoke mdview's internal CLI and never depend
   on external renderers such as `pandoc` or GUI openers.
 
@@ -47,9 +57,9 @@ macOS versions, and Windows 11.
   bootstrap entry point.
 - Let `install.sh` default to a user-local non-development install in
   standard mode, while `--mode dev` and `--mode venv-only` remain repo-local.
-- Use `scripts/install-stage-2.py` to provision the configured pyenv
-  bootstrap and runtime selections and to write `.python-version` to the
-  runtime selection for repo-local development.
+- Use `scripts/install-stage-2.py` to validate the active bootstrap Python,
+  provision only the configured pyenv runtime selection, and write
+  `.python-version` to that runtime for repo-local development.
 - Use `.venv` at the repository root for development and venv-only modes.
 - Resolve project root independently of caller working directory so the
   installer can run from subdirectories such as `scripts/` and still install
@@ -71,6 +81,9 @@ macOS versions, and Windows 11.
 - Reject `sudo ./install.sh` without `--system`.
 - Reject `./install.sh --system` when the current process is not running as
   root.
+- Reject user-scoped installation from a recognized isolated Codex or Claude
+  home unless the operator supplies `--user-home` explicitly.
+- Reject `--user-home` with `--system`; system scope has no user-home target.
 - Skip package-manager installation when the required bootstrap tools are
   already present on the host.
 - When running interactively in development mode, report whether a

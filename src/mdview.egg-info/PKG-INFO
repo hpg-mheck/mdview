@@ -84,10 +84,19 @@ For a user-local non-development install, use:
 
 The legacy `./bootstrap.sh` and `./scripts/install_prerequisites.sh` entry
 points remain available as compatibility wrappers to `./install.sh`.
-On Unix-like hosts, development mode provisions the configured pyenv
-selections, refreshes `.venv`, and enables direnv-backed project activation.
+On Unix-like hosts, development mode validates the Python 3.9 bootstrap floor,
+provisions pyenv CPython 3.14.6 as the development runtime, refreshes `.venv`,
+and enables direnv-backed project activation. Existing user-owned pyenv
+checkouts are reused without being pulled or switched.
 If non-interactive automation must force the optional dev-launcher choice,
 set `MDVIEW_DEV_LAUNCHER_MODE=local` or `MDVIEW_DEV_LAUNCHER_MODE=system`.
+When automation runs with an isolated Codex or Claude `HOME`, select the real
+user scope explicitly:
+```bash
+./install.sh --mode dev --user-home /home/username
+```
+User-scoped installs fail closed in a recognized assistant home when this
+option is omitted. Successful installs report the selected user home.
 
 For an editable install without the full bootstrap flow:
 ```bash

@@ -16,19 +16,17 @@ Recent phases:
 * Phase 2: Installer, prerequisite, and managed-tooling reliability, active.
 
 Recent slices:
-* Slice 3: Refresh support package pins and installer feedback, done.
-
 * Slice 4: Add Ubersight long-duration work tracking, done.
 
 * Slice 5: Repair memory and geometry guardrails, done.
+
+* Slice 6: Continue installer and setup-path documentation hardening,
+  done.
 
 Upcoming phases:
 * Phase 3: Cross-platform validation coverage, planned.
 
 Upcoming slices:
-* Slice 6: Continue installer and setup-path documentation hardening,
-  pending.
-
 * Slice 7: Validate WSL2 Linux workflow from a real Windows host, blocked.
 
 * Slice 8: Revisit mdview-side Black accommodations after upstream fixes,

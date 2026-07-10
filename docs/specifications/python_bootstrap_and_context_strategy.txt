@@ -41,7 +41,7 @@ Requirements
 - `scripts/install-stage-2.py` must:
   - load `python-environments.json`;
   - verify the bootstrap Python floor before any heavier work begins;
-  - provision the configured pyenv bootstrap/runtime contexts for repo-local
+  - provision only the configured steady-state pyenv runtime for repo-local
     development;
   - write `.python-version` so the runtime context is the default local pyenv
     selection; and
@@ -59,8 +59,27 @@ Requirements
   automation must not treat it as canonical.
 - Installer and bootstrap code must remain usable from Python 3.9+ for the
   initial bootstrap phase.
-- The steady-state local tool/runtime policy must target Python 3.12 unless a
-  narrower exception is explicitly documented.
+- The Python 3.9 bootstrap floor is a source-compatibility requirement, not an
+  instruction to install a separate minimum-version interpreter.
+- The selected steady-state development runtime must be pyenv CPython 3.14.6.
+- `python-environments.json` may retain a bootstrap context for compatible
+  context-selection helpers, but that context must alias the selected runtime
+  rather than provisioning a second interpreter.
+- Existing user-owned pyenv and pyenv-plugin checkouts must be consumed
+  without pulling, switching branches or tags, or otherwise changing their
+  reviewed state.
+- When pyenv or a required plugin is absent, bootstrap may clone the official
+  upstream repository at a reviewed pinned release.
+- User-scoped installer paths must derive from one resolved home directory.
+  The selected home must govern default pyenv fallback, standard-install
+  virtualenv, launcher, direnv, and shell-initialization paths. An explicitly
+  configured `PYENV_ROOT` may select a separate operator-owned checkout.
+- `install.sh` must accept an absolute, existing `--user-home` path for
+  automation that runs with an isolated assistant home and must report the
+  effective user home after a successful user-scoped install.
+- Without `--user-home`, user-scoped installation must fail closed when the
+  current home is a recognized isolated Codex or Claude home. System installs
+  must reject `--user-home` because they do not use user-scoped paths.
 
 Installer-Path Documentation Requirements
 -----------------------------------------
@@ -89,6 +108,12 @@ Compatibility and Safety
 - The bootstrap/install path must preserve mdview's current managed hook
   installation behavior, editable-install workflow for development mode, and
   stable launcher behavior for standard mode.
+- Development environments must use the configured user-owned pyenv runtime,
+  never Rocky's DNF-owned system Python merely because it satisfies the
+  minimum source version.
+- Running the installer from an isolated assistant environment must not write
+  standard installs, launchers, downloaded tools, or shell hooks into that
+  environment's private home unless it was selected explicitly.
 - The installer must continue to surface PATH-resolution behavior for the
   `mdview` command in interactive setups unless that behavior is explicitly
   retired by a later approved specification.

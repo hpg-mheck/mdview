@@ -33,6 +33,9 @@ the managed TheKnowledge footer.
   with `git submodule update --init --recursive TheKnowledge` before using
   managed `AGENTS.md` utilities or relying on shared files from
   `TheKnowledge/`.
+- When a Codex or Claude process has an isolated `HOME`, pass the intended
+  absolute user scope to setup, for example
+  `./install.sh --mode dev --user-home /home/username`.
 - After updating the `TheKnowledge` submodule, run
   `python scripts/report_managed_agents_drift.py`. If it reports drift, run
   `python scripts/refresh_managed_agents.py`, review `git diff`, and stage
@@ -180,8 +183,9 @@ environment notes that must not be committed.
 - Before running local checks in a fresh checkout or environment, bootstrap
   the repository-local toolchain from the repository root with
   `./install.sh --mode dev`. That canonical development path provisions the
-  configured pyenv bootstrap/runtime selections, writes `.python-version`,
-  refreshes `.venv/` inside the checkout, installs mdview through
+  configured pyenv 3.14.6 runtime after validating the Python 3.9 bootstrap
+  floor, writes `.python-version`, refreshes `.venv/` inside the checkout,
+  installs mdview through
   `scripts/install_project.py`, and installs repo-local workflow helpers.
   `./bootstrap.sh` and `./scripts/install_prerequisites.sh` remain available
   as compatibility wrappers to `./install.sh`. Interactive development

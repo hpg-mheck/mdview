@@ -8,24 +8,6 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
 
 *
 
-  Bring mdview's bootstrap, prerequisite installation, dev-setup tooling,
-  and setup-path documentation into compliance with current TheKnowledge
-  managed starter expectations, and raise installer/source documentation
-  quality to the newer standard.
-  Focus first on setup/prerequisite/devsetup/installer work; record any
-  approval-requiring or environment-specific follow-ups separately instead of
-  blocking this branch.
-  Current status: the branch has now adopted TheKnowledge's newer `install.sh`
-  plus `scripts/install-stage-2.py` model, restored mdview-local runtime
-  policy overrides, added a repo-local `scripts/install_project.py` hook for
-  launcher behavior, and updated setup-path documentation. Follow-up work
-  should extend the higher-documentation standard into the broader codebase
-  after deferred validation is complete.
-  Requested by operator. Added: 2026-03-31T18:54:35-07:00.
-  Updated: 2026-04-01T10:19:04-07:00.
-
-*
-
   [LOW][BLOCKED] Implement and validate the mirrored cross-platform strategy
   for running Linux test workflows through WSL2 when development happens on
   Windows.
@@ -48,13 +30,3 @@ tasks, bugs, or people. Keep descriptions concise and actionable.
   or upstream maintainer confirmation that the active TheKnowledge `black`
   fixes are complete. Requested by operator. Added:
   2026-03-27T01:49:48-07:00.
-
-*
-
-  [LOW] Modernize the mdview-local workflow helpers so they track current
-  TheKnowledge ergonomics where appropriate. Start with the gap observed in
-  `scripts/git_standard_commit_push.py`: mdview-local currently lacks the
-  newer review-approval flag behavior used by current TheKnowledge guidance.
-  Preserve mdview's local staging, branch, and push safety policies while
-  reducing friction for approved ACP flows. Requested by operator. Added:
-  2026-06-13T22:20:37-07:00.

@@ -8,9 +8,12 @@ Prerequisites
   a fresh checkout or environment. The legacy `./bootstrap.sh` and
   `./scripts/install_prerequisites.sh` paths remain available as
   compatibility wrappers.
-- The managed development flow provisions the configured pyenv
-  bootstrap/runtime selections, writes `.python-version`, refreshes `.venv/`
-  in the checkout, and installs mdview plus the pinned developer toolchain.
+- In an isolated Codex or Claude environment, pass the real user scope as an
+  absolute path: `./install.sh --mode dev --user-home /home/username`.
+- The managed development flow validates the Python 3.9 bootstrap floor,
+  provisions pyenv CPython 3.14.6, writes `.python-version`, refreshes
+  `.venv/` in the checkout, and installs mdview plus the pinned developer
+  toolchain.
 - On Unix-like hosts, development mode expects `direnv`. Supported Linux
   flows can install a user-local `direnv` binary automatically when it is
   missing; other hosts should provide `direnv` on PATH already. Windows

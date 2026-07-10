@@ -19,6 +19,8 @@ DIRENV_END = "# <<< theknowledge direnv <<<"
 ENVRC_MARKER = "# Managed by scripts/install-stage-2.py"
 PYENV_REPO = "https://github.com/pyenv/pyenv.git"
 PYENV_PLUGIN_REPO = "https://github.com/pyenv/pyenv-virtualenv.git"
+PYENV_RELEASE = "v2.7.3"
+PYENV_PLUGIN_RELEASE = "v1.4.0"
 
 
 @dataclass(frozen=True)
@@ -115,13 +117,19 @@ def ensure_minimum_python(
         )
 
 
-def default_pyenv_root() -> Path:
-    """Return the user-scoped pyenv root for the managed bootstrap flow."""
+def default_pyenv_root(user_home: Optional[Path] = None) -> Path:
+    """Return the user-scoped pyenv root for the managed bootstrap flow.
+
+    An explicit ``PYENV_ROOT`` remains authoritative because operators may
+    intentionally keep pyenv outside their home. Otherwise, callers can pass
+    the installer's resolved home so every user-scoped fallback agrees.
+    """
 
     configured = os.environ.get("PYENV_ROOT")
     if configured:
         return Path(configured).expanduser().resolve()
-    return (Path.home() / ".pyenv").resolve()
+    home = user_home if user_home is not None else Path.home()
+    return (home / ".pyenv").resolve()
 
 
 def pyenv_bin(pyenv_root_path: Path) -> Path:
@@ -168,14 +176,26 @@ def ensure_pyenv_installed(
     pyenv_root_path: Path,
     runner: Callable[..., subprocess.CompletedProcess],
 ) -> Path:
-    """Clone or update the user-scoped pyenv checkout and return its binary."""
+    """Reuse user-owned pyenv or clone the reviewed release when absent."""
 
     pyenv_executable = pyenv_bin(pyenv_root_path)
     if pyenv_executable.exists():
-        runner(["git", "-C", str(pyenv_root_path), "pull", "--ff-only"])
+        # Detached release tags are valid operator policy. A project may use
+        # this controller, but it does not own or update the checkout.
         return pyenv_executable
 
-    runner(["git", "clone", PYENV_REPO, str(pyenv_root_path)])
+    runner(
+        [
+            "git",
+            "clone",
+            "--branch",
+            PYENV_RELEASE,
+            "--depth",
+            "1",
+            PYENV_REPO,
+            str(pyenv_root_path),
+        ]
+    )
     return pyenv_executable
 
 
@@ -183,15 +203,26 @@ def ensure_pyenv_virtualenv_plugin(
     pyenv_root_path: Path,
     runner: Callable[..., subprocess.CompletedProcess],
 ) -> Path:
-    """Clone or update the optional `pyenv-virtualenv` plugin checkout."""
+    """Reuse the user-owned plugin or clone its reviewed release when absent."""
 
     plugin_root = pyenv_root_path / "plugins" / "pyenv-virtualenv"
     if plugin_root.exists():
-        runner(["git", "-C", str(plugin_root), "pull", "--ff-only"])
+        # Keep plugin ownership aligned with the pyenv controller boundary.
         return plugin_root
 
     plugin_root.parent.mkdir(parents=True, exist_ok=True)
-    runner(["git", "clone", PYENV_PLUGIN_REPO, str(plugin_root)])
+    runner(
+        [
+            "git",
+            "clone",
+            "--branch",
+            PYENV_PLUGIN_RELEASE,
+            "--depth",
+            "1",
+            PYENV_PLUGIN_REPO,
+            str(plugin_root),
+        ]
+    )
     return plugin_root
 
 

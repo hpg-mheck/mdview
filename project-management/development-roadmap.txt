@@ -31,7 +31,7 @@ Slices
 * Slice 5: Repair memory and geometry guardrails, done.
 
 * Slice 6: Continue installer and setup-path documentation hardening,
-  pending.
+  done.
 
 * Slice 7: Validate WSL2 Linux workflow from a real Windows host, blocked.
 
